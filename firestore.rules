@@ -1,0 +1,219 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // The signed-in person's own document in `employees`.
+    function me() {
+      return get(/databases/$(database)/documents/employees/$(request.auth.uid)).data;
+    }
+
+    function isActive() {
+      return signedIn() && me().active == true;
+    }
+
+    function isManagement() {
+      return isActive() && me().type == 'm';
+    }
+
+    // ---------------------------------------------------------------
+    // employees/{uid}: the document ID is the Firebase Authentication UID.
+    // ---------------------------------------------------------------
+    match /employees/{uid} {
+      // An employee reads only their own document. Management reads all.
+      allow read: if signedIn() && (request.auth.uid == uid || isManagement());
+
+      // An employee may only clear their own "must change password" flag.
+      allow update: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['mustChangePassword'])
+        && request.resource.data.mustChangePassword == false;
+
+      // Employees are created and removed only in the Firebase console.
+      allow create, delete: if false;
+    }
+
+    // ---------------------------------------------------------------
+    // feedback/{id}: what management sees.
+    // An anonymous entry carries no name and no employee ID.
+    // ---------------------------------------------------------------
+    match /feedback/{id} {
+      // Any active employee can submit a Suggestion Box entry, or the
+      // written part of a Weekly Pulse answer (Okay or Difficult).
+      // The matching private owner document must be written together with it.
+      allow create: if isActive()
+        && request.resource.data.keys().hasOnly([
+             'source', 'text', 'anonymous', 'authorName', 'authorEmployeeId',
+             'rating', 'weekId',
+             'status', 'managementMessage', 'createdAt', 'updatedAt'])
+        && request.resource.data.source in ['box', 'pulse']
+        && (request.resource.data.source == 'box'
+              ? !request.resource.data.keys().hasAny(['rating', 'weekId'])
+              : (request.resource.data.rating in ['okay', 'difficult']
+                 && request.resource.data.weekId is string))
+        && request.resource.data.text is string
+        && request.resource.data.text.size() > 0
+        && request.resource.data.text.size() <= 2000
+        && request.resource.data.anonymous is bool
+        && request.resource.data.status == 'new'
+        && request.resource.data.managementMessage == ''
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time
+        && (request.resource.data.anonymous
+              ? !request.resource.data.keys().hasAny(['authorName', 'authorEmployeeId'])
+              : (request.resource.data.authorName == me().name
+                 && request.resource.data.authorEmployeeId == me().employeeId))
+        && getAfter(/databases/$(database)/documents/feedback_owners/$(id)).data.uid == request.auth.uid;
+
+      // Management opens any entry. An employee opens only their own.
+      allow get: if isManagement()
+        || (signedIn()
+            && get(/databases/$(database)/documents/feedback_owners/$(id)).data.uid == request.auth.uid);
+
+      // Only management can list all feedback.
+      allow list: if isManagement();
+
+      // Management changes only the status and the reply.
+      // "Implemented" requires a reply.
+      allow update: if isManagement()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'managementMessage', 'updatedAt'])
+        && request.resource.data.status in ['new', 'under_review', 'planned', 'in_progress', 'implemented']
+        && request.resource.data.managementMessage is string
+        && (request.resource.data.status != 'implemented'
+            || request.resource.data.managementMessage.size() > 0);
+
+      allow delete: if false;
+    }
+
+    // ---------------------------------------------------------------
+    // feedback_owners/{id}: the private link from a feedback entry to
+    // the employee who wrote it. Management has no access here.
+    // ---------------------------------------------------------------
+    match /feedback_owners/{id} {
+      // Written once, by the author, together with the feedback itself.
+      allow create: if isActive()
+        && request.resource.data.keys().hasOnly(['uid', 'createdAt'])
+        && request.resource.data.uid == request.auth.uid
+        && !exists(/databases/$(database)/documents/feedback/$(id))
+        && existsAfter(/databases/$(database)/documents/feedback/$(id));
+
+      // An employee can read only their own links.
+      allow read: if signedIn() && resource.data.uid == request.auth.uid;
+
+      allow update, delete: if false;
+    }
+
+    // ---------------------------------------------------------------
+    // feedback_notify/{id}: the author's device address for one feedback,
+    // so management's app can notify that one person. It holds no name
+    // and no employee ID.
+    // ---------------------------------------------------------------
+    match /feedback_notify/{id} {
+      allow create: if isActive()
+        && request.resource.data.keys().hasOnly(['tokens', 'createdAt'])
+        && request.resource.data.tokens is list
+        && request.resource.data.tokens.size() <= 5
+        && getAfter(/databases/$(database)/documents/feedback_owners/$(id)).data.uid == request.auth.uid;
+
+      allow get: if isManagement();
+
+      allow list, update, delete: if false;
+    }
+
+    // ---------------------------------------------------------------
+    // pulse_responses/{weekId_uid}: one Weekly Pulse answer per employee
+    // per week. Only that employee can read it. Management has no access,
+    // so a rating can never be matched to a person.
+    // ---------------------------------------------------------------
+    match /pulse_responses/{id} {
+      // The fixed document ID means a second answer in the same week
+      // would be an update, which is not allowed.
+      allow create: if isActive()
+        && request.resource.data.keys().hasOnly(['uid', 'weekId', 'rating', 'createdAt'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.weekId is string
+        && request.resource.data.weekId.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && id == request.resource.data.weekId + '_' + request.auth.uid
+        && request.resource.data.rating in ['great', 'good', 'okay', 'difficult']
+        && request.resource.data.createdAt == request.time;
+
+      // An employee can check only their own answer.
+      allow get: if signedIn()
+        && id.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}_' + request.auth.uid + '$');
+
+      allow list, update, delete: if false;
+    }
+
+    // ---------------------------------------------------------------
+    // pulse_weeks/{weekId}: totals only, for the management dashboard.
+    // An employee can add exactly +1 for their own rating, and only in
+    // the same write that creates their answer for that week.
+    // ---------------------------------------------------------------
+    function addsMyPulse(weekId) {
+      return !exists(/databases/$(database)/documents/pulse_responses/$(weekId + '_' + request.auth.uid))
+        && existsAfter(/databases/$(database)/documents/pulse_responses/$(weekId + '_' + request.auth.uid));
+    }
+
+    function myNewRating(weekId) {
+      return getAfter(/databases/$(database)/documents/pulse_responses/$(weekId + '_' + request.auth.uid)).data.rating;
+    }
+
+    match /pulse_weeks/{weekId} {
+      allow read: if isManagement();
+
+      allow create: if isActive()
+        && addsMyPulse(weekId)
+        && request.resource.data.keys().hasOnly([myNewRating(weekId), 'submitted'])
+        && request.resource.data[myNewRating(weekId)] == 1
+        && request.resource.data.submitted == 1;
+
+      allow update: if isActive()
+        && addsMyPulse(weekId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([myNewRating(weekId), 'submitted'])
+        && request.resource.data[myNewRating(weekId)] == resource.data.get(myNewRating(weekId), 0) + 1
+        && request.resource.data.submitted == resource.data.get('submitted', 0) + 1;
+
+      allow delete: if false;
+    }
+
+    // ---------------------------------------------------------------
+    // broadcasts/{id}: one entry each time management taps "Notify all"
+    // or "Remind", so it also appears in the Notifications screen.
+    // ---------------------------------------------------------------
+    match /broadcasts/{id} {
+      allow read: if isActive();
+
+      allow create: if isManagement()
+        && request.resource.data.keys().hasOnly(['type', 'title', 'body', 'weekId', 'createdAt'])
+        && request.resource.data.type in ['pulse_open', 'pulse_reminder']
+        && request.resource.data.title is string
+        && request.resource.data.body is string
+        && request.resource.data.weekId is string
+        && request.resource.data.createdAt == request.time;
+
+      allow update, delete: if false;
+    }
+
+    // ---------------------------------------------------------------
+    // user_state/{uid}: when each person last opened the Notifications
+    // screen, used for the unread count on the bell. Private to them.
+    // ---------------------------------------------------------------
+    match /user_state/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+
+      allow write: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['notificationsSeenAt'])
+        && request.resource.data.notificationsSeenAt is timestamp;
+    }
+
+    // Everything else stays closed.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
