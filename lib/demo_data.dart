@@ -3,6 +3,7 @@ import 'services/pulse_service.dart';
 class DemoData {
   static const bool on = false;
   static const int people = 56;
+
   static Map<String, PulseTotals> weeks(String thisWeek) {
     const sample = [
       [18, 16, 8, 4],
