@@ -12,10 +12,11 @@ class AppConfig {
   /// `true`: management is notified for every Weekly Pulse answer,
   /// including Great and Good (without the employee's pulseOpenEveryDayname).
   /// `false`: only for written Okay or Difficult feedback.
-  static const bool notifyManagementOnEveryPulse = true;
+  static const bool notifyManagementOnEveryPulse = false;
+  static const bool notifyManagementOnPulseComments = false;
   /// `false`: the employee is notified only when the status becomes
   /// Implemented, as in the proposal. `true`: on every status change.
-  static const bool notifyEmployeeOnEveryStatus = false;
+  static const bool notifyEmployeeOnEveryStatus = true;
 
   /// How many weeks ahead a phone joins the "pending" reminder group.
   static const int pendingTopicWeeksAhead = 8;

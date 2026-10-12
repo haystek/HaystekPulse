@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../config.dart';
 import '../demo_data.dart';
 import '../models/employee.dart';
 import '../models/feedback_item.dart';
@@ -411,7 +412,10 @@ class _ManagementHomeScreenState extends State<ManagementHomeScreen>
     final canNotify = PushSender.available;
     final shown = _shownWeekId;
     final thisWeek = PulseService.thisWeekId();
-    final notOpenYet = !_windowOpen && shown == thisWeek;
+    // Only before this week's window opens (not after it closed).
+    final notOpenYet = !_windowOpen &&
+        shown == thisWeek &&
+        DateTime.now().isBefore(_opensAt(thisWeek));
     final comments = all
         .where((f) => !f.isFromBox && f.weekId == shown)
         .toList();
@@ -516,10 +520,17 @@ class _ManagementHomeScreenState extends State<ManagementHomeScreen>
                         total: total,
                         notOpenYet: notOpenYet,
                       ),
+                      const SizedBox(height: 12),
+                      _WindowLine(
+                        weekId: shown,
+                        isThisWeek: shown == thisWeek,
+                        open: _windowOpen && shown == thisWeek,
+                      ),
                       const SizedBox(height: 18),
                       _RingSummary(total: total, totals: totals),
                       const SizedBox(height: 16),
                       _RemindButton(
+                        total: total,
                         pending: pending,
                         canNotify: canNotify,
                         windowOpen: _windowOpen && shown == _weekId,
@@ -591,6 +602,99 @@ Color _moodColor(String rating) {
       return const Color(0xFFE9A83B);
     default:
       return const Color(0xFFE2583E);
+  }
+}
+
+/// When a week's window opens: its open day at the open time.
+DateTime _opensAt(String weekId) {
+  final p = weekId.split('-').map(int.parse).toList();
+  return DateTime(
+    p[0],
+    p[1],
+    p[2],
+    AppConfig.pulseOpenHour,
+    AppConfig.pulseOpenMinute,
+  );
+}
+
+/// One clear line about the window, for example:
+///   ● Open now · since Mon 10:00 AM · closes Fri night
+///   ● Opens Mon 10:00 AM · closes Fri night
+///   ● Closed · was open Mon 10:00 AM – Fri night
+class _WindowLine extends StatelessWidget {
+  const _WindowLine({
+    required this.weekId,
+    required this.isThisWeek,
+    required this.open,
+  });
+
+  final String weekId;
+  final bool isThisWeek;
+  final bool open;
+
+  @override
+  Widget build(BuildContext context) {
+    final openDay = PulseService.openDayLabel();
+    final short = openDay.length > 3 ? openDay.substring(0, 3) : openDay;
+    final openTime = PulseService.openTimeLabel();
+    final closeDay = PulseService.closeDayLabel();
+    final closeShort = closeDay.length > 3 ? closeDay.substring(0, 3) : closeDay;
+
+    final Color dot;
+    final String label;
+    final String detail;
+    if (AppConfig.pulseOpenEveryDay && isThisWeek) {
+      dot = const Color(0xFF16A34A);
+      label = 'Open';
+      detail = 'test mode: open every day';
+    } else if (open) {
+      dot = const Color(0xFF16A34A);
+      label = 'Open now';
+      detail = 'since $short $openTime · closes $closeShort night';
+    } else if (isThisWeek && DateTime.now().isBefore(_opensAt(weekId))) {
+      dot = const Color(0xFFE9A83B);
+      label = 'Not open yet';
+      detail = 'opens $short $openTime · closes $closeShort night';
+    } else {
+      dot = const Color(0xFF8A94AA);
+      label = 'Closed';
+      detail = 'was open $short $openTime – $closeShort night';
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      decoration: BoxDecoration(
+        color: dot.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 9,
+            height: 9,
+            decoration: BoxDecoration(color: dot, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: TextStyle(
+              color: Color.lerp(dot, Colors.black, 0.35),
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              '· $detail',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: AppColors.muted, fontSize: 13.5),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -922,6 +1026,7 @@ class _RingPainter extends CustomPainter {
 /// when there is nothing to send.
 class _RemindButton extends StatelessWidget {
   const _RemindButton({
+    required this.total,
     required this.pending,
     required this.canNotify,
     required this.windowOpen,
@@ -930,6 +1035,8 @@ class _RemindButton extends StatelessWidget {
     required this.onRemind,
   });
 
+  /// How many employees can answer. 0 means none added yet.
+  final int total;
   final int pending;
   final bool canNotify;
   final bool windowOpen;
@@ -954,11 +1061,12 @@ class _RemindButton extends StatelessWidget {
       );
     }
 
+    // Before it opens, the window line already says when. Show nothing.
+    if (notOpenYet && total > 0) return const SizedBox.shrink();
+
     final String message;
-    if (notOpenYet) {
-      message = 'Opens ${PulseService.openDayLabel()} '
-          '${PulseService.openTimeLabel()}, until '
-          '${PulseService.closeDayLabel()} night';
+    if (total == 0) {
+      message = 'No employees added yet';
     } else if (pending == 0) {
       message = 'Everyone has answered';
     } else if (windowOpen) {
@@ -1201,10 +1309,13 @@ class _WeekHeadline extends StatelessWidget {
     final needed = (total * 0.25).ceil() < 3 ? 3 : (total * 0.25).ceil();
     final String title;
     final String line;
-    if (notOpenYet) {
-      title = 'Not open yet';
-      line = 'Opens ${PulseService.openDayLabel()} '
-          '${PulseService.openTimeLabel()}.';
+    if (total == 0) {
+      title = 'No employees yet';
+      line = 'Add employee accounts to start the Weekly Pulse.';
+    } else if (notOpenYet) {
+      // The window line below already says when it opens and closes.
+      title = 'Starting soon';
+      line = '';
     } else if (submitted == 0) {
       title = 'No answers yet';
       line = 'Answers show here as soon as people send them.';
@@ -1254,11 +1365,13 @@ class _WeekHeadline extends StatelessWidget {
         ),
         const SizedBox(height: 2),
         Text(title, style: _h(32, weight: FontWeight.w800, height: 1.15)),
-        const SizedBox(height: 4),
-        Text(
-          line,
-          style: const TextStyle(color: AppColors.muted, fontSize: 14.5),
-        ),
+        if (line.isNotEmpty) ...[
+          const SizedBox(height: 4),
+          Text(
+            line,
+            style: const TextStyle(color: AppColors.muted, fontSize: 14.5),
+          ),
+        ],
       ],
     );
   }

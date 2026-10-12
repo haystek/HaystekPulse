@@ -217,12 +217,13 @@ class PulseService {
     unawaited(NotificationService.instance.markPulseSubmitted());
 
     // Tell management. The employee's name is never included.
-    if (PulseRating.needsText(rating)) {
+    if (PulseRating.needsText(rating) &&
+        AppConfig.notifyManagementOnPulseComments) {
       unawaited(
         PushSender.toTopic(
           NotificationService.topicManagement,
           title: 'New Weekly Pulse comment · ${PulseRating.label(rating)}',
-          body: '“${PushSender.shorten(text)}”',
+          body: PushSender.shorten(text),
           data: {
             'type': PushSender.typeFeedbackNew,
             'feedbackId': feedbackId ?? '',

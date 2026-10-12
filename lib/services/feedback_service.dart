@@ -78,7 +78,7 @@ class FeedbackService {
       PushSender.toTopic(
         NotificationService.topicManagement,
         title: 'New suggestion · Needs reply',
-        body: '“${PushSender.shorten(text)}”',
+        body: PushSender.shorten(text),
         data: {
           'type': PushSender.typeFeedbackNew,
           'feedbackId': ref.id,
@@ -137,7 +137,7 @@ class FeedbackService {
             ? 'Your feedback is Implemented ✅'
             : 'Your feedback is now ${FeedbackStatus.label(status)}',
         body: implemented
-            ? '“${PushSender.shorten(message)}”'
+            ? PushSender.shorten(message)
             : 'Tap to see it in My Feedback.',
         data: {'type': PushSender.typeFeedbackReply, 'feedbackId': id},
       );

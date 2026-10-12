@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import '../config.dart';
 import '../models/employee.dart';
@@ -47,6 +49,47 @@ class NotificationService {
   String? _token;
   Employee? _employee;
   RemoteMessage? _waitingToOpen;
+
+  /// Shows a normal phone notification while the app is open (Android).
+  final FlutterLocalNotificationsPlugin _local =
+  FlutterLocalNotificationsPlugin();
+  bool _localReady = false;
+
+  /// The same channel the notifications from Firebase use (see
+  /// push_sender_io.dart), so open or closed, they look and sound the same.
+  static const AndroidNotificationChannel _channel = AndroidNotificationChannel(
+    'haystek_alerts',
+    'Haystek Pulse',
+    description: 'Weekly Pulse and feedback updates',
+    importance: Importance.high,
+  );
+
+  /// Sets up phone notifications shown by the app itself, once.
+  Future<void> _initLocal() async {
+    if (_localReady) return;
+    await _local.initialize(
+      const InitializationSettings(
+        android: AndroidInitializationSettings('ic_notification'),
+        iOS: DarwinInitializationSettings(
+          requestAlertPermission: false,
+          requestBadgePermission: false,
+          requestSoundPermission: false,
+        ),
+      ),
+      // Tapping that notification opens the right screen.
+      onDidReceiveNotificationResponse: (response) {
+        final payload = response.payload;
+        if (payload == null || payload.isEmpty) return;
+        final data = Map<String, dynamic>.from(jsonDecode(payload) as Map);
+        unawaited(_open(RemoteMessage(data: data)));
+      },
+    );
+    await _local
+        .resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(_channel);
+    _localReady = true;
+  }
   bool _checkedLaunchMessage = false;
   StreamSubscription<RemoteMessage>? _foregroundSub;
   StreamSubscription<RemoteMessage>? _tappedSub;
@@ -64,6 +107,13 @@ class NotificationService {
     _employee = employee;
     try {
       await _fm.requestPermission();
+      await _initLocal();
+      // iPhone: show the normal notification even when the app is open.
+      await _fm.setForegroundNotificationPresentationOptions(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
       _token = await _fm.getToken().timeout(const Duration(seconds: 15));
       _foregroundSub ??= FirebaseMessaging.onMessage.listen(_showInApp);
       _tokenSub ??= _fm.onTokenRefresh.listen((t) => _token = t);
@@ -220,6 +270,31 @@ class NotificationService {
       actionLabel: action,
       onAction: action == null ? null : () => _open(message),
     );
+
+    // Android: also put it in the phone's notification bar, with sound.
+    // (iPhone shows it by itself, because of the setting in start().)
+    if (_localReady && defaultTargetPlatform == TargetPlatform.android) {
+      unawaited(
+        _local.show(
+          (message.messageId ?? '${DateTime.now().millisecondsSinceEpoch}')
+              .hashCode,
+          title.isEmpty ? 'Haystek Pulse' : title,
+          body,
+          NotificationDetails(
+            android: AndroidNotificationDetails(
+              _channel.id,
+              _channel.name,
+              channelDescription: _channel.description,
+              importance: Importance.high,
+              priority: Priority.high,
+              icon: 'ic_notification',
+              color: AppColors.blue,
+            ),
+          ),
+          payload: jsonEncode(message.data),
+        ),
+      );
+    }
   }
 
   /// Opens the screen a notification is about:
