@@ -413,9 +413,10 @@ class _ManagementHomeScreenState extends State<ManagementHomeScreen>
     final shown = _shownWeekId;
     final thisWeek = PulseService.thisWeekId();
     // Only before this week's window opens (not after it closed).
-    final notOpenYet = !_windowOpen &&
-        shown == thisWeek &&
-        DateTime.now().isBefore(_opensAt(thisWeek));
+    final beforeOpen = PulseService.notOpenYet();
+    final notOpenYet = !_windowOpen && shown == thisWeek && beforeOpen;
+    // This week's window has closed (or it is a past week).
+    final closed = !(shown == thisWeek && (_windowOpen || beforeOpen));
     final comments = all
         .where((f) => !f.isFromBox && f.weekId == shown)
         .toList();
@@ -505,7 +506,9 @@ class _ManagementHomeScreenState extends State<ManagementHomeScreen>
                   weekIds: weekIds,
                   weeks: weeks,
                   selected: shown,
-                  upcoming: _windowOpen ? null : thisWeek,
+                  upcoming: beforeOpen ? thisWeek : null,
+                  closedThisWeek:
+                  PulseService.closedForThisWeek() ? thisWeek : null,
                   onPick: _pickWeek,
                 ),
                 const SizedBox(height: 20),
@@ -519,6 +522,7 @@ class _ManagementHomeScreenState extends State<ManagementHomeScreen>
                         totals: totals,
                         total: total,
                         notOpenYet: notOpenYet,
+                        closed: closed,
                       ),
                       const SizedBox(height: 12),
                       _WindowLine(
@@ -605,18 +609,6 @@ Color _moodColor(String rating) {
   }
 }
 
-/// When a week's window opens: its open day at the open time.
-DateTime _opensAt(String weekId) {
-  final p = weekId.split('-').map(int.parse).toList();
-  return DateTime(
-    p[0],
-    p[1],
-    p[2],
-    AppConfig.pulseOpenHour,
-    AppConfig.pulseOpenMinute,
-  );
-}
-
 /// One clear line about the window, for example:
 ///   ● Open now · since Mon 10:00 AM · closes Fri night
 ///   ● Opens Mon 10:00 AM · closes Fri night
@@ -651,10 +643,18 @@ class _WindowLine extends StatelessWidget {
       dot = const Color(0xFF16A34A);
       label = 'Open now';
       detail = 'since $short $openTime · closes $closeShort night';
-    } else if (isThisWeek && DateTime.now().isBefore(_opensAt(weekId))) {
+    } else if (isThisWeek && PulseService.notOpenYet()) {
       dot = const Color(0xFFE9A83B);
-      label = 'Not open yet';
-      detail = 'opens $short $openTime · closes $closeShort night';
+      label = 'Starting soon';
+      detail = 'opens ${PulseService.dateTimeLabel(PulseService.opensAt())}'
+          ' · closes $closeShort night';
+    } else if (isThisWeek) {
+      // This week is over. Say when the next week opens.
+      final nextWeek = PulseService.shortWeekLabel(PulseService.nextWeekId());
+      final next = PulseService.dateTimeLabel(PulseService.nextOpensAt());
+      dot = const Color(0xFF8A94AA);
+      label = 'Closed';
+      detail = 'Next: $nextWeek opens $next';
     } else {
       dot = const Color(0xFF8A94AA);
       label = 'Closed';
@@ -687,7 +687,7 @@ class _WindowLine extends StatelessWidget {
           Expanded(
             child: Text(
               '· $detail',
-              maxLines: 1,
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(color: AppColors.muted, fontSize: 13.5),
             ),
@@ -744,6 +744,7 @@ class _WeekCards extends StatelessWidget {
     required this.weeks,
     required this.selected,
     required this.upcoming,
+    this.closedThisWeek,
     required this.onPick,
   });
 
@@ -752,6 +753,9 @@ class _WeekCards extends StatelessWidget {
   final Map<String, PulseTotals> weeks;
   final String selected;
   final String? upcoming;
+
+  /// This week, when its window has already closed.
+  final String? closedThisWeek;
   final ValueChanged<String> onPick;
 
   @override
@@ -774,6 +778,8 @@ class _WeekCards extends StatelessWidget {
           final String sub;
           if (isUpcoming) {
             sub = 'Opens ${PulseService.openDayLabel().substring(0, 3)}';
+          } else if (id == closedThisWeek) {
+            sub = 'Closed · ${t.submitted} answered';
           } else if (isSelected && name.isNotEmpty) {
             sub = name;
           } else {
@@ -1294,12 +1300,16 @@ class _WeekHeadline extends StatelessWidget {
     required this.totals,
     required this.total,
     required this.notOpenYet,
+    this.closed = false,
   });
 
   final String weekId;
   final PulseTotals totals;
   final int total;
   final bool notOpenYet;
+
+  /// The window for this week is over.
+  final bool closed;
 
   @override
   Widget build(BuildContext context) {
@@ -1316,6 +1326,9 @@ class _WeekHeadline extends StatelessWidget {
       // The window line below already says when it opens and closes.
       title = 'Starting soon';
       line = '';
+    } else if (submitted == 0 && closed) {
+      title = 'No answers';
+      line = 'Nobody answered this week.';
     } else if (submitted == 0) {
       title = 'No answers yet';
       line = 'Answers show here as soon as people send them.';

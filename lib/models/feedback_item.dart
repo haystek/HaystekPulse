@@ -1,11 +1,16 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
+import '../services/text_crypto.dart';
+
 /// One document in the `feedback` collection.
 ///
 /// The document never stores who wrote it when `anonymous` is true.
 /// The link to the author lives in `feedback_owners/{same id}`, which
 /// management cannot read.
+///
+/// The text and the management reply are stored locked (`enc1:...`) and
+/// are unlocked here, so every screen shows readable text.
 class FeedbackItem {
   const FeedbackItem({
     required this.id,
@@ -50,10 +55,11 @@ class FeedbackItem {
     return FeedbackItem(
       id: doc.id,
       source: (data['source'] ?? 'box') as String,
-      text: (data['text'] ?? '') as String,
+      text: TextCrypto.decrypt((data['text'] ?? '') as String),
       anonymous: (data['anonymous'] ?? false) as bool,
       status: (data['status'] ?? FeedbackStatus.newItem) as String,
-      managementMessage: (data['managementMessage'] ?? '') as String,
+      managementMessage:
+      TextCrypto.decrypt((data['managementMessage'] ?? '') as String),
       authorName: data['authorName'] as String?,
       authorEmployeeId: data['authorEmployeeId'] as String?,
       rating: data['rating'] as String?,
@@ -107,6 +113,9 @@ class FeedbackStatus {
         return const Color(0xFF178A47);
       default:
         return const Color(0xFF8A6A00);
+
+        // here we have to add colors
+
     }
   }
 }

@@ -57,7 +57,7 @@ service cloud.firestore {
                  && request.resource.data.weekId is string))
         && request.resource.data.text is string
         && request.resource.data.text.size() > 0
-        && request.resource.data.text.size() <= 2000
+        && request.resource.data.text.size() <= 12000
         && request.resource.data.anonymous is bool
         && request.resource.data.status == 'new'
         && request.resource.data.managementMessage == ''
@@ -105,23 +105,6 @@ service cloud.firestore {
       allow read: if signedIn() && resource.data.uid == request.auth.uid;
 
       allow update, delete: if false;
-    }
-
-    // ---------------------------------------------------------------
-    // feedback_notify/{id}: the author's device address for one feedback,
-    // so management's app can notify that one person. It holds no name
-    // and no employee ID.
-    // ---------------------------------------------------------------
-    match /feedback_notify/{id} {
-      allow create: if isActive()
-        && request.resource.data.keys().hasOnly(['tokens', 'createdAt'])
-        && request.resource.data.tokens is list
-        && request.resource.data.tokens.size() <= 5
-        && getAfter(/databases/$(database)/documents/feedback_owners/$(id)).data.uid == request.auth.uid;
-
-      allow get: if isManagement();
-
-      allow list, update, delete: if false;
     }
 
     // ---------------------------------------------------------------

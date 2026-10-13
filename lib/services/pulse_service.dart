@@ -7,10 +7,10 @@ import '../models/employee.dart';
 import '../models/feedback_item.dart';
 import '../models/pulse_rating.dart';
 import '../models/pulse_totals.dart';
-import 'feedback_service.dart';
 import 'notification_feed.dart';
 import 'notification_service.dart';
 import 'push_sender.dart';
+import 'text_crypto.dart';
 
 class PulseService {
   PulseService._();
@@ -78,7 +78,7 @@ class PulseService {
     final opens = DateTime(day.year, day.month, day.day,
         AppConfig.pulseOpenHour, AppConfig.pulseOpenMinute);
     final closes =
-        DateTime(day.year, day.month, day.day + AppConfig.pulseOpenDays);
+    DateTime(day.year, day.month, day.day + AppConfig.pulseOpenDays);
     return !n.isBefore(opens) && n.isBefore(closes);
   }
 
@@ -101,7 +101,77 @@ class PulseService {
 
   /// The last day it is open, for example "Sunday".
   static String closeDayLabel() => _dayNames[
-      (AppConfig.pulseOpenDay - 1 + AppConfig.pulseOpenDays - 1) % 7];
+  (AppConfig.pulseOpenDay - 1 + AppConfig.pulseOpenDays - 1) % 7];
+
+  // ---------------------------------------------------------------
+  // Before, during and after this week's window.
+  // ---------------------------------------------------------------
+
+  /// When this week's window opens (open day at the open time).
+  static DateTime opensAt([DateTime? now]) {
+    final day = _openDateOf(now ?? DateTime.now());
+    return DateTime(day.year, day.month, day.day,
+        AppConfig.pulseOpenHour, AppConfig.pulseOpenMinute);
+  }
+
+  /// When this week's window closes (midnight after the last open day).
+  static DateTime closesAt([DateTime? now]) {
+    final day = _openDateOf(now ?? DateTime.now());
+    return DateTime(day.year, day.month, day.day + AppConfig.pulseOpenDays);
+  }
+
+  /// True before this week's window opens.
+  static bool notOpenYet([DateTime? now]) {
+    if (AppConfig.pulseOpenEveryDay) return false;
+    final n = now ?? DateTime.now();
+    return n.isBefore(opensAt(n));
+  }
+
+  /// True after this week's window has closed (and the week is not over).
+  static bool closedForThisWeek([DateTime? now]) {
+    if (AppConfig.pulseOpenEveryDay) return false;
+    final n = now ?? DateTime.now();
+    return !n.isBefore(closesAt(n));
+  }
+
+  /// When the next window opens: this week's if it has not opened yet,
+  /// otherwise next week's.
+  static DateTime nextOpensAt([DateTime? now]) {
+    final n = now ?? DateTime.now();
+    if (n.isBefore(opensAt(n))) return opensAt(n);
+    return opensAt(DateTime(n.year, n.month, n.day + 7));
+  }
+
+  /// The week the next window belongs to.
+  static String nextWeekId([DateTime? now]) => currentWeekId(nextOpensAt(now));
+
+  /// A date and time as text, for example "Fri 16 Oct, 5:00 PM".
+  static String dateTimeLabel(DateTime d) {
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    final hour12 = d.hour % 12 == 0 ? 12 : d.hour % 12;
+    final minute = d.minute.toString().padLeft(2, '0');
+    return '${days[d.weekday - 1]} ${d.day} ${months[d.month - 1]}, '
+        '$hour12:$minute ${d.hour < 12 ? 'AM' : 'PM'}';
+  }
+
+  /// A work week in one short line: "19–23 Oct" or "28 Sep–2 Oct".
+  static String shortWeekLabel(String weekId) {
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    final d = _dateOf(weekId);
+    final mon = DateTime(d.year, d.month, d.day - (d.weekday - 1));
+    final fri = DateTime(mon.year, mon.month, mon.day + 4);
+    return mon.month == fri.month
+        ? '${mon.day}–${fri.day} ${months[fri.month - 1]}'
+        : '${mon.day} ${months[mon.month - 1]}–${fri.day} '
+        '${months[fri.month - 1]}';
+  }
 
   /// The work week as text, Monday to Friday, for example "5 Oct – 9 Oct".
   static String weekLabel(String weekId) {
@@ -192,7 +262,7 @@ class PulseService {
         'source': 'pulse',
         'rating': rating,
         'weekId': weekId,
-        'text': text.trim(),
+        'text': TextCrypto.encrypt(text.trim()),
         'anonymous': anonymous,
         if (!anonymous) 'authorName': employee.name,
         if (!anonymous) 'authorEmployeeId': employee.employeeId,
@@ -208,10 +278,15 @@ class PulseService {
           'createdAt': FieldValue.serverTimestamp(),
         },
       );
-      FeedbackService.instance.addNotifyDoc(batch, ref.id);
     }
 
     await batch.commit();
+
+    // The author's phone joins the group for this comment, so only they
+    // hear about status changes. Management never learns which phone.
+    if (feedbackId != null) {
+      unawaited(NotificationService.instance.followFeedback(feedbackId));
+    }
 
     // No reminder for this phone this week.
     unawaited(NotificationService.instance.markPulseSubmitted());

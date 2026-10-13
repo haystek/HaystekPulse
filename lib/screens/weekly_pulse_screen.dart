@@ -153,11 +153,15 @@ class _WeeklyPulseScreenState extends State<WeeklyPulseScreen> {
           onPressed: _check,
         );
       case _Stage.closed:
+        final next = PulseService.dateTimeLabel(PulseService.nextOpensAt());
+        final beforeOpen = PulseService.notOpenYet();
         return _Info(
-          icon: Icons.event,
-          title: 'Opens on ${PulseService.openDayLabel()} at '
-              '${PulseService.openTimeLabel()}',
-          text: 'Please come back then.\n'
+          icon: beforeOpen ? Icons.event : Icons.event_busy,
+          title: beforeOpen ? 'Opens $next' : 'This week is closed',
+          text: beforeOpen
+              ? 'Please come back then.\n'
+              'The Suggestion Box is open every day.'
+              : 'The next Weekly Pulse opens $next.\n'
               'The Suggestion Box is open every day.',
           buttonLabel: 'Back',
           onPressed: () => Navigator.of(context).pop(),

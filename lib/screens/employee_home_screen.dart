@@ -360,9 +360,11 @@ class _PulseCardState extends State<_PulseCard> with WidgetsBindingObserver {
       builder: (context, snap) {
         final rating = snap.data;
         final open = PulseService.isOpen();
+        final notOpenYet = PulseService.notOpenYet();
+        final missed = rating == null && !open && !notOpenYet;
         final openDay = PulseService.openDayLabel();
-        final openTime = PulseService.openTimeLabel();
         final closeDay = PulseService.closeDayLabel();
+        final next = PulseService.dateTimeLabel(PulseService.nextOpensAt());
 
         // Pill at the top right.
         final Widget pill;
@@ -370,6 +372,8 @@ class _PulseCardState extends State<_PulseCard> with WidgetsBindingObserver {
           pill = const _Pill(text: 'Done', dot: Color(0xFF16A34A));
         } else if (open) {
           pill = const _Pill(text: 'Open', dot: Color(0xFF16A34A));
+        } else if (missed) {
+          pill = const _Pill(text: 'Closed', dot: Color(0xFF8A94AA));
         } else {
           pill = _Pill(
             text: 'Opens ${openDay.length > 3 ? openDay.substring(0, 3) : openDay}',
@@ -383,22 +387,31 @@ class _PulseCardState extends State<_PulseCard> with WidgetsBindingObserver {
         final String title;
         final String line;
         if (rating != null) {
+          // Answered: done for this week.
           icon = PulseRating.icon(rating);
           iconColor = PulseRating.color(rating);
           title = 'You said ${PulseRating.label(rating)}';
           line = open
-              ? 'Thanks! See you next week.'
-              : 'Next one opens $openDay $openTime';
+              ? 'Done for this week. Thank you!'
+              : 'Done for this week · Next one: $next';
         } else if (open) {
+          // Open and not answered yet.
           icon = Icons.favorite;
           iconColor = AppColors.blue;
-          title = 'Weekly Pulse';
-          line = '10 seconds · until $closeDay night';
+          title = 'How was your week?';
+          line = '10 seconds · open until $closeDay night';
+        } else if (missed) {
+          // Closed and not answered: missed this week.
+          icon = Icons.event_busy;
+          iconColor = const Color(0xFFD08A00);
+          title = 'You missed this week';
+          line = 'This week\'s Weekly Pulse is closed.';
         } else {
+          // Before it opens.
           icon = Icons.schedule;
           iconColor = AppColors.blue;
           title = 'Weekly Pulse';
-          line = 'Opens $openDay at $openTime';
+          line = '10 seconds · open until $closeDay night';
         }
 
         return Container(
@@ -479,7 +492,11 @@ class _PulseCardState extends State<_PulseCard> with WidgetsBindingObserver {
                     textStyle: _inter(15.5, weight: FontWeight.w700),
                   ),
                   child: Text(
-                    open ? 'Give your rating' : 'Opens $openDay $openTime',
+                    open
+                        ? 'Give your rating'
+                        : missed
+                        ? 'Next one: $next'
+                        : 'Opens $next',
                   ),
                 ),
             ],

@@ -43,6 +43,14 @@ class NotificationService {
   /// Phones that have not answered the Weekly Pulse for that week.
   static String pendingTopic(String weekId) => 'pulse_pending_$weekId';
 
+  /// Only the author's phone is in this group, one group per feedback
+  /// entry. Management sends status updates here without knowing who
+  /// is in it, so anonymous feedback stays anonymous.
+  static String feedbackTopic(String feedbackId) => 'fb_$feedbackId';
+
+  /// The feedback groups this phone joined, so sign-out can leave them.
+  final Set<String> _followed = <String>{};
+
   bool get supported => !kIsWeb;
 
   String? _startedFor;
@@ -145,6 +153,7 @@ class NotificationService {
         await _fm.unsubscribeFromTopic(topicManagement);
         await _fm.subscribeToTopic(topicEmployees);
         await _syncPendingTopics(employee.uid);
+        await _syncFeedbackTopics(employee.uid);
       }
     } catch (error) {
       debugPrint('Notifications not started: $error');
@@ -182,6 +191,30 @@ class NotificationService {
     }
   }
 
+  /// Joins the group of every feedback entry this employee wrote. Runs
+  /// at each sign-in, so a new phone or a reinstalled app still gets
+  /// status updates for older entries.
+  Future<void> _syncFeedbackTopics(String uid) async {
+    try {
+      final ids = await FeedbackService.instance.myFeedbackIds(uid);
+      await Future.wait(ids.map(followFeedback));
+    } catch (error) {
+      debugPrint('Could not join the feedback groups: $error');
+    }
+  }
+
+  /// This phone joins the group for one feedback entry (its author only).
+  Future<void> followFeedback(String feedbackId) async {
+    if (!supported || feedbackId.isEmpty) return;
+    final topic = feedbackTopic(feedbackId);
+    try {
+      await _fm.subscribeToTopic(topic);
+      _followed.add(topic);
+    } catch (error) {
+      debugPrint('Could not join $topic: $error');
+    }
+  }
+
   /// Called after the Weekly Pulse is submitted: no reminder this week.
   Future<void> markPulseSubmitted() async {
     if (!supported) return;
@@ -207,6 +240,9 @@ class NotificationService {
       await _fm.unsubscribeFromTopic(topicManagement);
       await _fm.unsubscribeFromTopic(topicEmployees);
       await _leavePendingTopics();
+      final followed = _followed.toList();
+      _followed.clear();
+      await Future.wait(followed.map(_fm.unsubscribeFromTopic));
     } catch (error) {
       debugPrint('Could not leave the groups: $error');
     }

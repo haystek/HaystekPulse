@@ -5,9 +5,9 @@ class AppConfig {
   static const bool pulseOpenEveryDay = false;
 
   // ---- TESTING (Monday 8:50 PM, closes at midnight) ----
-  static const int pulseOpenDay = DateTime.monday;
-  static const int pulseOpenHour = 20;   // 8 PM
-  static const int pulseOpenMinute = 50;
+  static const int pulseOpenDay = DateTime.tuesday;
+  static const int pulseOpenHour = 16;   // 8 PM
+  static const int pulseOpenMinute = 14;
   static const int pulseOpenDays = 1;
 
   // ---- RELEASE (Friday 5:00 PM to Sunday night) ----

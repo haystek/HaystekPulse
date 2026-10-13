@@ -7,6 +7,7 @@ import '../config.dart';
 import '../models/feedback_item.dart';
 import 'notification_service.dart';
 import 'push_sender.dart';
+import 'text_crypto.dart';
 
 class FeedbackService {
   FeedbackService._();
@@ -24,19 +25,12 @@ class FeedbackService {
   CollectionReference<Map<String, dynamic>> get _owners =>
       _db.collection('feedback_owners');
 
-  /// The author's device address for each feedback, so management's app
-  /// can notify that one person. It holds no name and no employee ID.
-  CollectionReference<Map<String, dynamic>> get _notify =>
-      _db.collection('feedback_notify');
-
-  /// Adds the author's device address to a batch, if this device has one.
-  void addNotifyDoc(WriteBatch batch, String feedbackId) {
-    final token = NotificationService.instance.token;
-    if (token == null) return;
-    batch.set(_notify.doc(feedbackId), <String, dynamic>{
-      'tokens': [token],
-      'createdAt': FieldValue.serverTimestamp(),
-    });
+  /// The private link from each entry to the author, for this employee only.
+  /// Used after sign-in to join the notification group of every entry
+  /// this employee wrote (see NotificationService).
+  Future<List<String>> myFeedbackIds(String uid) async {
+    final snap = await _owners.where('uid', isEqualTo: uid).get();
+    return snap.docs.map((d) => d.id).toList();
   }
 
   /// Saves a Suggestion Box entry.
@@ -55,7 +49,7 @@ class FeedbackService {
 
     batch.set(ref, <String, dynamic>{
       'source': 'box',
-      'text': text.trim(),
+      'text': TextCrypto.encrypt(text.trim()),
       'anonymous': anonymous,
       if (!anonymous) 'authorName': employee.name,
       if (!anonymous) 'authorEmployeeId': employee.employeeId,
@@ -69,9 +63,12 @@ class FeedbackService {
       'uid': employee.uid,
       'createdAt': FieldValue.serverTimestamp(),
     });
-    addNotifyDoc(batch, ref.id);
-
     await batch.commit();
+
+    // This phone joins the group for this entry, so the author hears
+    // about status changes. Management sends to the group and never
+    // learns which phone is in it.
+    unawaited(NotificationService.instance.followFeedback(ref.id));
 
     // Tell management. Not awaited: the employee does not wait for it.
     unawaited(
@@ -112,7 +109,8 @@ class FeedbackService {
     final implemented = status == FeedbackStatus.implemented;
     await _feedback.doc(id).update(<String, dynamic>{
       'status': status,
-      'managementMessage': implemented ? message.trim() : '',
+      'managementMessage':
+      implemented ? TextCrypto.encrypt(message.trim()) : '',
       'updatedAt': FieldValue.serverTimestamp(),
     });
 
@@ -121,18 +119,14 @@ class FeedbackService {
     }
   }
 
-  /// Notifies only the employee who wrote this feedback.
+  /// Notifies only the employee who wrote this feedback, through the
+  /// group for this entry. Only the author's phone is in that group.
   Future<void> _notifyAuthor(String id, String status, String message) async {
     if (!PushSender.available) return;
     try {
-      final doc = await _notify.doc(id).get();
-      final tokens = ((doc.data()?['tokens'] ?? const <dynamic>[]) as List)
-          .whereType<String>()
-          .toList();
-      if (tokens.isEmpty) return;
       final implemented = status == FeedbackStatus.implemented;
-      await PushSender.toTokens(
-        tokens,
+      await PushSender.toTopic(
+        NotificationService.feedbackTopic(id),
         title: implemented
             ? 'Your feedback is Implemented ✅'
             : 'Your feedback is now ${FeedbackStatus.label(status)}',
@@ -155,7 +149,7 @@ class FeedbackService {
     late final StreamController<List<FeedbackItem>> controller;
     StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? ownersSub;
     final docSubs =
-        <String, StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>>{};
+    <String, StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>>{};
     final items = <String, FeedbackItem>{};
     final waiting = <String>{};
 
@@ -167,7 +161,7 @@ class FeedbackService {
       final fallback = DateTime.now();
       final list = items.values.toList()
         ..sort(
-          (a, b) =>
+              (a, b) =>
               (b.createdAt ?? fallback).compareTo(a.createdAt ?? fallback),
         );
       controller.add(list);
@@ -184,7 +178,7 @@ class FeedbackService {
     controller = StreamController<List<FeedbackItem>>(
       onListen: () {
         ownersSub = _owners.where('uid', isEqualTo: uid).snapshots().listen(
-          (snap) {
+              (snap) {
             final current = snap.docs.map((d) => d.id).toSet();
 
             for (final id in docSubs.keys.toList()) {
@@ -199,7 +193,7 @@ class FeedbackService {
               if (docSubs.containsKey(id)) continue;
               waiting.add(id);
               docSubs[id] = _feedback.doc(id).snapshots().listen(
-                (doc) {
+                    (doc) {
                   waiting.remove(id);
                   if (doc.exists) {
                     items[id] = FeedbackItem.fromDoc(doc);
