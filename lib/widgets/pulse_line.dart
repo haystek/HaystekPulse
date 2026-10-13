@@ -59,6 +59,20 @@ class _PulseLineState extends State<PulseLine>
   }
 
   @override
+  void didUpdateWidget(PulseLine old) {
+    super.didUpdateWidget(old);
+    // For example: the first answer came in, and the line starts to move.
+    if (old.moving != widget.moving) {
+      _beat.duration = Duration(milliseconds: widget.moving ? 2400 : 1500);
+      if (!MediaQuery.of(context).disableAnimations) {
+        _beat
+          ..reset()
+          ..repeat();
+      }
+    }
+  }
+
+  @override
   void dispose() {
     _beat.dispose();
     super.dispose();
@@ -189,9 +203,28 @@ class _PulseLinePainter extends CustomPainter {
     );
 
     // Heart monitor: a bright part runs from left to right, with a
-    // glowing dot at its front.
+    // glowing dot at its front. With progress below 1 it runs only up to
+    // the progress point (for example 18 of 30 answered), and the
+    // "now" dot waits there.
     if (moving) {
-      final head = size.width * beat;
+      if (progress < 1) {
+        canvas.save();
+        canvas.clipRect(Rect.fromLTWH(0, 0, x, size.height));
+        canvas.drawPath(
+          path,
+          Paint()
+            ..color = lineColor.withValues(alpha: 0.55)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 2.5
+            ..strokeJoin = StrokeJoin.round,
+        );
+        canvas.restore();
+      }
+      if (x <= 0) {
+        if (showDot) _nowDot(canvas, Offset(0, _yAt(pts, 0)));
+        return;
+      }
+      final head = x * beat;
       const tail = 120.0;
       canvas.save();
       canvas.clipRect(Rect.fromLTWH(head - tail, 0, tail, size.height));
@@ -213,6 +246,7 @@ class _PulseLinePainter extends CustomPainter {
         Paint()..color = lineColor.withValues(alpha: 0.35),
       );
       canvas.drawCircle(dot, 3.5, Paint()..color = Colors.white);
+      if (progress < 1 && showDot) _nowDot(canvas, Offset(x, _yAt(pts, x)));
       return;
     }
 
@@ -231,8 +265,11 @@ class _PulseLinePainter extends CustomPainter {
 
     if (!showDot) return;
 
-    // Now: a dot on the line, with a ring that grows and fades.
-    final dot = Offset(x, _yAt(pts, x));
+    _nowDot(canvas, Offset(x, _yAt(pts, x)));
+  }
+
+  /// Now: a dot on the line, with a ring that grows and fades.
+  void _nowDot(Canvas canvas, Offset dot) {
     final e = Curves.easeOut.transform(beat);
     canvas.drawCircle(
       dot,
@@ -248,7 +285,11 @@ class _PulseLinePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_PulseLinePainter old) =>
-      old.beat != beat || old.progress != progress || old.moving != moving;
+      old.beat != beat ||
+          old.progress != progress ||
+          old.moving != moving ||
+          old.showDot != showDot ||
+          old.lineColor != lineColor;
 }
 
 /// A live countdown: "2d 6h 14m", "6h 20m 15s" or "4m 09s".

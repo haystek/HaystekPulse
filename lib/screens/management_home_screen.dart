@@ -696,15 +696,18 @@ Color _moodColor(String rating) {
   return (title, line);
 }
 
-/// The dark "night sky" card at the top of the week:
-/// - the week and a chip: Starting soon, Open now or Closed,
-/// - the headline ("Mostly good") and its small line,
-/// - the heartbeat line with the heart:
-///   before it opens the line fills toward a white heart,
-///   while open it is full and the heart is pink and beating,
-///   once closed it is faint and the heart is grey,
-/// - at the bottom: time left, time to open, or when the next one opens.
-class _WeekHero extends StatelessWidget {
+/// The dark "night sky" card at the top of the week. Same style as the
+/// employee home. It has 3 looks:
+///
+/// 1. Starting soon (like the employee "about to open" card):
+///    big live timer, and a moving heartbeat line from Monday to the heart.
+///    The moving part runs up to "now" again and again.
+/// 2. Open now: the headline ("Mostly good"), and the heartbeat line
+///    follows the answers: 18 of 30 answered = the line is 60% bright.
+///    The moving part runs up to there. When everyone has answered, the
+///    line reaches the heart and the heart turns pink.
+/// 3. Closed: the same line, faint, with how many answered.
+class _WeekHero extends StatefulWidget {
   const _WeekHero({
     required this.weekId,
     required this.totals,
@@ -723,132 +726,114 @@ class _WeekHero extends StatelessWidget {
   final bool notOpenYet;
   final bool closed;
 
-  static const Color _soft = Color(0xFF9FB4F0);
-  static const Color _glow = Color(0xFF7FA2FF);
+  @override
+  State<_WeekHero> createState() => _WeekHeroState();
+}
 
-  /// How far we are from Monday to the opening: 0.0 to 1.0.
-  static double _weekProgress() {
-    final opens = PulseService.opensAt();
-    final monday = DateTime(
-      opens.year,
-      opens.month,
-      opens.day - (opens.weekday - DateTime.monday),
-    );
-    final all = opens.difference(monday).inSeconds;
-    if (all <= 0) return 1;
-    final gone = DateTime.now().difference(monday).inSeconds;
-    return (gone / all).clamp(0.0, 1.0);
+class _WeekHeroState extends State<_WeekHero> {
+  static const Color _soft = Color(0xFF9FB4F0);
+  static const Color _light = Color(0xFFC9D6FF);
+  static const Color _glow = Color(0xFF7FA2FF);
+  static const Color _pink = Color(0xFFFF6B8A);
+
+  // Ticks every second, only while the big "opens in" timer is shown.
+  Timer? _tick;
+
+  @override
+  void initState() {
+    super.initState();
+    _startOrStop();
   }
 
   @override
+  void didUpdateWidget(_WeekHero old) {
+    super.didUpdateWidget(old);
+    _startOrStop();
+  }
+
+  void _startOrStop() {
+    if (widget.notOpenYet) {
+      _tick ??= Timer.periodic(const Duration(seconds: 1), (_) {
+        if (mounted) setState(() {});
+      });
+    } else {
+      _tick?.cancel();
+      _tick = null;
+    }
+  }
+
+  @override
+  void dispose() {
+    _tick?.cancel();
+    super.dispose();
+  }
+
+  /// Monday 00:00 of the week that opens next.
+  DateTime get _weekStart {
+    final o = PulseService.opensAt();
+    return DateTime(o.year, o.month, o.day - (o.weekday - DateTime.monday));
+  }
+
+  /// "Mon 12 Oct".
+  String _monday() {
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    final m = _weekStart;
+    return '${days[m.weekday - 1]} ${m.day} ${months[m.month - 1]}';
+  }
+
+  /// How far we are from Monday to the opening: 0.0 to 1.0.
+  double _weekProgress() {
+    final all = PulseService.opensAt().difference(_weekStart).inSeconds;
+    if (all <= 0) return 1;
+    final gone = DateTime.now().difference(_weekStart).inSeconds;
+    return (gone / all).clamp(0.0, 1.0);
+  }
+
+  /// How many answered: 0.0 to 1.0.
+  double get _answered {
+    if (widget.total <= 0) return 0;
+    return (widget.totals.submitted / widget.total).clamp(0.0, 1.0);
+  }
+
+  static TextStyle _t(
+      double size, {
+        FontWeight weight = FontWeight.w400,
+        Color color = Colors.white,
+        double? letterSpacing,
+        double? height,
+      }) =>
+      GoogleFonts.inter(
+        fontSize: size,
+        fontWeight: weight,
+        color: color,
+        letterSpacing: letterSpacing,
+        height: height,
+      );
+
+  /// A small label with a value under it, like "Answered / 18 of 30".
+  Widget _when(String label, String value, {bool right = false}) => Column(
+    crossAxisAlignment:
+    right ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+    children: [
+      Text(label, style: _t(13, color: _soft)),
+      const SizedBox(height: 2),
+      Text(value, style: _t(13, weight: FontWeight.w600)),
+    ],
+  );
+
+  @override
   Widget build(BuildContext context) {
-    final (title, line) = _headline(
-      totals: totals,
-      total: total,
-      notOpenYet: notOpenYet,
-      closed: closed,
-    );
-    final closesText = PulseService.dateTimeLabel(
-      PulseService.closesAt().subtract(const Duration(minutes: 1)),
-    );
-
-    // The chip.
-    final Widget chip;
-    if (open) {
-      chip = const _HeroChip(
-        'Open now',
-        bg: Colors.white,
-        fg: Color(0xFF15803D),
-        dot: Color(0xFF16A34A),
-      );
-    } else if (notOpenYet) {
-      chip = const _HeroChip(
-        'Starting soon',
-        bg: Color(0xFFFFE7B3),
-        fg: Color(0xFF8A5A00),
-      );
+    final Widget body;
+    if (widget.notOpenYet) {
+      body = _soon();
+    } else if (widget.open) {
+      body = _openNow();
     } else {
-      chip = _HeroChip(
-        'Closed',
-        bg: Colors.white.withValues(alpha: 0.14),
-        fg: Colors.white,
-      );
-    }
-
-    // The heartbeat line.
-    final Widget pulse;
-    if (open) {
-      pulse = const PulseLine(
-        progress: 1,
-        heartColor: Color(0xFFFF6B8A),
-        showDot: false,
-      );
-    } else if (notOpenYet) {
-      pulse = PulseLine(progress: _weekProgress());
-    } else {
-      pulse = PulseLine(
-        progress: 1,
-        showDot: false,
-        heartColor: Colors.white.withValues(alpha: 0.35),
-        lineColor: Colors.white.withValues(alpha: 0.35),
-      );
-    }
-
-    // The bottom line.
-    final Widget bottom;
-    if (open && AppConfig.pulseOpenEveryDay) {
-      bottom = Text('Test mode: open every day', style: _small(_soft));
-    } else if (open) {
-      bottom = Row(
-        children: [
-          Expanded(
-            child: Text(
-              'Closes $closesText',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: _small(_soft),
-            ),
-          ),
-          const SizedBox(width: 8),
-          LiveCountdown(
-            to: PulseService.closesAt(),
-            onDone: () {},
-            suffix: ' left',
-            color: _glow,
-            size: 13,
-          ),
-        ],
-      );
-    } else if (notOpenYet) {
-      bottom = Row(
-        children: [
-          Expanded(
-            child: Text(
-              'Open till $closesText',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: _small(_soft),
-            ),
-          ),
-          const SizedBox(width: 8),
-          LiveCountdown(
-            to: PulseService.opensAt(),
-            onDone: () {},
-            prefix: 'Opens in ',
-            color: _glow,
-            size: 13,
-          ),
-        ],
-      );
-    } else if (isThisWeek) {
-      final nextWeek = PulseService.shortWeekLabel(PulseService.nextWeekId());
-      final next = PulseService.dateTimeLabel(PulseService.nextOpensAt());
-      bottom = Text(
-        'Next: $nextWeek opens $next',
-        style: _small(_soft),
-      );
-    } else {
-      bottom = Text('This week is closed.', style: _small(_soft));
+      body = _closed();
     }
 
     return Container(
@@ -862,65 +847,316 @@ class _WeekHero extends StatelessWidget {
           stops: [0, 0.55, 1],
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
+      child: body,
+    );
+  }
+
+  /// The top row: "Week of 19–23 Oct" and the chip.
+  Widget _top(Widget chip) => Row(
+    children: [
+      Expanded(
+        child: Text(
+          'Week of ${PulseService.shortWeekLabel(widget.weekId)}',
+          style: _t(13, color: _soft),
+        ),
+      ),
+      chip,
+    ],
+  );
+
+  // ---------------------------------------------------------------------
+  // 1. Starting soon
+  // ---------------------------------------------------------------------
+  Widget _soon() {
+    var d = PulseService.opensAt().difference(DateTime.now());
+    if (d.isNegative) d = Duration.zero;
+    String two(int n) => n.toString().padLeft(2, '0');
+    final opensText = PulseService.dateTimeLabel(PulseService.opensAt());
+    final closesText = PulseService.dateTimeLabel(
+      PulseService.closesAt().subtract(const Duration(minutes: 1)),
+    );
+
+    // One part of the timer: a big number and a small unit.
+    List<Widget> part(String number, String unit, {Color color = Colors.white}) =>
+        [
+          Text(
+            number,
+            style: _t(
+              46,
+              weight: FontWeight.w700,
+              color: color,
+              letterSpacing: -1.5,
+              height: 1,
+            ).copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(left: 2, right: 10, bottom: 5),
+            child: Text(unit, style: _t(15, color: _soft)),
+          ),
+        ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _top(
+          _HeroChip(
+            'Opens ${PulseService.openDayLabel()}',
+            bg: Colors.transparent,
+            fg: _light,
+            outline: true,
+          ),
+        ),
+        const SizedBox(height: 18),
+        Text('Weekly Pulse opens in', style: _t(15, color: _light)),
+        const SizedBox(height: 6),
+        // The big timer. It shrinks a little on small phones.
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              if (d.inDays > 0) ...part('${d.inDays}', 'd'),
+              ...part(two(d.inHours % 24), 'h'),
+              ...part(two(d.inMinutes % 60), 'm'),
+              ...part(two(d.inSeconds % 60), 's', color: _glow),
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
+        // From Monday (left) to the heart (the moment it opens).
+        // The moving part runs up to now, again and again.
+        PulseLine(progress: _weekProgress(), moving: true),
+        const SizedBox(height: 8),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: _when('Week started', _monday())),
+            _when('Opens', opensText, right: true),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Open till $closesText',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: _t(13, color: _light),
+              ),
+            ),
+            if (widget.total > 0)
+              Text(
+                '${widget.total} people',
+                style: _t(13, color: _soft),
+              ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  // ---------------------------------------------------------------------
+  // 2. Open now
+  // ---------------------------------------------------------------------
+  Widget _openNow() {
+    final (title, line) = _headline(
+      totals: widget.totals,
+      total: widget.total,
+      notOpenYet: false,
+      closed: false,
+    );
+    final submitted = widget.totals.submitted;
+    final waiting = (widget.total - submitted).clamp(0, widget.total);
+    final everyone = widget.total > 0 && submitted >= widget.total;
+    final closesText = PulseService.dateTimeLabel(
+      PulseService.closesAt().subtract(const Duration(minutes: 1)),
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _top(
+          const _HeroChip(
+            'Open now',
+            bg: Colors.white,
+            fg: Color(0xFF15803D),
+            dot: Color(0xFF16A34A),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Text('Weekly Pulse is open', style: _t(15, color: _light)),
+        const SizedBox(height: 2),
+        Text(
+          title,
+          style: _t(28, weight: FontWeight.w700, letterSpacing: -0.6),
+        ),
+        if (line.isNotEmpty) ...[
+          const SizedBox(height: 2),
+          Text(line, style: _t(14, color: _light)),
+        ],
+        const SizedBox(height: 10),
+        // The line follows the answers. Everyone answered = the heart.
+        PulseLine(
+          progress: _answered,
+          moving: !everyone && submitted > 0,
+          showDot: !everyone,
+          heartColor: everyone ? _pink : Colors.white,
+        ),
+        if (widget.total > 0) ...[
+          const SizedBox(height: 8),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: _when('Answered', '$submitted of ${widget.total}'),
+              ),
+              _when(
+                'Waiting',
+                everyone ? 'Nobody' : '$waiting people',
+                right: true,
+              ),
+            ],
+          ),
+        ],
+        const SizedBox(height: 12),
+        if (AppConfig.pulseOpenEveryDay)
+          Text('Test mode: open every day', style: _t(13, color: _soft))
+        else
           Row(
             children: [
               Expanded(
                 child: Text(
-                  'Week of ${PulseService.shortWeekLabel(weekId)}',
-                  style: _small(_soft),
+                  'Closes $closesText',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: _t(13, color: _soft),
                 ),
               ),
-              chip,
+              const SizedBox(width: 8),
+              LiveCountdown(
+                to: PulseService.closesAt(),
+                onDone: () {},
+                suffix: ' left',
+                color: _glow,
+                size: 13,
+              ),
             ],
           ),
-          const SizedBox(height: 14),
-          Text(title, style: _h(28, weight: FontWeight.w700, color: Colors.white)),
-          if (line.isNotEmpty) ...[
-            const SizedBox(height: 2),
-            Text(
-              line,
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                color: const Color(0xFFC9D6FF),
-              ),
-            ),
-          ],
-          const SizedBox(height: 10),
-          pulse,
-          const SizedBox(height: 8),
-          bottom,
-        ],
-      ),
+      ],
     );
   }
 
-  static TextStyle _small(Color color) =>
-      GoogleFonts.inter(fontSize: 13, color: color);
+  // ---------------------------------------------------------------------
+  // 3. Closed
+  // ---------------------------------------------------------------------
+  Widget _closed() {
+    final (title, line) = _headline(
+      totals: widget.totals,
+      total: widget.total,
+      notOpenYet: false,
+      closed: true,
+    );
+    final submitted = widget.totals.submitted;
+    final missed = (widget.total - submitted).clamp(0, widget.total);
+
+    final Widget bottom;
+    if (widget.isThisWeek) {
+      final nextWeek = PulseService.shortWeekLabel(PulseService.nextWeekId());
+      final next = PulseService.dateTimeLabel(PulseService.nextOpensAt());
+      bottom = Text(
+        'Next: $nextWeek opens $next',
+        style: _t(13, color: _soft),
+      );
+    } else {
+      bottom = Text('This week is closed.', style: _t(13, color: _soft));
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _top(
+          _HeroChip(
+            'Closed',
+            bg: Colors.white.withValues(alpha: 0.14),
+            fg: Colors.white,
+          ),
+        ),
+        const SizedBox(height: 16),
+        Text('Weekly Pulse closed', style: _t(15, color: _light)),
+        const SizedBox(height: 2),
+        Text(
+          title,
+          style: _t(28, weight: FontWeight.w700, letterSpacing: -0.6),
+        ),
+        if (line.isNotEmpty) ...[
+          const SizedBox(height: 2),
+          Text(line, style: _t(14, color: _light)),
+        ],
+        const SizedBox(height: 10),
+        // Faint: shows how far the answers got.
+        PulseLine(
+          progress: _answered,
+          showDot: false,
+          heartColor: Colors.white.withValues(alpha: 0.35),
+          lineColor: Colors.white.withValues(alpha: 0.45),
+        ),
+        if (widget.total > 0) ...[
+          const SizedBox(height: 8),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: _when('Answered', '$submitted of ${widget.total}'),
+              ),
+              _when("Didn't answer", '$missed', right: true),
+            ],
+          ),
+        ],
+        const SizedBox(height: 12),
+        bottom,
+      ],
+    );
+  }
 }
 
 /// The small chip at the top right of the night-sky card.
+/// [outline]: for something that has not started yet ("Opens Friday"):
+/// no fill, a thin border, a clock icon and normal weight.
 class _HeroChip extends StatelessWidget {
-  const _HeroChip(this.text, {required this.bg, required this.fg, this.dot});
+  const _HeroChip(
+      this.text, {
+        required this.bg,
+        required this.fg,
+        this.dot,
+        this.outline = false,
+      });
 
   final String text;
   final Color bg;
   final Color fg;
   final Color? dot;
+  final bool outline;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: bg,
+        color: outline ? Colors.transparent : bg,
         borderRadius: BorderRadius.circular(10),
+        border: outline
+            ? Border.all(color: Colors.white.withValues(alpha: 0.30))
+            : null,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
+          if (outline) ...[
+            Icon(Icons.schedule_rounded, size: 13, color: fg),
+            const SizedBox(width: 5),
+          ],
           if (dot != null) ...[
             Container(
               width: 7,
@@ -933,7 +1169,7 @@ class _HeroChip extends StatelessWidget {
             text,
             style: GoogleFonts.inter(
               fontSize: 12.5,
-              fontWeight: FontWeight.w600,
+              fontWeight: outline ? FontWeight.w400 : FontWeight.w600,
               color: fg,
             ),
           ),
@@ -1300,11 +1536,18 @@ class _WeekCards extends StatelessWidget {
           ];
 
           return Material(
-            color: isSelected ? const Color(0xFFF2F6FF) : Colors.white,
+            // Not open yet: a light grey card, so it looks like it is waiting.
+            color: isUpcoming
+                ? const Color(0xFFF6F8FB)
+                : isSelected
+                ? const Color(0xFFF2F6FF)
+                : Colors.white,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
               side: BorderSide(
-                color: isSelected ? AppColors.blue : const Color(0xFFE3E8F2),
+                color: isSelected
+                    ? (isUpcoming ? const Color(0xFFB9C7EE) : AppColors.blue)
+                    : const Color(0xFFE3E8F2),
                 width: 1.5,
               ),
             ),
@@ -1322,9 +1565,14 @@ class _WeekCards extends StatelessWidget {
                       _shortWeek(id),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
-                        fontWeight: FontWeight.w700,
+                        // Normal weight and grey until the week opens.
+                        fontWeight:
+                        isUpcoming ? FontWeight.w500 : FontWeight.w600,
+                        color: isUpcoming
+                            ? const Color(0xFF8E97AB)
+                            : AppColors.ink,
                       ),
                     ),
                     ClipRRect(
@@ -1354,9 +1602,14 @@ class _WeekCards extends StatelessWidget {
                     ),
                     Text(
                       sub,
-                      style: const TextStyle(
-                        color: AppColors.muted,
+                      style: TextStyle(
+                        // "Opens Fri" in soft orange, like the Starting soon chip.
+                        color: isUpcoming
+                            ? const Color(0xFFB7791F)
+                            : AppColors.muted,
                         fontSize: 12,
+                        fontWeight:
+                        isUpcoming ? FontWeight.w500 : FontWeight.w400,
                       ),
                     ),
                   ],

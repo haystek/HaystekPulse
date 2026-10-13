@@ -295,6 +295,18 @@ class _PulseCardState extends State<_PulseCard> with WidgetsBindingObserver {
         final next = PulseService.dateTimeLabel(PulseService.nextOpensAt(now));
         final week = 'This week, ${PulseService.shortWeekLabel(_weekId)}';
 
+        // Not open yet: always show the timer first, even if an old
+        // answer exists (for example after the open time was changed).
+        if (notOpenYet) {
+          return _SoonCard(
+            week: week,
+            opensAt: opensAt,
+            opensText: PulseService.dateTimeLabel(opensAt),
+            closesText: closesText,
+            onOpened: _refresh,
+          );
+        }
+
         if (rating != null) {
           return _DoneCard(
             week: week,
@@ -313,15 +325,7 @@ class _PulseCardState extends State<_PulseCard> with WidgetsBindingObserver {
             onClosed: _refresh,
           );
         }
-        if (notOpenYet) {
-          return _SoonCard(
-            week: week,
-            opensAt: opensAt,
-            opensText: PulseService.dateTimeLabel(opensAt),
-            closesText: closesText,
-            onOpened: _refresh,
-          );
-        }
+
         return _MissedCard(week: week, closesText: closesText, next: next);
       },
     );
@@ -329,26 +333,39 @@ class _PulseCardState extends State<_PulseCard> with WidgetsBindingObserver {
 }
 
 /// The small chip at the top right of each card.
+/// The small chip at the top right of each card.
+/// [outline]: only a thin border and a clock, for "not open yet".
 class _Chip extends StatelessWidget {
-  const _Chip(this.text, {required this.bg, required this.fg, this.dot});
+  const _Chip(
+      this.text, {
+        required this.bg,
+        required this.fg,
+        this.dot,
+        this.outline = false,
+      });
 
   final String text;
   final Color bg;
   final Color fg;
   final Color? dot;
+  final bool outline;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: bg,
+        color: outline ? Colors.transparent : bg,
         borderRadius: BorderRadius.circular(10),
+        border: outline ? Border.all(color: bg, width: 1.2) : null,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (dot != null) ...[
+          if (outline) ...[
+            Icon(Icons.schedule, size: 13, color: fg),
+            const SizedBox(width: 5),
+          ] else if (dot != null) ...[
             Container(
               width: 7,
               height: 7,
@@ -356,7 +373,15 @@ class _Chip extends StatelessWidget {
             ),
             const SizedBox(width: 6),
           ],
-          Text(text, style: _inter(12.5, weight: FontWeight.w600, color: fg)),
+          Text(
+            text,
+            style: _inter(
+              12.5,
+              // Not open yet: normal weight. Open, Done, Closed: semi-bold.
+              weight: outline ? FontWeight.w400 : FontWeight.w600,
+              color: fg,
+            ),
+          ),
         ],
       ),
     );
@@ -497,8 +522,9 @@ class _SoonCardState extends State<_SoonCard> {
             widget.week,
             _Chip(
               'Opens $openDay',
-              bg: Colors.white.withValues(alpha: 0.14),
-              fg: Colors.white,
+              bg: Colors.white.withValues(alpha: 0.30),
+              fg: const Color(0xFFC9D6FF),
+              outline: true,
             ),
             color: unitColor,
           ),
