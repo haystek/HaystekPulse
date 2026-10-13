@@ -648,7 +648,11 @@ Color _moodColor(String rating) {
   required bool closed,
 }) {
   final submitted = totals.submitted;
-  final needed = (total * 0.25).ceil() < 3 ? 3 : (total * 0.25).ceil();
+  // 25% of people, at least 3, but never more than everyone.
+  // Example: 1 person → 1, 5 people → 3, 30 people → 8.
+  var needed = (total * 0.25).ceil();
+  if (needed < 3) needed = 3;
+  if (needed > total) needed = total;
   if (total == 0) {
     return ('No employees yet', 'Add employee accounts to start.');
   }
