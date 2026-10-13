@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/employee.dart';
 import '../config.dart';
+import '../demo_data.dart';
 import '../models/feedback_item.dart';
 import 'notification_service.dart';
 import 'push_sender.dart';
@@ -92,11 +93,49 @@ class FeedbackService {
   }
 
   /// All feedback, newest first, updating live. Management only.
+  /// While DemoData is on, the sample items are added to the real ones,
+  /// so every screen (lists, comments, search) shows them too.
   Stream<List<FeedbackItem>> watchAll() {
-    return _feedback
+    final real = _feedback
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snap) => snap.docs.map(FeedbackItem.fromDoc).toList());
+    if (!DemoData.on) return real;
+
+    late final StreamController<List<FeedbackItem>> controller;
+    StreamSubscription<List<FeedbackItem>>? realSub;
+    StreamSubscription<void>? demoSub;
+    List<FeedbackItem>? last;
+
+    void emit() {
+      final items = last;
+      if (items == null || controller.isClosed) return;
+      final fallback = DateTime.now();
+      controller.add(
+        [...items, ...DemoData.all()]..sort(
+              (a, b) => (b.createdAt ?? fallback)
+              .compareTo(a.createdAt ?? fallback),
+        ),
+      );
+    }
+
+    controller = StreamController<List<FeedbackItem>>(
+      onListen: () {
+        realSub = real.listen(
+              (items) {
+            last = items;
+            emit();
+          },
+          onError: controller.addError,
+        );
+        demoSub = DemoData.changes.listen((_) => emit());
+      },
+      onCancel: () async {
+        await realSub?.cancel();
+        await demoSub?.cancel();
+      },
+    );
+    return controller.stream;
   }
 
   /// Management sets the status. The reply is kept only for "Implemented",
@@ -107,6 +146,12 @@ class FeedbackService {
     required String message,
   }) async {
     final implemented = status == FeedbackStatus.implemented;
+    // Sample items (DemoData) are not in Firestore: keep the change in
+    // memory only, and send no notification.
+    if (id.startsWith(DemoData.idPrefix)) {
+      DemoData.update(id, status, implemented ? message.trim() : '');
+      return;
+    }
     await _feedback.doc(id).update(<String, dynamic>{
       'status': status,
       'managementMessage':

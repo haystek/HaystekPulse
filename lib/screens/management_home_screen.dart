@@ -17,7 +17,8 @@ import '../services/pulse_service.dart';
 import '../services/push_sender.dart';
 import '../theme/app_theme.dart';
 import '../widgets/notification_bell.dart';
-import '../widgets/ui.dart';
+import '../widgets/pulse_line.dart';
+import '../widgets/ui.dart' hide PulseLine;
 import 'all_weeks_screen.dart';
 import 'feedback_detail_screen.dart';
 import 'feedback_list_screen.dart';
@@ -211,6 +212,15 @@ class _ManagementHomeScreenState extends State<ManagementHomeScreen>
     Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => screen));
   }
 
+  /// Opens one suggestion or comment. Afterwards the screen is drawn again,
+  /// so a changed status shows at once (also for sample items).
+  Future<void> _openItem(FeedbackItem item) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => FeedbackDetailScreen(item: item)),
+    );
+    if (mounted) setState(() {});
+  }
+
   /// Asks first, then sends, then says whether it went out.
   Future<void> _confirmAndSend({
     required String title,
@@ -349,8 +359,7 @@ class _ManagementHomeScreenState extends State<ManagementHomeScreen>
                               _SuggestionTab(
                                 suggestions: suggestions,
                                 loading: !snap.hasData && !snap.hasError,
-                                onOpen: (item) =>
-                                    _push(FeedbackDetailScreen(item: item)),
+                                onOpen: _openItem,
                                 onSearch: () =>
                                     _push(const FeedbackListScreen(source: 'box')),
                               ),
@@ -517,36 +526,57 @@ class _ManagementHomeScreenState extends State<ManagementHomeScreen>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      _WeekHeadline(
+                      _WeekHero(
                         weekId: shown,
                         totals: totals,
                         total: total,
+                        isThisWeek: shown == thisWeek,
+                        open: _windowOpen && shown == thisWeek,
                         notOpenYet: notOpenYet,
                         closed: closed,
                       ),
-                      const SizedBox(height: 12),
-                      _WindowLine(
-                        weekId: shown,
-                        isThisWeek: shown == thisWeek,
-                        open: _windowOpen && shown == thisWeek,
-                      ),
-                      const SizedBox(height: 18),
-                      _RingSummary(total: total, totals: totals),
-                      const SizedBox(height: 16),
-                      _RemindButton(
-                        total: total,
-                        pending: pending,
-                        canNotify: canNotify,
-                        windowOpen: _windowOpen && shown == _weekId,
-                        notOpenYet: notOpenYet,
-                        sending: _sending,
-                        onRemind: _remind,
+                      const SizedBox(height: 14),
+                      // The numbers and the reminder, in one white card.
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(22),
+                          border: Border.all(
+                            color: const Color(0xFFEDF0F6),
+                            width: 1.5,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _RingSummary(total: total, totals: totals),
+                            // No reminder row before the week opens.
+                            if (!(notOpenYet && total > 0)) ...[
+                              const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 14),
+                                child: Divider(
+                                  height: 1,
+                                  color: Color(0xFFEDF0F6),
+                                ),
+                              ),
+                              _RemindButton(
+                                weekId: shown,
+                                total: total,
+                                pending: pending,
+                                canNotify: canNotify,
+                                windowOpen: _windowOpen && shown == _weekId,
+                                sending: _sending,
+                                onRemind: _remind,
+                              ),
+                            ],
+                          ],
+                        ),
                       ),
                       const SizedBox(height: 22),
                       _WhatPeopleSaid(
                         comments: comments,
-                        onOpen: (item) =>
-                            _push(FeedbackDetailScreen(item: item)),
+                        onOpen: _openItem,
                         onSeeAll: () =>
                             _push(WeekCommentsScreen(weekId: shown)),
                       ),
@@ -609,90 +639,569 @@ Color _moodColor(String rating) {
   }
 }
 
-/// One clear line about the window, for example:
-///   ● Open now · since Mon 10:00 AM · closes Fri night
-///   ● Opens Mon 10:00 AM · closes Fri night
-///   ● Closed · was open Mon 10:00 AM – Fri night
-class _WindowLine extends StatelessWidget {
-  const _WindowLine({
+/// The headline for a week: one big line that says how it went, and a
+/// small line under it. The summary waits for 25% of answers (at least 3).
+(String, String) _headline({
+  required PulseTotals totals,
+  required int total,
+  required bool notOpenYet,
+  required bool closed,
+}) {
+  final submitted = totals.submitted;
+  final needed = (total * 0.25).ceil() < 3 ? 3 : (total * 0.25).ceil();
+  if (total == 0) {
+    return ('No employees yet', 'Add employee accounts to start.');
+  }
+  if (notOpenYet) {
+    return (
+    'Starting soon',
+    'Opens ${PulseService.dateTimeLabel(PulseService.opensAt())}',
+    );
+  }
+  if (submitted == 0) {
+    return closed
+        ? ('No answers', 'Nobody answered this week.')
+        : ('No answers yet', 'Answers show here as soon as people send them.');
+  }
+  if (submitted < needed) {
+    return (
+    'Waiting for more answers',
+    '$submitted of $total answered. The summary shows after $needed.',
+    );
+  }
+  final good = totals.countFor(PulseRating.great) +
+      totals.countFor(PulseRating.good);
+  final attention = totals.countFor(PulseRating.okay) +
+      totals.countFor(PulseRating.difficult);
+  final share = good / submitted;
+  final String title;
+  if (share >= 0.75) {
+    title = totals.countFor(PulseRating.great) >
+        totals.countFor(PulseRating.good)
+        ? 'A great week'
+        : 'A good week';
+  } else if (share > 0.5) {
+    title = 'Mostly good';
+  } else if (share >= 0.25) {
+    title = 'A mixed week';
+  } else {
+    title = totals.countFor(PulseRating.okay) >
+        totals.countFor(PulseRating.difficult)
+        ? 'An okay week'
+        : 'A hard week';
+  }
+  final line = attention == 0
+      ? 'Everyone feels good this week.'
+      : '$good of $submitted feel good, $attention need attention.';
+  return (title, line);
+}
+
+/// The dark "night sky" card at the top of the week:
+/// - the week and a chip: Starting soon, Open now or Closed,
+/// - the headline ("Mostly good") and its small line,
+/// - the heartbeat line with the heart:
+///   before it opens the line fills toward a white heart,
+///   while open it is full and the heart is pink and beating,
+///   once closed it is faint and the heart is grey,
+/// - at the bottom: time left, time to open, or when the next one opens.
+class _WeekHero extends StatelessWidget {
+  const _WeekHero({
     required this.weekId,
+    required this.totals,
+    required this.total,
     required this.isThisWeek,
     required this.open,
+    required this.notOpenYet,
+    required this.closed,
   });
 
   final String weekId;
+  final PulseTotals totals;
+  final int total;
   final bool isThisWeek;
   final bool open;
+  final bool notOpenYet;
+  final bool closed;
+
+  static const Color _soft = Color(0xFF9FB4F0);
+  static const Color _glow = Color(0xFF7FA2FF);
+
+  /// How far we are from Monday to the opening: 0.0 to 1.0.
+  static double _weekProgress() {
+    final opens = PulseService.opensAt();
+    final monday = DateTime(
+      opens.year,
+      opens.month,
+      opens.day - (opens.weekday - DateTime.monday),
+    );
+    final all = opens.difference(monday).inSeconds;
+    if (all <= 0) return 1;
+    final gone = DateTime.now().difference(monday).inSeconds;
+    return (gone / all).clamp(0.0, 1.0);
+  }
 
   @override
   Widget build(BuildContext context) {
-    final openDay = PulseService.openDayLabel();
-    final short = openDay.length > 3 ? openDay.substring(0, 3) : openDay;
-    final openTime = PulseService.openTimeLabel();
-    final closeDay = PulseService.closeDayLabel();
-    final closeShort = closeDay.length > 3 ? closeDay.substring(0, 3) : closeDay;
+    final (title, line) = _headline(
+      totals: totals,
+      total: total,
+      notOpenYet: notOpenYet,
+      closed: closed,
+    );
+    final closesText = PulseService.dateTimeLabel(
+      PulseService.closesAt().subtract(const Duration(minutes: 1)),
+    );
 
-    final Color dot;
-    final String label;
-    final String detail;
-    if (AppConfig.pulseOpenEveryDay && isThisWeek) {
-      dot = const Color(0xFF16A34A);
-      label = 'Open';
-      detail = 'test mode: open every day';
+    // The chip.
+    final Widget chip;
+    if (open) {
+      chip = const _HeroChip(
+        'Open now',
+        bg: Colors.white,
+        fg: Color(0xFF15803D),
+        dot: Color(0xFF16A34A),
+      );
+    } else if (notOpenYet) {
+      chip = const _HeroChip(
+        'Starting soon',
+        bg: Color(0xFFFFE7B3),
+        fg: Color(0xFF8A5A00),
+      );
+    } else {
+      chip = _HeroChip(
+        'Closed',
+        bg: Colors.white.withValues(alpha: 0.14),
+        fg: Colors.white,
+      );
+    }
+
+    // The heartbeat line.
+    final Widget pulse;
+    if (open) {
+      pulse = const PulseLine(
+        progress: 1,
+        heartColor: Color(0xFFFF6B8A),
+        showDot: false,
+      );
+    } else if (notOpenYet) {
+      pulse = PulseLine(progress: _weekProgress());
+    } else {
+      pulse = PulseLine(
+        progress: 1,
+        showDot: false,
+        heartColor: Colors.white.withValues(alpha: 0.35),
+        lineColor: Colors.white.withValues(alpha: 0.35),
+      );
+    }
+
+    // The bottom line.
+    final Widget bottom;
+    if (open && AppConfig.pulseOpenEveryDay) {
+      bottom = Text('Test mode: open every day', style: _small(_soft));
     } else if (open) {
-      dot = const Color(0xFF16A34A);
-      label = 'Open now';
-      detail = 'since $short $openTime · closes $closeShort night';
-    } else if (isThisWeek && PulseService.notOpenYet()) {
-      dot = const Color(0xFFE9A83B);
-      label = 'Starting soon';
-      detail = 'opens ${PulseService.dateTimeLabel(PulseService.opensAt())}'
-          ' · closes $closeShort night';
+      bottom = Row(
+        children: [
+          Expanded(
+            child: Text(
+              'Closes $closesText',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: _small(_soft),
+            ),
+          ),
+          const SizedBox(width: 8),
+          LiveCountdown(
+            to: PulseService.closesAt(),
+            onDone: () {},
+            suffix: ' left',
+            color: _glow,
+            size: 13,
+          ),
+        ],
+      );
+    } else if (notOpenYet) {
+      bottom = Row(
+        children: [
+          Expanded(
+            child: Text(
+              'Open till $closesText',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: _small(_soft),
+            ),
+          ),
+          const SizedBox(width: 8),
+          LiveCountdown(
+            to: PulseService.opensAt(),
+            onDone: () {},
+            prefix: 'Opens in ',
+            color: _glow,
+            size: 13,
+          ),
+        ],
+      );
     } else if (isThisWeek) {
-      // This week is over. Say when the next week opens.
       final nextWeek = PulseService.shortWeekLabel(PulseService.nextWeekId());
       final next = PulseService.dateTimeLabel(PulseService.nextOpensAt());
-      dot = const Color(0xFF8A94AA);
-      label = 'Closed';
-      detail = 'Next: $nextWeek opens $next';
+      bottom = Text(
+        'Next: $nextWeek opens $next',
+        style: _small(_soft),
+      );
     } else {
-      dot = const Color(0xFF8A94AA);
-      label = 'Closed';
-      detail = 'was open $short $openTime – $closeShort night';
+      bottom = Text('This week is closed.', style: _small(_soft));
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: dot.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(26),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF0B1B4D), Color(0xFF14328F), AppColors.blue],
+          stops: [0, 0.55, 1],
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Week of ${PulseService.shortWeekLabel(weekId)}',
+                  style: _small(_soft),
+                ),
+              ),
+              chip,
+            ],
+          ),
+          const SizedBox(height: 14),
+          Text(title, style: _h(28, weight: FontWeight.w700, color: Colors.white)),
+          if (line.isNotEmpty) ...[
+            const SizedBox(height: 2),
+            Text(
+              line,
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                color: const Color(0xFFC9D6FF),
+              ),
+            ),
+          ],
+          const SizedBox(height: 10),
+          pulse,
+          const SizedBox(height: 8),
+          bottom,
+        ],
+      ),
+    );
+  }
+
+  static TextStyle _small(Color color) =>
+      GoogleFonts.inter(fontSize: 13, color: color);
+}
+
+/// The small chip at the top right of the night-sky card.
+class _HeroChip extends StatelessWidget {
+  const _HeroChip(this.text, {required this.bg, required this.fg, this.dot});
+
+  final String text;
+  final Color bg;
+  final Color fg;
+  final Color? dot;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 9,
-            height: 9,
-            decoration: BoxDecoration(color: dot, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: TextStyle(
-              color: Color.lerp(dot, Colors.black, 0.35),
-              fontSize: 14,
-              fontWeight: FontWeight.w800,
+          if (dot != null) ...[
+            Container(
+              width: 7,
+              height: 7,
+              decoration: BoxDecoration(color: dot, shape: BoxShape.circle),
             ),
-          ),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Text(
-              '· $detail',
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: AppColors.muted, fontSize: 13.5),
+            const SizedBox(width: 6),
+          ],
+          Text(
+            text,
+            style: GoogleFonts.inter(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w600,
+              color: fg,
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// The reminder row under the ring, for example:
+///   ⏳ 12 still waiting · Only they get the reminder      [🔔 Remind]
+///   ✓ Reminder sent · Today, 4:12 PM                      [✓ Sent]
+///   🎉 Everyone has answered · 30 of 30
+///   🔕 12 didn't answer · This week is closed
+/// "Sent" shows for one hour after the last reminder for this week.
+class _RemindButton extends StatelessWidget {
+  const _RemindButton({
+    required this.weekId,
+    required this.total,
+    required this.pending,
+    required this.canNotify,
+    required this.windowOpen,
+    required this.sending,
+    required this.onRemind,
+  });
+
+  final String weekId;
+
+  /// How many employees can answer. 0 means none added yet.
+  final int total;
+  final int pending;
+  final bool canNotify;
+  final bool windowOpen;
+  final bool sending;
+  final VoidCallback onRemind;
+
+  static const Color _green = Color(0xFF15803D);
+  static const Color _greenTint = Color(0xFFE7F6EC);
+  static const Color _grey = Color(0xFFF2F4F8);
+
+  /// When the last "Notify all" or "Remind" for this week was sent.
+  Stream<DateTime?> _lastSent() => FirebaseFirestore.instance
+      .collection('broadcasts')
+      .where('weekId', isEqualTo: weekId)
+      .snapshots()
+      .map((snap) {
+    DateTime? last;
+    for (final d in snap.docs) {
+      final t = d.data()['createdAt'];
+      if (t is Timestamp) {
+        final at = t.toDate();
+        if (last == null || at.isAfter(last)) last = at;
+      }
+    }
+    return last;
+  });
+
+  static String _when(DateTime d) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final day = DateTime(d.year, d.month, d.day);
+    final h = d.hour % 12 == 0 ? 12 : d.hour % 12;
+    final time =
+        '$h:${d.minute.toString().padLeft(2, '0')} ${d.hour < 12 ? 'AM' : 'PM'}';
+    if (day == today) return 'Today, $time';
+    if (day == today.subtract(const Duration(days: 1))) return 'Yesterday, $time';
+    return '${PulseService.dateTimeLabel(d).split(',').first}, $time';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (total == 0) {
+      return const _RemindRow(
+        icon: Icons.group_add_outlined,
+        iconBg: _grey,
+        iconColor: AppColors.muted,
+        title: 'No employees added yet',
+        sub: 'Add accounts to start the Weekly Pulse',
+      );
+    }
+    if (pending == 0) {
+      return _RemindRow(
+        icon: Icons.celebration_outlined,
+        iconBg: _greenTint,
+        iconColor: _green,
+        title: 'Everyone has answered',
+        sub: '$total of $total',
+      );
+    }
+    final who = pending == 1 ? '1 person' : '$pending';
+    if (!windowOpen) {
+      return _RemindRow(
+        icon: Icons.notifications_off_outlined,
+        iconBg: _grey,
+        iconColor: AppColors.muted,
+        title: pending == 1 ? '1 person didn\'t answer' : '$pending didn\'t answer',
+        sub: 'This week is closed',
+      );
+    }
+
+    return StreamBuilder<DateTime?>(
+      stream: _lastSent(),
+      builder: (context, snap) {
+        final last = snap.data;
+        final justSent = last != null &&
+            DateTime.now().difference(last) < const Duration(hours: 1);
+
+        if (sending) {
+          return _RemindRow(
+            icon: Icons.hourglass_top,
+            iconBg: _grey,
+            iconColor: AppColors.muted,
+            title: '$who still waiting',
+            sub: 'Sending the reminder…',
+            action: const _RemindPill(
+              label: 'Sending…',
+              bg: _grey,
+              fg: Color(0xFF8E97AB),
+            ),
+          );
+        }
+        if (justSent) {
+          return _RemindRow(
+            icon: Icons.check,
+            iconBg: _greenTint,
+            iconColor: _green,
+            title: 'Reminder sent',
+            sub: '${_when(last!)} · $who still waiting',
+            action: const _RemindPill(
+              label: 'Sent',
+              icon: Icons.check,
+              bg: _greenTint,
+              fg: _green,
+            ),
+          );
+        }
+        return _RemindRow(
+          icon: Icons.hourglass_top,
+          iconBg: _grey,
+          iconColor: AppColors.muted,
+          title: '$who still waiting',
+          sub: last == null
+              ? 'Only they get the reminder'
+              : 'Last reminder: ${_when(last)}',
+          action: canNotify
+              ? _RemindPill(
+            label: 'Remind',
+            icon: Icons.notifications_none,
+            bg: const Color(0xFFEEF3FF),
+            fg: AppColors.blue,
+            onTap: onRemind,
+          )
+              : null,
+        );
+      },
+    );
+  }
+}
+
+/// One reminder row: a small icon, a title and a line, and maybe a pill.
+class _RemindRow extends StatelessWidget {
+  const _RemindRow({
+    required this.icon,
+    required this.iconBg,
+    required this.iconColor,
+    required this.title,
+    required this.sub,
+    this.action,
+  });
+
+  final IconData icon;
+  final Color iconBg;
+  final Color iconColor;
+  final String title;
+  final String sub;
+  final Widget? action;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            color: iconBg,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, size: 19, color: iconColor),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: GoogleFonts.inter(
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.ink,
+                ),
+              ),
+              const SizedBox(height: 1),
+              Text(
+                sub,
+                maxLines: 2,
+                style: GoogleFonts.inter(
+                  fontSize: 12.5,
+                  color: const Color(0xFF8E97AB),
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (action != null) ...[
+          const SizedBox(width: 10),
+          action!,
+        ],
+      ],
+    );
+  }
+}
+
+/// The small soft button on the right of the reminder row.
+class _RemindPill extends StatelessWidget {
+  const _RemindPill({
+    required this.label,
+    required this.bg,
+    required this.fg,
+    this.icon,
+    this.onTap,
+  });
+
+  final String label;
+  final Color bg;
+  final Color fg;
+  final IconData? icon;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: bg,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon != null) ...[
+                Icon(icon, size: 17, color: fg),
+                const SizedBox(width: 6),
+              ],
+              Text(
+                label,
+                style: GoogleFonts.inter(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: fg,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -861,8 +1370,8 @@ class _WeekCards extends StatelessWidget {
   }
 }
 
-/// A ring with "46/56 answered" in the middle, and the four ratings plus
-/// "Waiting" listed beside it.
+/// A ring with "46/56 answered" in the middle, and the four ratings
+/// listed beside it. (Who is still waiting shows in the reminder row.)
 class _RingSummary extends StatelessWidget {
   const _RingSummary({required this.total, required this.totals});
 
@@ -872,7 +1381,6 @@ class _RingSummary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final submitted = totals.submitted;
-    final waiting = total > submitted ? total - submitted : 0;
     final whole = math.max(total, submitted);
 
     Widget row(Widget dot, String label, int count) => Padding(
@@ -891,7 +1399,7 @@ class _RingSummary extends StatelessWidget {
             '$count',
             style: const TextStyle(
               fontSize: 14.5,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],
@@ -901,8 +1409,8 @@ class _RingSummary extends StatelessWidget {
     return Row(
       children: [
         SizedBox(
-          width: 170,
-          height: 170,
+          width: 140,
+          height: 140,
           child: CustomPaint(
             painter: _RingPainter(
               parts: [
@@ -959,18 +1467,6 @@ class _RingSummary extends StatelessWidget {
                   PulseRating.label(r),
                   totals.countFor(r),
                 ),
-              row(
-                Container(
-                  width: 10,
-                  height: 10,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: const Color(0xFFC9D0DC), width: 2),
-                  ),
-                ),
-                'Waiting',
-                waiting,
-              ),
             ],
           ),
         ),
@@ -1026,77 +1522,6 @@ class _RingPainter extends CustomPainter {
   @override
   bool shouldRepaint(_RingPainter old) =>
       old.whole != whole || old.parts.toString() != parts.toString();
-}
-
-/// One big button to remind the people still to answer, or a quiet line
-/// when there is nothing to send.
-class _RemindButton extends StatelessWidget {
-  const _RemindButton({
-    required this.total,
-    required this.pending,
-    required this.canNotify,
-    required this.windowOpen,
-    required this.notOpenYet,
-    required this.sending,
-    required this.onRemind,
-  });
-
-  /// How many employees can answer. 0 means none added yet.
-  final int total;
-  final int pending;
-  final bool canNotify;
-  final bool windowOpen;
-  final bool notOpenYet;
-  final bool sending;
-  final VoidCallback onRemind;
-
-  @override
-  Widget build(BuildContext context) {
-    final canRemind = canNotify && windowOpen && !notOpenYet && pending > 0;
-    if (canRemind) {
-      return FilledButton(
-        onPressed: sending ? null : onRemind,
-        style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
-        child: Text(
-          sending
-              ? 'Sending…'
-              : pending == 1
-              ? 'Remind the 1 who has not answered'
-              : 'Remind the $pending who have not answered',
-        ),
-      );
-    }
-
-    // Before it opens, the window line already says when. Show nothing.
-    if (notOpenYet && total > 0) return const SizedBox.shrink();
-
-    final String message;
-    if (total == 0) {
-      message = 'No employees added yet';
-    } else if (pending == 0) {
-      message = 'Everyone has answered';
-    } else if (windowOpen) {
-      message = '$pending have not answered';
-    } else {
-      message = '$pending did not answer. This week is closed.';
-    }
-    return Container(
-      height: 52,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: const Color(0xFFF3F6FC),
-        borderRadius: BorderRadius.circular(26),
-      ),
-      child: Text(
-        message,
-        style: const TextStyle(
-          color: AppColors.muted,
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
 }
 
 /// "What people said": the week's written comments as quote cards, the
@@ -1229,7 +1654,7 @@ class _Quote extends StatelessWidget {
                         const SizedBox(height: 8),
                         // The words.
                         Text(
-                          '“${item.text}”',
+                          item.text,
                           maxLines: 4,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
@@ -1288,104 +1713,6 @@ class _Quote extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-/// The top of the week: "Week of 5 Oct – 9 Oct" small, and one big line
-/// that says how the week went, for example "A good week".
-class _WeekHeadline extends StatelessWidget {
-  const _WeekHeadline({
-    required this.weekId,
-    required this.totals,
-    required this.total,
-    required this.notOpenYet,
-    this.closed = false,
-  });
-
-  final String weekId;
-  final PulseTotals totals;
-  final int total;
-  final bool notOpenYet;
-
-  /// The window for this week is over.
-  final bool closed;
-
-  @override
-  Widget build(BuildContext context) {
-
-    final submitted = totals.submitted;
-// Show the summary after 25% of employees answer (at least 3).
-    final needed = (total * 0.25).ceil() < 3 ? 3 : (total * 0.25).ceil();
-    final String title;
-    final String line;
-    if (total == 0) {
-      title = 'No employees yet';
-      line = 'Add employee accounts to start the Weekly Pulse.';
-    } else if (notOpenYet) {
-      // The window line below already says when it opens and closes.
-      title = 'Starting soon';
-      line = '';
-    } else if (submitted == 0 && closed) {
-      title = 'No answers';
-      line = 'Nobody answered this week.';
-    } else if (submitted == 0) {
-      title = 'No answers yet';
-      line = 'Answers show here as soon as people send them.';
-    } else if (submitted < needed) {
-      title = 'Waiting for more answers';
-      line = '$submitted of $total answered. '
-          'The summary shows after $needed answers.';
-    } else {
-      final good = totals.countFor(PulseRating.great) +
-          totals.countFor(PulseRating.good);
-      final attention = totals.countFor(PulseRating.okay) +
-          totals.countFor(PulseRating.difficult);
-      final share = good / submitted;
-
-      final great = totals.countFor(PulseRating.great);
-      final goodOnly = totals.countFor(PulseRating.good);
-      final okay = totals.countFor(PulseRating.okay);
-      final difficult = totals.countFor(PulseRating.difficult);
-
-      if (share >= 0.75) {
-        // Most feel good: say Great if Great is the bigger group.
-        title = great > goodOnly ? 'A great week' : 'A good week';
-      } else if (share >= 0.5) {
-        title = 'Mostly good';
-      } else if (share >= 0.25) {
-        title = 'A mixed week';
-      } else {
-        // Most need attention: say Okay if Okay is the bigger group.
-        title = okay > difficult ? 'An okay week' : 'A hard week';
-      }
-
-      line = attention == 0
-          ? 'Everyone feels good this week.'
-          : '$good of $submitted feel good · $attention need attention.';
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Week of ${PulseService.weekLabel(weekId)}',
-          style: const TextStyle(
-            color: AppColors.muted,
-            fontSize: 14.5,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 2),
-        Text(title, style: _h(32, weight: FontWeight.w800, height: 1.15)),
-        if (line.isNotEmpty) ...[
-          const SizedBox(height: 4),
-          Text(
-            line,
-            style: const TextStyle(color: AppColors.muted, fontSize: 14.5),
-          ),
-        ],
-      ],
     );
   }
 }

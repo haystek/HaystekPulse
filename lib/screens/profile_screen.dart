@@ -36,15 +36,23 @@ Future<void> confirmSignOut(BuildContext context) async {
       dialogContext,
       AlertDialog(
         title: Text('Sign out?', style: _title(20)),
-        content: const Text('You will need your email and password to sign '
-            'in again.'),
+        content: const Text(
+          'You won\'t get Weekly Pulse reminders or replies on this phone '
+              'until you sign in again.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
+            style: TextButton.styleFrom(
+              textStyle: const TextStyle(fontWeight: FontWeight.w500),
+            ),
             child: const Text('Cancel'),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: FilledButton.styleFrom(
+              textStyle: const TextStyle(fontWeight: FontWeight.w500),
+            ),
             child: const Text('Sign out'),
           ),
         ],
@@ -81,7 +89,7 @@ Future<void> confirmSignOut(BuildContext context) async {
                   ),
                 ),
                 const SizedBox(height: 12),
-                Text('Signing out Please wait ...', style: _title(18)),
+                Text('Signing out please wait ...', style: _title(18)),
                 const SizedBox(height: 4),
                 const Text(
                   'See you next week!',

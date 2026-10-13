@@ -101,7 +101,7 @@ class _FeedbackListScreenState extends State<FeedbackListScreen> {
       contentPadding: EdgeInsets.zero,
       title: Text(
         label,
-        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
       ),
       trailing: Icon(
         _dates == value
@@ -144,7 +144,7 @@ class _FeedbackListScreenState extends State<FeedbackListScreen> {
                 widget.isPulse
                     ? 'Show comments from'
                     : 'Show suggestions from',
-                style: heading(19, weight: FontWeight.w800),
+                style: heading(19, weight: FontWeight.w700),
               ),
               const SizedBox(height: 6),
               option('Any date', _Dates.any),
@@ -156,12 +156,11 @@ class _FeedbackListScreenState extends State<FeedbackListScreen> {
                 const Padding(
                   padding: EdgeInsets.fromLTRB(0, 14, 0, 4),
                   child: Text(
-                    'OR PICK A MONTH',
+                    'Or pick a month',
                     style: TextStyle(
                       color: AppColors.muted,
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.4,
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
@@ -172,7 +171,7 @@ class _FeedbackListScreenState extends State<FeedbackListScreen> {
                       '${_longMonths[m.month - 1]} ${m.year}',
                       style: const TextStyle(
                         fontSize: 16,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                     trailing: Icon(
@@ -408,7 +407,7 @@ class _FeedbackListScreenState extends State<FeedbackListScreen> {
                                               ? AppColors.blue
                                               : Colors.white,
                                           fontSize: 13.5,
-                                          fontWeight: FontWeight.w800,
+                                          fontWeight: FontWeight.w600,
                                         ),
                                       ),
                                       Icon(
@@ -460,7 +459,7 @@ class _FeedbackListScreenState extends State<FeedbackListScreen> {
     final things = count == 1 ? '1 result' : '$count results';
     final q = _query.trim();
     if (q.isEmpty) return things;
-    return '$things for “$q”';
+    return '$things for $q';
   }
 
   Widget _list(
@@ -570,7 +569,7 @@ class _PlainChip extends StatelessWidget {
                 style: TextStyle(
                   color: selected ? Colors.white : AppColors.ink,
                   fontSize: 14,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],
@@ -632,7 +631,7 @@ class _StatusChip extends StatelessWidget {
                 style: TextStyle(
                   color: selected ? Colors.white : AppColors.ink,
                   fontSize: 14,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
               const SizedBox(width: 7),
@@ -652,7 +651,7 @@ class _StatusChip extends StatelessWidget {
                   style: TextStyle(
                     color: selected ? Colors.white : AppColors.muted,
                     fontSize: 12,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
@@ -690,21 +689,14 @@ class _ResultCard extends StatelessWidget {
       fontSize: 15.5,
       height: 1.4,
       color: AppColors.ink,
-      fontWeight: isNew ? FontWeight.w800 : FontWeight.w600,
+      fontWeight: isNew ? FontWeight.w600 : FontWeight.w500,
     );
 
     return DecoratedBox(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE6EBF4)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0F0E1A3A),
-            blurRadius: 18,
-            offset: Offset(0, 6),
-          ),
-        ],
+        border: Border.all(color: const Color(0xFFE6EBF4), width: 1.5),
       ),
       child: Material(
         color: Colors.transparent,
@@ -742,12 +734,12 @@ class _ResultCard extends StatelessWidget {
                                 const SizedBox(width: 6),
                                 Text(
                                   isNew
-                                      ? 'New · Needs reply'
+                                      ? 'Needs reply'
                                       : FeedbackStatus.label(status),
                                   style: TextStyle(
                                     color: _statusInk(status),
                                     fontSize: 12,
-                                    fontWeight: FontWeight.w800,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
                               ],
@@ -816,7 +808,7 @@ class _ResultCard extends StatelessWidget {
                               style: const TextStyle(
                                 color: AppColors.blueDeep,
                                 fontSize: 11.5,
-                                fontWeight: FontWeight.w800,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                           ),
@@ -883,7 +875,7 @@ TextSpan _highlight(String text, String query, TextStyle style) {
         style: const TextStyle(
           backgroundColor: Color(0xFFFFE58A),
           color: AppColors.ink,
-          fontWeight: FontWeight.w800,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );
@@ -915,7 +907,7 @@ class _Empty extends StatelessWidget {
           children: [
             Icon(icon, size: 44, color: const Color(0xFFB7C0D1)),
             const SizedBox(height: 12),
-            Text(title, style: heading(18, weight: FontWeight.w800)),
+            Text(title, style: heading(18, weight: FontWeight.w700)),
             const SizedBox(height: 6),
             Text(
               text,

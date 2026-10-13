@@ -212,21 +212,24 @@ class _WeekCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isThisWeek = weekId == PulseService.thisWeekId();
-    final open = PulseService.isOpen();
-    final notOpenYet = isThisWeek && !open;
+    final open = isThisWeek && PulseService.isOpen();
+    final notOpenYet = isThisWeek && PulseService.notOpenYet();
+    final closedNow = isThisWeek && !open && !notOpenYet;
     final submitted = totals.submitted;
     final percent =
     total == 0 ? 0 : ((submitted / total) * 100).round().clamp(0, 100);
 
     // Small tag next to the dates.
     String tag = PulseService.weekName(weekId);
-    if (isThisWeek) tag = open ? 'Open now' : 'This week';
+    if (open) tag = 'Open now';
+    if (notOpenYet) tag = 'Starting soon';
+    if (closedNow) tag = 'Closed';
 
     // The line under the dates.
     final String detail;
     if (notOpenYet) {
-      detail = 'Opens ${PulseService.openDayLabel()} '
-          '${PulseService.openTimeLabel()}';
+      detail = 'Opens '
+          '${PulseService.dateTimeLabel(PulseService.opensAt())}';
     } else if (submitted == 0) {
       detail = isThisWeek ? 'No answers yet' : 'No answers';
     } else {
@@ -266,7 +269,7 @@ class _WeekCard extends StatelessWidget {
                               style: _h(18, weight: FontWeight.w700),
                             ),
                             if (tag.isNotEmpty)
-                              _Tag(text: tag, strong: isThisWeek && open),
+                              _Tag(text: tag, strong: open),
                           ],
                         ),
                         const SizedBox(height: 5),
@@ -307,7 +310,7 @@ class _WeekCard extends StatelessWidget {
   }
 }
 
-/// "This week", "Open now", "Last week".
+/// "Open now", "Starting soon", "Closed", "Last week".
 class _Tag extends StatelessWidget {
   const _Tag({required this.text, required this.strong});
 

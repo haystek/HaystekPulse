@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../config.dart';
 import '../models/employee.dart';
 import '../models/feedback_item.dart';
 import '../models/pulse_rating.dart';
@@ -12,7 +13,8 @@ import '../services/feedback_service.dart';
 import '../services/pulse_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/notification_bell.dart';
-import '../widgets/ui.dart';
+import '../widgets/pulse_line.dart';
+import '../widgets/ui.dart' hide PulseLine;
 import 'my_feedback_screen.dart';
 import 'profile_screen.dart';
 import 'suggestion_box_screen.dart';
@@ -20,9 +22,14 @@ import 'weekly_pulse_screen.dart';
 
 const Color _purple = Color(0xFF7C3AED);
 const Color _purpleTint = Color(0xFFF1EBFE);
-const Color _softBlue = Color(0xFFC9D8FF);
 
-/// One font for this whole screen: Inter (clean and easy to read).
+/// Light grey panels (Suggestion Box and feedback rows).
+const Color _panel = Color(0xFFF6F8FB);
+
+/// Soft grey for small, less important text.
+const Color _soft = Color(0xFF8E97AB);
+
+/// One font for this whole screen: Inter.
 TextStyle _inter(
     double size, {
       FontWeight weight = FontWeight.w400,
@@ -38,10 +45,11 @@ TextStyle _inter(
       letterSpacing: letterSpacing,
     );
 
-/// Employee home (Inter font, "clean" design):
-/// - a blue top with the real logo in a white box, and a greeting,
-/// - the Weekly Pulse card sitting half over the blue,
-/// - a Suggestion Box card with a Write button,
+/// Employee home ("Blue card" design):
+/// - a white top with the logo, the bell and the account button,
+/// - a greeting with the person's name,
+/// - the Weekly Pulse as one blue card: when it closes, time left, button,
+/// - a quiet Suggestion Box panel with a Write button,
 /// - your feedback (latest 3, with See all).
 class EmployeeHomeScreen extends StatelessWidget {
   const EmployeeHomeScreen({super.key, required this.employee});
@@ -68,167 +76,106 @@ class EmployeeHomeScreen extends StatelessWidget {
       MyFeedbackScreen(employee: employee, initialTab: tab),
     );
     final name = employee.name.trim().isEmpty ? 'there' : employee.name.trim();
-
-    final top = MediaQuery.of(context).padding.top;
+    final pad = MediaQuery.of(context).padding;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      // White clock and battery icons on the blue top.
-      value: SystemUiOverlayStyle.light,
+      // Dark clock and battery icons on the white top.
+      value: SystemUiOverlayStyle.dark,
       child: Scaffold(
         backgroundColor: Colors.white,
-        body: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            // Blue top, with the Pulse card sitting half over it.
-            Stack(
+        body: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
+            child: ListView(
+              padding: EdgeInsets.fromLTRB(16, pad.top + 10, 16, 28 + pad.bottom),
               children: [
-                const Positioned(
-                  left: 0,
-                  right: 0,
-                  top: 0,
-                  bottom: 120,
-                  child: ColoredBox(color: AppColors.blue),
-                ),
-                Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 480),
-                    child: Padding(
-                      padding: EdgeInsets.fromLTRB(20, top + 10, 20, 0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Row(
-                            children: [
-                              // Real logo inside a small white box, so its
-                              // blue and dark colours show clearly on blue.
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 14,
-                                  vertical: 9,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                child: Image.asset(
-                                  'assets/haystek_pulse_logo.png',
-                                  height: 24,
-                                  fit: BoxFit.contain,
-                                ),
-                              ),
-                              const Spacer(),
-                              NotificationBell(employee: employee),
-                              const SizedBox(width: 10),
-                              _AccountButton(
-                                name: employee.name,
-                                actions: [
-                                  MenuAction(
-                                    'Profile',
-                                        () => _push(
-                                      context,
-                                      ProfileScreen(employee: employee),
-                                    ),
-                                  ),
-                                  MenuAction(
-                                    'My Feedback',
-                                        () => openFeedback(0),
-                                  ),
-                                  MenuAction(
-                                    'Sign out',
-                                        () => confirmSignOut(context),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 24),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Small greeting line.
-                              Text(
-                                '${_greeting().replaceAll(',', '')} 👋',
-                                style: _inter(
-                                  15,
-                                  weight: FontWeight.w600,
-                                  color: _softBlue,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              // Big name, first letter capital.
-                              Text(
-                                name[0].toUpperCase() + name.substring(1),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: _inter(
-                                  30,
-                                  weight: FontWeight.w800,
-                                  color: Colors.white,
-                                  height: 1.1,
-                                  letterSpacing: -0.5,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Your week matters. Tell us how it went.',
-                            style: _inter(15, color: _softBlue),
-                          ),
-                          const SizedBox(height: 20),
-                          _PulseCard(
-                            employee: employee,
-                            onAnswer: () => _push(
+                // Top: logo, bell, account.
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Row(
+                    children: [
+                      Image.asset(
+                        'assets/haystek_pulse_logo.png',
+                        height: 26,
+                        fit: BoxFit.contain,
+                      ),
+                      const Spacer(),
+                      NotificationBell(employee: employee),
+                      const SizedBox(width: 10),
+                      _AccountButton(
+                        name: employee.name,
+                        actions: [
+                          MenuAction(
+                            'Profile',
+                                () => _push(
                               context,
-                              WeeklyPulseScreen(employee: employee),
+                              ProfileScreen(employee: employee),
                             ),
-                            onSeeMine: () => openFeedback(1),
+                          ),
+                          MenuAction('My Feedback', () => openFeedback(0)),
+                          MenuAction(
+                            'Sign out',
+                                () => confirmSignOut(context),
                           ),
                         ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 480),
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    20,
-                    16,
-                    20,
-                    28 + MediaQuery.of(context).padding.bottom,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _SuggestCard(
-                        onTap: () => _push(
-                          context,
-                          SuggestionBoxScreen(employee: employee),
-                        ),
-                      ),
-                      const SizedBox(height: 22),
-                      _RecentActivity(
-                        employee: employee,
-                        onOpen: openFeedback,
                       ),
                     ],
                   ),
                 ),
-              ),
+                const SizedBox(height: 22),
+                // Greeting.
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _greeting(),
+                        style: _inter(15, color: AppColors.muted),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        name[0].toUpperCase() + name.substring(1),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: _inter(
+                          28,
+                          weight: FontWeight.w700,
+                          height: 1.15,
+                          letterSpacing: -0.6,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 18),
+                _PulseCard(
+                  employee: employee,
+                  onAnswer: () => _push(
+                    context,
+                    WeeklyPulseScreen(employee: employee),
+                  ),
+                  onSeeMine: () => openFeedback(1),
+                ),
+                const SizedBox(height: 12),
+                _SuggestCard(
+                  onTap: () => _push(
+                    context,
+                    SuggestionBoxScreen(employee: employee),
+                  ),
+                ),
+                const SizedBox(height: 22),
+                _RecentActivity(employee: employee, onOpen: openFeedback),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
   }
 }
 
-/// White round button with a blue letter (for the blue top).
-/// Opens a small menu.
+/// Blue round button with a white letter. Opens a small menu.
 class _AccountButton extends StatelessWidget {
   const _AccountButton({required this.name, required this.actions});
 
@@ -251,34 +198,20 @@ class _AccountButton extends StatelessWidget {
         height: 40,
         alignment: Alignment.center,
         decoration: const BoxDecoration(
-          color: Colors.white,
+          color: AppColors.blue,
           shape: BoxShape.circle,
         ),
         child: Text(
           initial,
-          style: _inter(16, weight: FontWeight.w800, color: AppColors.blue),
+          style: _inter(16, weight: FontWeight.w700, color: Colors.white),
         ),
       ),
     );
   }
 }
 
-/// White card with a soft shadow.
-BoxDecoration _cardDecoration({Color color = Colors.white}) => BoxDecoration(
-  color: color,
-  borderRadius: BorderRadius.circular(24),
-  border: Border.all(color: const Color(0xFFE6EBF4)),
-  boxShadow: const [
-    BoxShadow(
-      color: Color(0x140E1A3A),
-      blurRadius: 24,
-      offset: Offset(0, 8),
-    ),
-  ],
-);
-
 // ---------------------------------------------------------------------
-// Weekly Pulse card
+// Weekly Pulse: one blue card
 // ---------------------------------------------------------------------
 
 class _PulseCard extends StatefulWidget {
@@ -337,20 +270,8 @@ class _PulseCardState extends State<_PulseCard> with WidgetsBindingObserver {
     super.dispose();
   }
 
-  /// "5–9 OCT".
-  String _weekShort() {
-    const months = [
-      'JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN',
-      'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC',
-    ];
-    final p = _weekId.split('-').map(int.parse).toList();
-    final d = DateTime(p[0], p[1], p[2]);
-    final mon = DateTime(d.year, d.month, d.day - (d.weekday - 1));
-    final fri = DateTime(mon.year, mon.month, mon.day + 4);
-    return mon.month == fri.month
-        ? '${mon.day}–${fri.day} ${months[fri.month - 1]}'
-        : '${mon.day} ${months[mon.month - 1]}–${fri.day} '
-        '${months[fri.month - 1]}';
+  void _refresh() {
+    if (mounted) setState(() {});
   }
 
   @override
@@ -359,184 +280,547 @@ class _PulseCardState extends State<_PulseCard> with WidgetsBindingObserver {
       stream: _myRating,
       builder: (context, snap) {
         final rating = snap.data;
-        final open = PulseService.isOpen();
-        final notOpenYet = PulseService.notOpenYet();
-        final missed = rating == null && !open && !notOpenYet;
-        final openDay = PulseService.openDayLabel();
-        final closeDay = PulseService.closeDayLabel();
-        final next = PulseService.dateTimeLabel(PulseService.nextOpensAt());
+        final now = DateTime.now();
+        // Test mode: open every day, so no dates are shown.
+        const everyDay = AppConfig.pulseOpenEveryDay;
+        final open = PulseService.isOpen(now);
+        final notOpenYet = PulseService.notOpenYet(now);
 
-        // Pill at the top right.
-        final Widget pill;
+        final opensAt = PulseService.opensAt(now);
+        // The window ends at midnight; show it as 11:59 PM of the last day.
+        final closesAt = PulseService.closesAt(now);
+        final closesText = PulseService.dateTimeLabel(
+          closesAt.subtract(const Duration(minutes: 1)),
+        );
+        final next = PulseService.dateTimeLabel(PulseService.nextOpensAt(now));
+        final week = 'This week, ${PulseService.shortWeekLabel(_weekId)}';
+
         if (rating != null) {
-          pill = const _Pill(text: 'Done', dot: Color(0xFF16A34A));
-        } else if (open) {
-          pill = const _Pill(text: 'Open', dot: Color(0xFF16A34A));
-        } else if (missed) {
-          pill = const _Pill(text: 'Closed', dot: Color(0xFF8A94AA));
-        } else {
-          pill = _Pill(
-            text: 'Opens ${openDay.length > 3 ? openDay.substring(0, 3) : openDay}',
-            dot: const Color(0xFF8A94AA),
+          return _DoneCard(
+            week: week,
+            rating: rating,
+            next: open || everyDay ? null : next,
+            onSeeMine: widget.onSeeMine,
           );
         }
-
-        // Icon, title and line in the middle.
-        final IconData icon;
-        final Color iconColor;
-        final String title;
-        final String line;
-        if (rating != null) {
-          // Answered: done for this week.
-          icon = PulseRating.icon(rating);
-          iconColor = PulseRating.color(rating);
-          title = 'You said ${PulseRating.label(rating)}';
-          line = open
-              ? 'Done for this week. Thank you!'
-              : 'Done for this week · Next one: $next';
-        } else if (open) {
-          // Open and not answered yet.
-          icon = Icons.favorite;
-          iconColor = AppColors.blue;
-          title = 'How was your week?';
-          line = '10 seconds · open until $closeDay night';
-        } else if (missed) {
-          // Closed and not answered: missed this week.
-          icon = Icons.event_busy;
-          iconColor = const Color(0xFFD08A00);
-          title = 'You missed this week';
-          line = 'This week\'s Weekly Pulse is closed.';
-        } else {
-          // Before it opens.
-          icon = Icons.schedule;
-          iconColor = AppColors.blue;
-          title = 'Weekly Pulse';
-          line = '10 seconds · open until $closeDay night';
+        if (open) {
+          return _OpenCard(
+            week: week,
+            everyDay: everyDay,
+            closesAt: closesAt,
+            closesText: closesText,
+            onAnswer: widget.onAnswer,
+            onClosed: _refresh,
+          );
         }
-
-        return Container(
-          padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
-          decoration: _cardDecoration(),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'THIS WEEK · ${_weekShort()}',
-                      style: _inter(
-                        12,
-                        weight: FontWeight.w800,
-                        color: AppColors.muted,
-                        letterSpacing: 0.6,
-                      ),
-                    ),
-                  ),
-                  pill,
-                ],
-              ),
-              const SizedBox(height: 14),
-              Row(
-                children: [
-                  Container(
-                    width: 56,
-                    height: 56,
-                    decoration: BoxDecoration(
-                      color: iconColor.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                    child: Icon(icon, color: iconColor, size: 30),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title,
-                          style: _inter(
-                            19,
-                            weight: FontWeight.w800,
-                            letterSpacing: -0.2,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          line,
-                          style: _inter(14, color: AppColors.muted),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              if (rating != null)
-                OutlinedButton(
-                  onPressed: widget.onSeeMine,
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size.fromHeight(52),
-                    shape: const StadiumBorder(),
-                    side: const BorderSide(color: Color(0xFFD5DCE8), width: 1.5),
-                    textStyle: _inter(15.5, weight: FontWeight.w700),
-                  ),
-                  child: const Text('See my Weekly Pulse'),
-                )
-              else
-                FilledButton(
-                  onPressed: open ? widget.onAnswer : null,
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size.fromHeight(52),
-                    shape: const StadiumBorder(),
-                    textStyle: _inter(15.5, weight: FontWeight.w700),
-                  ),
-                  child: Text(
-                    open
-                        ? 'Give your rating'
-                        : missed
-                        ? 'Next one: $next'
-                        : 'Opens $next',
-                  ),
-                ),
-            ],
-          ),
-        );
+        if (notOpenYet) {
+          return _SoonCard(
+            week: week,
+            opensAt: opensAt,
+            opensText: PulseService.dateTimeLabel(opensAt),
+            closesText: closesText,
+            onOpened: _refresh,
+          );
+        }
+        return _MissedCard(week: week, closesText: closesText, next: next);
       },
     );
   }
 }
 
-/// Small pill with a coloured dot: "● Open".
-class _Pill extends StatelessWidget {
-  const _Pill({required this.text, required this.dot});
+/// The small chip at the top right of each card.
+class _Chip extends StatelessWidget {
+  const _Chip(this.text, {required this.bg, required this.fg, this.dot});
 
   final String text;
-  final Color dot;
+  final Color bg;
+  final Color fg;
+  final Color? dot;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: dot.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(12),
+        color: bg,
+        borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 7,
-            height: 7,
-            decoration: BoxDecoration(color: dot, shape: BoxShape.circle),
+          if (dot != null) ...[
+            Container(
+              width: 7,
+              height: 7,
+              decoration: BoxDecoration(color: dot, shape: BoxShape.circle),
+            ),
+            const SizedBox(width: 6),
+          ],
+          Text(text, style: _inter(12.5, weight: FontWeight.w600, color: fg)),
+        ],
+      ),
+    );
+  }
+}
+
+/// The top line of each card: the week on the left, a chip on the right.
+Widget _cardTop(String week, Widget chip, {Color color = _soft}) => Row(
+  children: [
+    Expanded(child: Text(week, style: _inter(13, color: color))),
+    chip,
+  ],
+);
+
+/// 1. About to open: a dark blue "night sky" card with a big live timer.
+class _SoonCard extends StatefulWidget {
+  const _SoonCard({
+    required this.week,
+    required this.opensAt,
+    required this.opensText,
+    required this.closesText,
+    required this.onOpened,
+  });
+
+  final String week;
+  final DateTime opensAt;
+  final String opensText;
+  final String closesText;
+  final VoidCallback onOpened;
+
+  @override
+  State<_SoonCard> createState() => _SoonCardState();
+}
+
+class _SoonCardState extends State<_SoonCard> {
+  Timer? _tick;
+  bool _done = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _tick = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      if (!_done && !DateTime.now().isBefore(widget.opensAt)) {
+        _done = true;
+        _tick?.cancel();
+        widget.onOpened();
+      }
+      setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _tick?.cancel();
+    super.dispose();
+  }
+
+  /// Monday 00:00 of this week.
+  DateTime get _weekStart {
+    final o = widget.opensAt;
+    return DateTime(o.year, o.month, o.day - (o.weekday - DateTime.monday));
+  }
+
+  /// "Mon 12 Oct".
+  String _monday() {
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    final m = _weekStart;
+    return '${days[m.weekday - 1]} ${m.day} ${months[m.month - 1]}';
+  }
+
+  /// How far we are from Monday to the opening: 0.0 to 1.0.
+  double _weekProgress() {
+    final total = widget.opensAt.difference(_weekStart).inSeconds;
+    if (total <= 0) return 1;
+    final gone = DateTime.now().difference(_weekStart).inSeconds;
+    return (gone / total).clamp(0.0, 1.0);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    var d = widget.opensAt.difference(DateTime.now());
+    if (d.isNegative) d = Duration.zero;
+    String two(int n) => n.toString().padLeft(2, '0');
+    const unitColor = Color(0xFF9FB4F0);
+    final openDay = PulseService.openDayLabel();
+
+    // One part of the timer: a big number and a small unit.
+    List<Widget> part(String number, String unit, {Color color = Colors.white}) => [
+      Text(
+        number,
+        style: _inter(
+          46,
+          weight: FontWeight.w700,
+          color: color,
+          letterSpacing: -1.5,
+          height: 1,
+        ).copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
+      ),
+      Padding(
+        padding: const EdgeInsets.only(left: 2, right: 10, bottom: 5),
+        child: Text(unit, style: _inter(15, color: unitColor)),
+      ),
+    ];
+
+    Widget when(String label, String value, {bool right = false}) => Column(
+      crossAxisAlignment:
+      right ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+      children: [
+        Text(label, style: _inter(13, color: unitColor)),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          style: _inter(13, weight: FontWeight.w600, color: Colors.white),
+        ),
+      ],
+    );
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(26),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF0B1B4D), Color(0xFF14328F), AppColors.blue],
+          stops: [0, 0.55, 1],
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _cardTop(
+            widget.week,
+            _Chip(
+              'Opens $openDay',
+              bg: Colors.white.withValues(alpha: 0.14),
+              fg: Colors.white,
+            ),
+            color: unitColor,
           ),
-          const SizedBox(width: 6),
+          const SizedBox(height: 18),
           Text(
-            text,
+            'Weekly Pulse opens in',
+            style: _inter(15, color: const Color(0xFFC9D6FF)),
+          ),
+          const SizedBox(height: 6),
+          // The big timer. It shrinks a little on small phones.
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                if (d.inDays > 0) ...part('${d.inDays}', 'd'),
+                ...part(two(d.inHours % 24), 'h'),
+                ...part(two(d.inMinutes % 60), 'm'),
+                ...part(
+                  two(d.inSeconds % 60),
+                  's',
+                  color: const Color(0xFF7FA2FF),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          // A heartbeat line from Monday (left) to the heart (the moment it
+          // opens). The bright part is the time that has passed, and the
+          // glowing dot is now. When the line reaches the heart, it opens.
+          PulseLine(progress: _weekProgress()),
+          const SizedBox(height: 8),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: when('Week started', _monday())),
+              when('Opens', widget.opensText, right: true),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Open till ${widget.closesText}',
+            style: _inter(13, color: const Color(0xFFC9D6FF)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 2. Open now: the same night-sky card. The heartbeat line is full and
+/// the heart has turned pink: the Weekly Pulse is open.
+class _OpenCard extends StatelessWidget {
+  const _OpenCard({
+    required this.week,
+    required this.everyDay,
+    required this.closesAt,
+    required this.closesText,
+    required this.onAnswer,
+    required this.onClosed,
+  });
+
+  final String week;
+  final bool everyDay;
+  final DateTime closesAt;
+  final String closesText;
+  final VoidCallback onAnswer;
+  final VoidCallback onClosed;
+
+  static const Color _unit = Color(0xFF9FB4F0);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(26),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF0B1B4D), Color(0xFF14328F), AppColors.blue],
+          stops: [0, 0.55, 1],
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _cardTop(
+            week,
+            const _Chip(
+              'Open now',
+              bg: Colors.white,
+              fg: Color(0xFF15803D),
+              dot: Color(0xFF16A34A),
+            ),
+            color: _unit,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Weekly Pulse is open',
+            style: _inter(15, color: const Color(0xFFC9D6FF)),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            'How was your week?',
             style: _inter(
-              12.5,
-              weight: FontWeight.w800,
-              color: Color.lerp(dot, Colors.black, 0.35)!,
+              28,
+              weight: FontWeight.w700,
+              color: Colors.white,
+              letterSpacing: -0.6,
+            ),
+          ),
+          const SizedBox(height: 10),
+          // The line has reached the heart.
+          const PulseLine(
+            progress: 1,
+            heartColor: Color(0xFFFF6B8A),
+            showDot: false,
+          ),
+          const SizedBox(height: 12),
+          FilledButton(
+            onPressed: onAnswer,
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.white,
+              foregroundColor: AppColors.blue,
+              minimumSize: const Size.fromHeight(52),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              textStyle: _inter(15.5, weight: FontWeight.w600),
+            ),
+            child: const Text('Rate your week'),
+          ),
+          const SizedBox(height: 12),
+          if (everyDay)
+            Text('Test mode: open every day', style: _inter(13, color: _unit))
+          else
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Closes $closesText',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: _inter(13, color: _unit),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                LiveCountdown(
+                  to: closesAt,
+                  onDone: onClosed,
+                  suffix: ' left',
+                  color: const Color(0xFF7FA2FF),
+                  size: 13,
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 3. Done: a calm white card with a green tick.
+class _DoneCard extends StatelessWidget {
+  const _DoneCard({
+    required this.week,
+    required this.rating,
+    required this.next,
+    required this.onSeeMine,
+  });
+
+  final String week;
+  final String rating;
+
+  /// When the next one opens. Null while this week is still open.
+  final String? next;
+  final VoidCallback onSeeMine;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = PulseRating.color(rating);
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(color: const Color(0xFFE3E8F1), width: 1.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _cardTop(
+            week,
+            const _Chip(
+              'Done',
+              bg: Color(0xFFE7F6EC),
+              fg: Color(0xFF15803D),
+              dot: Color(0xFF16A34A),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Icon(PulseRating.icon(rating), color: color, size: 26),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'You said ${PulseRating.label(rating)}',
+                      style: _inter(20, weight: FontWeight.w700),
+                    ),
+                    Text(
+                      'Thanks for sharing this week.',
+                      style: _inter(14, color: AppColors.muted),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (next != null) ...[
+            const SizedBox(height: 14),
+            Text.rich(
+              TextSpan(
+                children: [
+                  const TextSpan(text: 'Next one: '),
+                  TextSpan(
+                    text: next,
+                    style: _inter(13.5, weight: FontWeight.w600),
+                  ),
+                ],
+              ),
+              style: _inter(13.5, color: const Color(0xFF4A5470)),
+            ),
+          ],
+          const SizedBox(height: 14),
+          OutlinedButton(
+            onPressed: onSeeMine,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.blue,
+              minimumSize: const Size.fromHeight(50),
+              side: const BorderSide(color: Color(0xFFD9DEEA), width: 1.5),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              textStyle: _inter(15, weight: FontWeight.w600),
+            ),
+            child: const Text('See my Weekly Pulse'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 4. Missed: a grey card that says when the next one opens.
+class _MissedCard extends StatelessWidget {
+  const _MissedCard({
+    required this.week,
+    required this.closesText,
+    required this.next,
+  });
+
+  final String week;
+  final String closesText;
+  final String next;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF4F5F8),
+        borderRadius: BorderRadius.circular(26),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _cardTop(
+            week,
+            const _Chip(
+              'Closed',
+              bg: Color(0xFFE6E9EF),
+              fg: Color(0xFF5B6478),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'You missed this week',
+            style: _inter(20, weight: FontWeight.w700),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            'It closed $closesText.',
+            style: _inter(14, color: AppColors.muted),
+          ),
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Next one opens', style: _inter(12, color: _soft)),
+                const SizedBox(height: 2),
+                Text(next, style: _inter(15, weight: FontWeight.w600)),
+              ],
             ),
           ),
         ],
@@ -546,11 +830,11 @@ class _Pill extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------
-// Suggestion Box card
+// Suggestion Box
 // ---------------------------------------------------------------------
 
-/// One wide card: icon, "Suggestion Box", a short line and a purple
-/// Write button. Tapping anywhere on the card opens the Suggestion Box.
+/// A quiet grey panel: icon, "Suggestion Box", a short line and a dark
+/// Write button. Tapping anywhere on it opens the Suggestion Box.
 class _SuggestCard extends StatelessWidget {
   const _SuggestCard({required this.onTap});
 
@@ -558,63 +842,62 @@ class _SuggestCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: _cardDecoration(color: const Color(0xFFFAF7FF)),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(24),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 14, 16),
-            child: Row(
-              children: [
-                Container(
-                  width: 46,
-                  height: 46,
-                  decoration: BoxDecoration(
-                    color: _purpleTint,
+    return Material(
+      color: _panel,
+      borderRadius: BorderRadius.circular(22),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: _purpleTint,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.lightbulb_outline,
+                  color: _purple,
+                  size: 21,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Suggestion Box',
+                      style: _inter(15.5, weight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Share an idea or a problem, any day',
+                      style: _inter(13, color: _soft),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              FilledButton(
+                onPressed: onTap,
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.ink,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(0, 40),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),
-                  child: const Icon(
-                    Icons.lightbulb_outline,
-                    color: _purple,
-                    size: 23,
-                  ),
+                  textStyle: _inter(14, weight: FontWeight.w600),
                 ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Suggestion Box',
-                        style: _inter(16.5, weight: FontWeight.w800),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Any idea or problem? Any day.',
-                        style: _inter(13.5, color: AppColors.muted),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 10),
-                FilledButton(
-                  onPressed: onTap,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.blue,
-                    foregroundColor: Colors.white,
-                    minimumSize: const Size(0, 42),
-                    padding: const EdgeInsets.symmetric(horizontal: 18),
-                    shape: const StadiumBorder(),
-                    textStyle: _inter(14.5, weight: FontWeight.w700),
-                  ),
-                  child: const Text('Write'),
-                ),
-              ],
-            ),
+                child: const Text('Write'),
+              ),
+            ],
           ),
         ),
       ),
@@ -769,7 +1052,7 @@ class _RecentActivityState extends State<_RecentActivity> {
             isBox: false,
             title: c.text,
             sub: [
-              'Weekly Pulse · ${PulseRating.label(rating)}',
+              'You said ${PulseRating.label(rating)}',
               FeedbackStatus.label(c.status),
               _date(c.createdAt ?? at),
             ].join(' · '),
@@ -787,7 +1070,7 @@ class _RecentActivityState extends State<_RecentActivity> {
             date: at,
             isBox: false,
             title: 'You said ${PulseRating.label(rating)}',
-            sub: 'Weekly Pulse · ${PulseService.weekLabel(weekId)}',
+            sub: 'Week of ${PulseService.weekLabel(weekId)}',
             icon: PulseRating.icon(rating),
             iconColor: color,
             iconBg: color.withValues(alpha: 0.12),
@@ -805,12 +1088,8 @@ class _RecentActivityState extends State<_RecentActivity> {
           isBox: f.isFromBox,
           title: f.text,
           sub: [
-            if (f.isFromBox)
-              'Suggestion'
-            else if (rating != null)
-              'Weekly Pulse · ${PulseRating.label(rating)}'
-            else
-              'Weekly Pulse',
+            if (!f.isFromBox && rating != null)
+              'You said ${PulseRating.label(rating)}',
             FeedbackStatus.label(f.status),
             _date(f.createdAt),
           ].where((x) => x.isNotEmpty).join(' · '),
@@ -840,8 +1119,14 @@ class _RecentActivityState extends State<_RecentActivity> {
               if (weekSnap.data != null) weekSnap.data!,
               ...?_oldAnswers,
             ];
+            // Wait until everything has loaded once, so the empty box
+            // does not flash before the data arrives.
+            final loading = (!snap.hasData && !snap.hasError) ||
+                weekSnap.connectionState == ConnectionState.waiting ||
+                _oldAnswers == null;
+            if (loading) return const SizedBox.shrink();
             final rows = _merge(items, answers);
-            if (rows.isEmpty) return const SizedBox.shrink();
+            if (rows.isEmpty) return _empty();
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -852,16 +1137,17 @@ class _RecentActivityState extends State<_RecentActivity> {
                         'Your feedback',
                         style: _inter(
                           18,
-                          weight: FontWeight.w800,
+                          weight: FontWeight.w700,
                           letterSpacing: -0.2,
                         ),
                       ),
                     ),
                     TextButton(
-                      onPressed: () => widget.onOpen(0),
+                      // Opens My Feedback on the tab of the newest item.
+                      onPressed: () => widget.onOpen(rows.first.isBox ? 0 : 1),
                       style: TextButton.styleFrom(
                         padding: const EdgeInsets.symmetric(horizontal: 4),
-                        textStyle: _inter(14.5, weight: FontWeight.w800),
+                        textStyle: _inter(14.5, weight: FontWeight.w600),
                       ),
                       child: const Text('See all'),
                     ),
@@ -880,105 +1166,145 @@ class _RecentActivityState extends State<_RecentActivity> {
     );
   }
 
+  /// Shown when there is nothing yet: a dashed box that explains.
+  Widget _empty() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'Your feedback',
+          style: _inter(18, weight: FontWeight.w700, letterSpacing: -0.2),
+        ),
+        const SizedBox(height: 10),
+        CustomPaint(
+          painter: _DashedBorder(),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(18, 20, 18, 20),
+            child: Column(
+              children: [
+                const Icon(
+                  Icons.chat_bubble_outline,
+                  size: 28,
+                  color: Color(0xFF8A94AA),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Nothing here yet',
+                  style: _inter(15, weight: FontWeight.w700),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Your Weekly Pulse answers and suggestions show here, '
+                      'with replies from management.',
+                  textAlign: TextAlign.center,
+                  style: _inter(13.5, color: AppColors.muted, height: 1.4),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _row(_Recent r) {
     return Material(
-      color: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: const BorderSide(color: Color(0xFFEEF1F6), width: 1.5),
-      ),
+      color: _panel,
+      borderRadius: BorderRadius.circular(18),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () => widget.onOpen(r.isBox ? 0 : 1),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 12, 10, 12),
+          padding: const EdgeInsets.fromLTRB(14, 13, 10, 13),
           child: Row(
             children: [
               Container(
-                width: 42,
-                height: 42,
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
                   color: r.iconBg,
-                  borderRadius: BorderRadius.circular(13),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(r.icon, color: r.iconColor, size: 21),
+                child: Icon(r.icon, color: r.iconColor, size: 20),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // What it is: Weekly Pulse or Suggestion.
+                    Text(
+                      r.isBox ? 'Suggestion' : 'Weekly Pulse',
+                      style: _inter(
+                        12.5,
+                        weight: FontWeight.w600,
+                        color: r.isBox ? _purple : AppColors.blue,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
                     Text(
                       r.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: _inter(15, weight: FontWeight.w700),
+                      style: _inter(15, weight: FontWeight.w500),
                     ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        if (r.dot != null) ...[
-                          Container(
-                            width: 8,
-                            height: 8,
-                            decoration: BoxDecoration(
-                              color: r.dot,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                        ],
-                        Flexible(
-                          child: Text(
-                            r.sub,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: _inter(13, color: AppColors.muted),
-                          ),
-                        ),
-                      ],
-                    ),
-                    // Clear line when management has written back.
-                    if (r.hasReply) ...[
-                      const SizedBox(height: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE8F6EC),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.chat_bubble_outline,
-                              size: 14,
-                              color: Color(0xFF16A34A),
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              'Management replied',
+                    const SizedBox(height: 3),
+                    Text.rich(
+                      TextSpan(
+                        children: [
+                          TextSpan(text: r.sub),
+                          // Green words when management has written back.
+                          if (r.hasReply)
+                            TextSpan(
+                              text: '  ·  Management replied',
                               style: _inter(
-                                12.5,
-                                weight: FontWeight.w800,
-                                color: const Color(0xFF166534),
+                                13,
+                                weight: FontWeight.w500,
+                                color: const Color(0xFF15803D),
                               ),
                             ),
-                          ],
-                        ),
+                        ],
                       ),
-                    ],
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: _inter(13, color: _soft),
+                    ),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right, color: AppColors.blue),
+              const Icon(Icons.chevron_right, color: _soft),
             ],
           ),
         ),
       ),
     );
   }
+}
+
+/// A rounded dashed border, for the empty "Your feedback" box.
+class _DashedBorder extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFFD5DCE8)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+    final path = Path()
+      ..addRRect(
+        RRect.fromRectAndRadius(
+          Offset.zero & size,
+          const Radius.circular(20),
+        ),
+      );
+    for (final metric in path.computeMetrics()) {
+      var d = 0.0;
+      while (d < metric.length) {
+        canvas.drawPath(metric.extractPath(d, d + 6), paint);
+        d += 11;
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(_DashedBorder old) => false;
 }

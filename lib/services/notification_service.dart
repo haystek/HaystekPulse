@@ -369,9 +369,19 @@ class NotificationService {
       );
     } else if (type == PushSender.typeFeedbackReply) {
       if (employee.isManagement) return;
+      // Open the right tab: 0 = Suggestions, 1 = Weekly Pulse.
+      var tab = 0;
+      if (feedbackId != null && feedbackId.isNotEmpty) {
+        try {
+          final item = await FeedbackService.instance.fetchById(feedbackId);
+          if (item != null && !item.isFromBox) tab = 1;
+        } catch (_) {
+          // Could not check. Open Suggestions.
+        }
+      }
       navigator.push(
         MaterialPageRoute<void>(
-          builder: (_) => MyFeedbackScreen(employee: employee),
+          builder: (_) => MyFeedbackScreen(employee: employee, initialTab: tab),
         ),
       );
     } else if (type == PushSender.typePulseOpen ||

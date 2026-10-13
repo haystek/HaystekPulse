@@ -4,10 +4,10 @@ class AppConfig {
   /// `false` = it opens on the day and time below.
   static const bool pulseOpenEveryDay = false;
 
-  // ---- TESTING (Monday 8:50 PM, closes at midnight) ----
+  // ---- TESTING (Tuesday 6:05 PM, closes at midnight) ----
   static const int pulseOpenDay = DateTime.tuesday;
-  static const int pulseOpenHour = 16;   // 8 PM
-  static const int pulseOpenMinute = 14;
+  static const int pulseOpenHour = 18;   // 6 PM
+  static const int pulseOpenMinute = 5;
   static const int pulseOpenDays = 1;
 
   // ---- RELEASE (Friday 5:00 PM to Sunday night) ----
