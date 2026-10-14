@@ -380,23 +380,9 @@ class _WeeklyPulseScreenState extends State<WeeklyPulseScreen>
                       // Hidden while the keyboard is open, to keep
                       // room for the text box.
                       if (!typing) ...[
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(
-                              Icons.lock_outline,
-                              size: 14,
-                              color: Color(0xFF8E97AB),
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              'Your rating is only counted in the totals',
-                              style: _inter(
-                                12.5,
-                                color: const Color(0xFF8E97AB),
-                              ),
-                            ),
-                          ],
+                        _PrivacyNote(
+                          showsName: needsText && !_anonymous,
+                          isComment: needsText,
                         ),
                         const SizedBox(height: 12),
                       ],
@@ -873,6 +859,71 @@ class _Info extends StatelessWidget {
               minimumSize: const Size.fromHeight(56),
             ),
             child: Text(buttonLabel),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The small box above the Send button that says who sees what.
+class _PrivacyNote extends StatelessWidget {
+  const _PrivacyNote({required this.showsName, required this.isComment});
+
+  /// Okay or Difficult with anonymous off: management sees the name.
+  final bool showsName;
+
+  /// Okay or Difficult (there is a comment).
+  final bool isComment;
+
+  @override
+  Widget build(BuildContext context) {
+    final String title;
+    final String line;
+    if (showsName) {
+      title = 'Your name will be shown';
+      line = 'Management sees your name with this comment.';
+    } else if (isComment) {
+      title = 'Your comment is anonymous';
+      line = 'Your name is hidden from management.';
+    } else {
+      title = 'Your answer is private';
+      line = 'Management sees only totals, not names.';
+    }
+    final color = showsName ? const Color(0xFFB7791F) : AppColors.blue;
+    final tint = showsName ? const Color(0xFFFFF6E5) : const Color(0xFFF2F6FF);
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      decoration: BoxDecoration(
+        color: tint,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              showsName ? Icons.person_outline : Icons.lock_outline,
+              size: 16,
+              color: color,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: _inter(13.5, weight: FontWeight.w600)),
+                const SizedBox(height: 1),
+                Text(line, style: _inter(12.5, color: AppColors.muted)),
+              ],
+            ),
           ),
         ],
       ),
