@@ -5,8 +5,12 @@ import 'models/pulse_rating.dart';
 import 'models/pulse_totals.dart';
 import 'services/pulse_service.dart';
 
-/// Sample data, so the management dashboard can be shown before real
-/// answers come in. Turn it OFF before release: `on = false`.
+/// Sample data, so the app can be shown before real answers come in.
+/// Turn it OFF before release: `on = false`.
+///
+/// Management: [weeks], [comments], [suggestions] (see below).
+/// Employee: [mine] and [myAnswers] fill "Your feedback", My Feedback
+/// and the Notifications screen of every employee.
 ///
 /// - [people]: how many employees the dashboard counts.
 /// - [weeks]: totals for the last 8 weeks and for this week. Real answers
@@ -16,7 +20,7 @@ import 'services/pulse_service.dart';
 /// Sample items can be opened, and their status and reply can be changed,
 /// but only in memory: nothing is saved and no notification is sent.
 class DemoData {
-  static const bool on = false;
+  static const bool on = true;
   static const int people = 30;
 
   /// Great, Good, Okay, Difficult. Oldest week first, this week last.
@@ -162,6 +166,98 @@ class DemoData {
         ...comments(PulseService.shiftWeek(thisWeek, i - back), thisWeek),
       ...suggestions(),
     ];
+  }
+
+  // -------------------------------------------------------------------
+  // Employee samples: what "I" sent (same for every employee)
+  // -------------------------------------------------------------------
+
+  /// (weeks ago, rating) for the employee's sample Weekly Pulse answers.
+  /// This week is left out, so the real "Rate your week" still works.
+  static const List<(int, String)> _myAnswers = [
+    (1, PulseRating.good),
+    (2, PulseRating.okay),
+    (3, PulseRating.great),
+    (4, PulseRating.difficult),
+    (5, PulseRating.good),
+    (6, PulseRating.great),
+  ];
+
+  /// When a sample answer was sent: the open day of that week, 7:30 PM.
+  static DateTime _answeredAt(int weeksAgo) {
+    final weekId = PulseService.shiftWeek(PulseService.currentWeekId(), -weeksAgo);
+    final d = DateTime.parse(weekId);
+    return DateTime(d.year, d.month, d.day, 19, 30);
+  }
+
+  /// The employee's sample answers: weekId → (rating, sent at).
+  static Map<String, (String, DateTime)> myAnswers() {
+    final thisWeek = PulseService.currentWeekId();
+    return {
+      for (final a in _myAnswers)
+        PulseService.shiftWeek(thisWeek, -a.$1): (a.$2, _answeredAt(a.$1)),
+    };
+  }
+
+  /// (weeks ago, text, anonymous, status, reply) for the comments written
+  /// with the Okay and Difficult sample answers above.
+  static const List<(int, String, bool, String, String)> _myComments = [
+    (2, 'Too many meetings this week, hard to finish my own work.', false, FeedbackStatus.implemented, 'Thanks. From next week, Wednesday afternoon is meeting-free.'),
+    (4, 'The laptop keeps freezing during builds. Lost a lot of time.', true, FeedbackStatus.planned, ''),
+  ];
+
+  /// (days ago, text, anonymous, status, reply) for sample suggestions.
+  static const List<(int, String, bool, String, String)> _mySuggestions = [
+    (2, 'Can we have a quiet room for calls? The open area is noisy after lunch.', false, FeedbackStatus.newItem, ''),
+    (9, 'A short monthly demo where each team shows what they built.', true, FeedbackStatus.underReview, ''),
+    (20, 'Second monitor for developers who ask for it.', false, FeedbackStatus.implemented, 'Approved. Ask IT and they will set it up this week.'),
+  ];
+
+  /// Everything the employee "sent": sample suggestions and the comments
+  /// of the sample Weekly Pulse answers, newest first.
+  static List<FeedbackItem> mine() {
+    final now = DateTime.now();
+    final thisWeek = PulseService.currentWeekId();
+    final list = <FeedbackItem>[
+      for (var i = 0; i < _mySuggestions.length; i++)
+            () {
+          final s = _mySuggestions[i];
+          final at = DateTime(now.year, now.month, now.day - s.$1, 11, 20);
+          return _withChanges(FeedbackItem(
+            id: '${idPrefix}my_box_$i',
+            source: 'box',
+            text: s.$2,
+            anonymous: s.$3,
+            status: s.$4,
+            managementMessage: s.$5,
+            createdAt: at,
+            updatedAt: at.add(const Duration(days: 1)),
+          ));
+        }(),
+      for (var i = 0; i < _myComments.length; i++)
+            () {
+          final c = _myComments[i];
+          final weekId = PulseService.shiftWeek(thisWeek, -c.$1);
+          final at = _answeredAt(c.$1);
+          return _withChanges(FeedbackItem(
+            id: '${idPrefix}my_pulse_$i',
+            source: 'pulse',
+            text: c.$2,
+            anonymous: c.$3,
+            rating: myAnswers()[weekId]?.$1,
+            weekId: weekId,
+            status: c.$4,
+            managementMessage: c.$5,
+            createdAt: at,
+            updatedAt: at.add(const Duration(days: 2)),
+          ));
+        }(),
+    ];
+    final fallback = DateTime.now();
+    list.sort(
+          (a, b) => (b.createdAt ?? fallback).compareTo(a.createdAt ?? fallback),
+    );
+    return list;
   }
 
   static FeedbackItem _withChanges(FeedbackItem f) {

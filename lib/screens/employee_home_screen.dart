@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../config.dart';
+import '../demo_data.dart';
 import '../models/employee.dart';
 import '../models/feedback_item.dart';
 import '../models/pulse_rating.dart';
@@ -293,7 +294,7 @@ class _PulseCardState extends State<_PulseCard> with WidgetsBindingObserver {
           closesAt.subtract(const Duration(minutes: 1)),
         );
         final next = PulseService.dateTimeLabel(PulseService.nextOpensAt(now));
-        final week = 'This week, ${PulseService.shortWeekLabel(_weekId)}';
+        final week = _weekDates(_weekId);
 
         // Not open yet: always show the timer first, even if an old
         // answer exists (for example after the open time was changed).
@@ -319,6 +320,7 @@ class _PulseCardState extends State<_PulseCard> with WidgetsBindingObserver {
           return _OpenCard(
             week: week,
             everyDay: everyDay,
+            opensAt: opensAt,
             closesAt: closesAt,
             closesText: closesText,
             onAnswer: widget.onAnswer,
@@ -332,7 +334,22 @@ class _PulseCardState extends State<_PulseCard> with WidgetsBindingObserver {
   }
 }
 
-/// The small chip at the top right of each card.
+/// "Mon 12 – Fri 16 Oct" (or "Mon 28 Sep – Fri 2 Oct").
+String _weekDates(String weekId) {
+  const months = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  ];
+  final p = weekId.split('-').map(int.parse).toList();
+  final d = DateTime(p[0], p[1], p[2]);
+  final mon = DateTime(d.year, d.month, d.day - (d.weekday - DateTime.monday));
+  final fri = DateTime(mon.year, mon.month, mon.day + 4);
+  final start = mon.month == fri.month
+      ? 'Mon ${mon.day}'
+      : 'Mon ${mon.day} ${months[mon.month - 1]}';
+  return '$start – Fri ${fri.day} ${months[fri.month - 1]}';
+}
+
 /// The small chip at the top right of each card.
 /// [outline]: only a thin border and a clock, for "not open yet".
 class _Chip extends StatelessWidget {
@@ -388,13 +405,43 @@ class _Chip extends StatelessWidget {
   }
 }
 
-/// The top line of each card: the week on the left, a chip on the right.
-Widget _cardTop(String week, Widget chip, {Color color = _soft}) => Row(
-  children: [
-    Expanded(child: Text(week, style: _inter(13, color: color))),
-    chip,
-  ],
-);
+/// The top of each card:
+///   Feedback for this week              [chip]
+///   Mon 12 – Fri 16 Oct
+/// [dark]: white dates, for the night-sky cards.
+Widget _cardTop(
+    String week,
+    Widget chip, {
+      Color color = _soft,
+      bool dark = false,
+    }) =>
+    Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Feedback for this week',
+                style: _inter(12.5, color: color),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                week,
+                style: _inter(
+                  15,
+                  weight: FontWeight.w600,
+                  color: dark ? Colors.white : AppColors.ink,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        chip,
+      ],
+    );
 
 /// 1. About to open: a dark blue "night sky" card with a big live timer.
 class _SoonCard extends StatefulWidget {
@@ -446,17 +493,6 @@ class _SoonCardState extends State<_SoonCard> {
     return DateTime(o.year, o.month, o.day - (o.weekday - DateTime.monday));
   }
 
-  /// "Mon 12 Oct".
-  String _monday() {
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-    ];
-    final m = _weekStart;
-    return '${days[m.weekday - 1]} ${m.day} ${months[m.month - 1]}';
-  }
-
   /// How far we are from Monday to the opening: 0.0 to 1.0.
   double _weekProgress() {
     final total = widget.opensAt.difference(_weekStart).inSeconds;
@@ -471,7 +507,6 @@ class _SoonCardState extends State<_SoonCard> {
     if (d.isNegative) d = Duration.zero;
     String two(int n) => n.toString().padLeft(2, '0');
     const unitColor = Color(0xFF9FB4F0);
-    final openDay = PulseService.openDayLabel();
 
     // One part of the timer: a big number and a small unit.
     List<Widget> part(String number, String unit, {Color color = Colors.white}) => [
@@ -521,12 +556,13 @@ class _SoonCardState extends State<_SoonCard> {
           _cardTop(
             widget.week,
             _Chip(
-              'Opens $openDay',
+              'Starting soon',
               bg: Colors.white.withValues(alpha: 0.30),
               fg: const Color(0xFFC9D6FF),
               outline: true,
             ),
             color: unitColor,
+            dark: true,
           ),
           const SizedBox(height: 18),
           Text(
@@ -557,18 +593,14 @@ class _SoonCardState extends State<_SoonCard> {
           // opens). The bright part is the time that has passed, and the
           // glowing dot is now. When the line reaches the heart, it opens.
           PulseLine(progress: _weekProgress()),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
+          // When it starts and when it ends.
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(child: when('Week started', _monday())),
-              when('Opens', widget.opensText, right: true),
+              Expanded(child: when('Starts', widget.opensText)),
+              when('Ends', widget.closesText, right: true),
             ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'Open till ${widget.closesText}',
-            style: _inter(13, color: const Color(0xFFC9D6FF)),
           ),
         ],
       ),
@@ -582,6 +614,7 @@ class _OpenCard extends StatelessWidget {
   const _OpenCard({
     required this.week,
     required this.everyDay,
+    required this.opensAt,
     required this.closesAt,
     required this.closesText,
     required this.onAnswer,
@@ -590,6 +623,7 @@ class _OpenCard extends StatelessWidget {
 
   final String week;
   final bool everyDay;
+  final DateTime opensAt;
   final DateTime closesAt;
   final String closesText;
   final VoidCallback onAnswer;
@@ -622,13 +656,9 @@ class _OpenCard extends StatelessWidget {
               dot: Color(0xFF16A34A),
             ),
             color: _unit,
+            dark: true,
           ),
-          const SizedBox(height: 16),
-          Text(
-            'Weekly Pulse is open',
-            style: _inter(15, color: const Color(0xFFC9D6FF)),
-          ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 18),
           Text(
             'How was your week?',
             style: _inter(
@@ -639,11 +669,13 @@ class _OpenCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
-          // The line has reached the heart.
+          // The line has reached the heart, and keeps running like a
+          // heart monitor (same as management and sign in).
           const PulseLine(
             progress: 1,
             heartColor: Color(0xFFFF6B8A),
             showDot: false,
+            moving: true,
           ),
           const SizedBox(height: 12),
           FilledButton(
@@ -659,32 +691,235 @@ class _OpenCard extends StatelessWidget {
             ),
             child: const Text('Rate your week'),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 18),
           if (everyDay)
             Text('Test mode: open every day', style: _inter(13, color: _unit))
           else
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Closes $closesText',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: _inter(13, color: _unit),
+          // Opened → Now (time left) → Closes. Same as management.
+            _Timeline(opensAt: opensAt, closesAt: closesAt, onClosed: onClosed),
+        ],
+      ),
+    );
+  }
+}
+
+/// The time line at the bottom of the night-sky card:
+///
+///                  ( 2d 3h left )
+///   ●──────────────────●─────────────────────●
+///   Started at                          Ends at
+///   Wed, 8:20 PM                   Fri, 11:59 PM
+///
+/// The bright part of the line is the time LEFT (dot → end), so just
+/// after opening it is almost full, and it gets shorter until it ends.
+/// The blue dot is now. It moves along the line as time passes, and the
+/// time left moves with it. Once closed, the line is
+/// full and faint, there is no time left, and the end says "Ended at".
+class _Timeline extends StatefulWidget {
+  const _Timeline({
+    required this.opensAt,
+    required this.closesAt,
+    this.closed = false,
+    this.onClosed,
+  });
+
+  final DateTime opensAt;
+
+  /// Midnight after the last day. Shown as 11:59 PM.
+  final DateTime closesAt;
+  final bool closed;
+
+  /// Called when the time runs out, so the card can change.
+  final VoidCallback? onClosed;
+
+  @override
+  State<_Timeline> createState() => _TimelineState();
+}
+
+class _TimelineState extends State<_Timeline> {
+  static const Color _soft = Color(0xFF9FB4F0);
+  static const Color _glow = Color(0xFF7FA2FF);
+  static const Color _light = Color(0xFFC9D6FF);
+
+  // Moves the dot every 30 seconds.
+  Timer? _tick;
+
+  @override
+  void initState() {
+    super.initState();
+    if (!widget.closed) {
+      _tick = Timer.periodic(const Duration(seconds: 30), (_) {
+        if (mounted) setState(() {});
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _tick?.cancel();
+    super.dispose();
+  }
+
+  /// "Fri, 5:00 PM".
+  static String _dayTime(DateTime d) {
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    final h = d.hour % 12 == 0 ? 12 : d.hour % 12;
+    final m = d.minute.toString().padLeft(2, '0');
+    return '${days[d.weekday - 1]}, $h:$m ${d.hour < 12 ? 'AM' : 'PM'}';
+  }
+
+  static TextStyle _t(
+      double size, {
+        FontWeight weight = FontWeight.w400,
+        Color color = Colors.white,
+      }) =>
+      GoogleFonts.inter(fontSize: size, fontWeight: weight, color: color);
+
+  @override
+  Widget build(BuildContext context) {
+    final closed = widget.closed;
+    final all = widget.closesAt.difference(widget.opensAt).inSeconds;
+    final gone = DateTime.now().difference(widget.opensAt).inSeconds;
+    final progress = closed || all <= 0 ? 1.0 : (gone / all).clamp(0.0, 1.0);
+    const lineColor = _glow;
+    final endText = _dayTime(
+      widget.closesAt.subtract(const Duration(minutes: 1)),
+    );
+
+    Widget dot(Color c, double size, {bool glow = false}) => Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: c,
+        shape: BoxShape.circle,
+        boxShadow: glow
+            ? [BoxShadow(color: c.withValues(alpha: 0.25), spreadRadius: 4)]
+            : null,
+      ),
+    );
+
+    return LayoutBuilder(
+      builder: (context, box) {
+        final w = box.maxWidth;
+        // Where the "now" dot is (its left edge), 12 px wide.
+        final x = (w - 12) * progress;
+        final centre = x + 6;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // The time left, just above the dot, in a small glass pill.
+            if (!closed) ...[
+              SizedBox(
+                height: 22,
+                child: Align(
+                  // Follows the dot, but never goes off the card.
+                  alignment: Alignment(w <= 0 ? 0 : centre / w * 2 - 1, 0),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 9,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: LiveCountdown(
+                      to: widget.closesAt,
+                      onDone: widget.onClosed ?? () {},
+                      suffix: ' left',
+                      color: _light,
+                      size: 11.5,
+                    ),
                   ),
                 ),
-                const SizedBox(width: 8),
-                LiveCountdown(
-                  to: closesAt,
-                  onDone: onClosed,
-                  suffix: ' left',
-                  color: const Color(0xFF7FA2FF),
-                  size: 13,
+              ),
+              const SizedBox(height: 6),
+            ],
+            // The thin line with its dots.
+            SizedBox(
+              height: 12,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  // The whole time, faint.
+                  Positioned(
+                    left: 5,
+                    right: 5,
+                    top: 5,
+                    child: Container(
+                      height: 2,
+                      color: Colors.white.withValues(alpha: 0.18),
+                    ),
+                  ),
+                  // The time that is LEFT: bright, from the dot to the end.
+                  // It gets shorter as time passes. Once closed, nothing
+                  // is left, so the whole line is faint.
+                  if (!closed)
+                    Positioned(
+                      left: centre,
+                      right: 5,
+                      top: 5,
+                      child: Container(height: 2, color: lineColor),
+                    ),
+                  // Start: already passed, so faint.
+                  Positioned(
+                    left: 0,
+                    top: 1,
+                    child: dot(Colors.white.withValues(alpha: 0.45), 10),
+                  ),
+                  // End: still to come (white), faint once closed.
+                  Positioned(
+                    right: 0,
+                    top: 1,
+                    child: dot(
+                      closed
+                          ? Colors.white.withValues(alpha: 0.45)
+                          : Colors.white,
+                      10,
+                    ),
+                  ),
+                  // Now: a blue dot with a soft glow.
+                  if (!closed)
+                    Positioned(left: x, top: 0, child: dot(_glow, 12, glow: true)),
+                ],
+              ),
+            ),
+            const SizedBox(height: 9),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Started at', style: _t(12, color: _soft)),
+                      const SizedBox(height: 2),
+                      Text(
+                        _dayTime(widget.opensAt),
+                        style: _t(13, weight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        closed ? 'Ended at' : 'Ends at',
+                        style: _t(12, color: _soft),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(endText, style: _t(13, weight: FontWeight.w600)),
+                    ],
+                  ),
                 ),
               ],
             ),
-        ],
-      ),
+          ],
+        );
+      },
     );
   }
 }
@@ -1015,7 +1250,20 @@ class _RecentActivityState extends State<_RecentActivity> {
         }(),
     ]);
     if (!mounted) return;
-    setState(() => _oldAnswers = found.whereType<Map<String, dynamic>>().toList());
+    final real = found.whereType<Map<String, dynamic>>().toList();
+    // Sample answers (DemoData), for weeks without a real answer.
+    if (DemoData.on) {
+      final have = {for (final a in real) a['weekId']};
+      DemoData.myAnswers().forEach((weekId, a) {
+        if (have.contains(weekId) || weekId == _thisWeek) return;
+        real.add({
+          'weekId': weekId,
+          'rating': a.$1,
+          'createdAt': Timestamp.fromDate(a.$2),
+        });
+      });
+    }
+    setState(() => _oldAnswers = real);
   }
 
   static String _date(DateTime? d) {

@@ -186,6 +186,7 @@ class FeedbackService {
   }
 
   /// Everything this employee has submitted, newest first, updating live.
+  /// While DemoData is on, the employee's sample items are added too.
   ///
   /// It first listens to the employee's private owner links, then listens
   /// to each of those feedback entries, so a status change or a reply from
@@ -204,11 +205,13 @@ class FeedbackService {
       // build up one row at a time.
       if (waiting.isNotEmpty) return;
       final fallback = DateTime.now();
-      final list = items.values.toList()
-        ..sort(
-              (a, b) =>
-              (b.createdAt ?? fallback).compareTo(a.createdAt ?? fallback),
-        );
+      final list = [
+        ...items.values,
+        if (DemoData.on) ...DemoData.mine(),
+      ]..sort(
+            (a, b) =>
+            (b.createdAt ?? fallback).compareTo(a.createdAt ?? fallback),
+      );
       controller.add(list);
     }
 

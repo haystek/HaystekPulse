@@ -534,45 +534,49 @@ class _ManagementHomeScreenState extends State<ManagementHomeScreen>
                         open: _windowOpen && shown == thisWeek,
                         notOpenYet: notOpenYet,
                         closed: closed,
+                        lastWeek: weeks[PulseService.shiftWeek(shown, -1)],
                       ),
                       const SizedBox(height: 14),
+                      // Before it opens: no numbers yet, just who can answer.
+                      if (notOpenYet)
+                        _SoonNote(total: total)
+                      else
                       // The numbers and the reminder, in one white card.
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(22),
-                          border: Border.all(
-                            color: const Color(0xFFEDF0F6),
-                            width: 1.5,
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(22),
+                            border: Border.all(
+                              color: const Color(0xFFEDF0F6),
+                              width: 1.5,
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _RingSummary(total: total, totals: totals),
+                              ...[
+                                const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 14),
+                                  child: Divider(
+                                    height: 1,
+                                    color: Color(0xFFEDF0F6),
+                                  ),
+                                ),
+                                _RemindButton(
+                                  weekId: shown,
+                                  total: total,
+                                  pending: pending,
+                                  canNotify: canNotify,
+                                  windowOpen: _windowOpen && shown == _weekId,
+                                  sending: _sending,
+                                  onRemind: _remind,
+                                ),
+                              ],
+                            ],
                           ),
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            _RingSummary(total: total, totals: totals),
-                            // No reminder row before the week opens.
-                            if (!(notOpenYet && total > 0)) ...[
-                              const Padding(
-                                padding: EdgeInsets.symmetric(vertical: 14),
-                                child: Divider(
-                                  height: 1,
-                                  color: Color(0xFFEDF0F6),
-                                ),
-                              ),
-                              _RemindButton(
-                                weekId: shown,
-                                total: total,
-                                pending: pending,
-                                canNotify: canNotify,
-                                windowOpen: _windowOpen && shown == _weekId,
-                                sending: _sending,
-                                onRemind: _remind,
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
                       const SizedBox(height: 22),
                       _WhatPeopleSaid(
                         comments: comments,
@@ -673,11 +677,7 @@ Color _moodColor(String rating) {
     '$submitted of $total answered. The summary shows after $needed.',
     );
   }
-  final good = totals.countFor(PulseRating.great) +
-      totals.countFor(PulseRating.good);
-  final attention = totals.countFor(PulseRating.okay) +
-      totals.countFor(PulseRating.difficult);
-  final share = good / submitted;
+  final share = _goodShare(totals);
   final String title;
   if (share >= 0.75) {
     title = totals.countFor(PulseRating.great) >
@@ -694,10 +694,16 @@ Color _moodColor(String rating) {
         ? 'An okay week'
         : 'A hard week';
   }
-  final line = attention == 0
-      ? 'Everyone feels good this week.'
-      : '$good of $submitted feel good, $attention need attention.';
-  return (title, line);
+  // No small line here: the card shows "Better than last week" instead,
+  // and the ring below shows the numbers.
+  return (title, '');
+}
+
+/// Great + Good, out of everyone who answered: 0.0 to 1.0.
+double _goodShare(PulseTotals t) {
+  if (t.submitted == 0) return 0;
+  return (t.countFor(PulseRating.great) + t.countFor(PulseRating.good)) /
+      t.submitted;
 }
 
 /// The dark "night sky" card at the top of the week. Same style as the
@@ -720,10 +726,14 @@ class _WeekHero extends StatefulWidget {
     required this.open,
     required this.notOpenYet,
     required this.closed,
+    this.lastWeek,
   });
 
   final String weekId;
   final PulseTotals totals;
+
+  /// The week before, to say "Better than last week". Null if none.
+  final PulseTotals? lastWeek;
   final int total;
   final bool isThisWeek;
   final bool open;
@@ -776,17 +786,6 @@ class _WeekHeroState extends State<_WeekHero> {
   DateTime get _weekStart {
     final o = PulseService.opensAt();
     return DateTime(o.year, o.month, o.day - (o.weekday - DateTime.monday));
-  }
-
-  /// "Mon 12 Oct".
-  String _monday() {
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-    ];
-    final m = _weekStart;
-    return '${days[m.weekday - 1]} ${m.day} ${months[m.month - 1]}';
   }
 
   /// How far we are from Monday to the opening: 0.0 to 1.0.
@@ -855,18 +854,120 @@ class _WeekHeroState extends State<_WeekHero> {
     );
   }
 
-  /// The top row: "Week of 19–23 Oct" and the chip.
-  Widget _top(Widget chip) => Row(
-    children: [
-      Expanded(
-        child: Text(
-          'Week of ${PulseService.shortWeekLabel(widget.weekId)}',
-          style: _t(13, color: _soft),
+  /// The small tag under the title, compared with the week before:
+  ///   ↑ Better than last week   (green)
+  ///   ↓ Harder than last week   (red)
+  ///   = About the same as last week
+  /// Only when the week before has answers. A change of more than 10%
+  /// of people feeling good counts as better or harder.
+  Widget? _trend() {
+    final before = widget.lastWeek;
+    if (before == null || before.submitted == 0) return null;
+    if (widget.totals.submitted == 0) return null;
+    final diff = _goodShare(widget.totals) - _goodShare(before);
+    final than = widget.isThisWeek ? 'last week' : 'the week before';
+    final IconData icon;
+    final String text;
+    final Color bg;
+    final Color fg;
+    if (diff > 0.10) {
+      icon = Icons.arrow_upward_rounded;
+      text = 'Better than $than';
+      bg = const Color(0x294ADE80);
+      fg = const Color(0xFF86EFAC);
+    } else if (diff < -0.10) {
+      icon = Icons.arrow_downward_rounded;
+      text = 'Harder than $than';
+      bg = const Color(0x2EF87171);
+      fg = const Color(0xFFFCA5A5);
+    } else {
+      icon = Icons.drag_handle_rounded;
+      text = 'About the same as $than';
+      bg = Colors.white.withValues(alpha: 0.12);
+      fg = _light;
+    }
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.only(top: 8),
+        padding: const EdgeInsets.fromLTRB(9, 5, 11, 5),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 15, color: fg),
+            const SizedBox(width: 5),
+            Text(text, style: _t(13, weight: FontWeight.w500, color: fg)),
+          ],
         ),
       ),
-      chip,
-    ],
-  );
+    );
+  }
+
+  /// The small line under the title, or the "Better than last week" tag.
+  List<Widget> _underTitle(String line) {
+    if (line.isNotEmpty) {
+      return [
+        const SizedBox(height: 2),
+        Text(line, style: _t(14, color: _light)),
+      ];
+    }
+    final trend = _trend();
+    return [if (trend != null) trend];
+  }
+
+  /// The day the week is named after (its open day).
+  DateTime get _weekDate {
+    final p = widget.weekId.split('-').map(int.parse).toList();
+    return DateTime(p[0], p[1], p[2]);
+  }
+
+  /// "Mon 12 – Fri 16 Oct" (or "Mon 28 Sep – Fri 2 Oct").
+  String _weekDates() {
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    final d = _weekDate;
+    final mon = DateTime(d.year, d.month, d.day - (d.weekday - DateTime.monday));
+    final fri = DateTime(mon.year, mon.month, mon.day + 4);
+    final start = mon.month == fri.month
+        ? 'Mon ${mon.day}'
+        : 'Mon ${mon.day} ${months[mon.month - 1]}';
+    return '$start – Fri ${fri.day} ${months[fri.month - 1]}';
+  }
+
+  /// The top: "This week" with "Mon 12 – Fri 16 Oct" under it, and the
+  /// chip on the right. Older weeks show only the dates.
+  Widget _top(Widget chip) {
+    final name = PulseService.weekName(widget.weekId);
+    final dates = _weekDates();
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                name.isEmpty ? dates : name,
+                style: _t(15, weight: FontWeight.w600),
+              ),
+              if (name.isNotEmpty) ...[
+                const SizedBox(height: 1),
+                Text(dates, style: _t(12.5, color: _soft)),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        chip,
+      ],
+    );
+  }
 
   // ---------------------------------------------------------------------
   // 1. Starting soon
@@ -875,8 +976,8 @@ class _WeekHeroState extends State<_WeekHero> {
     var d = PulseService.opensAt().difference(DateTime.now());
     if (d.isNegative) d = Duration.zero;
     String two(int n) => n.toString().padLeft(2, '0');
-    final opensText = PulseService.dateTimeLabel(PulseService.opensAt());
-    final closesText = PulseService.dateTimeLabel(
+    final opensText = _TimelineState._dayTime(PulseService.opensAt());
+    final closesText = _TimelineState._dayTime(
       PulseService.closesAt().subtract(const Duration(minutes: 1)),
     );
 
@@ -903,8 +1004,8 @@ class _WeekHeroState extends State<_WeekHero> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _top(
-          _HeroChip(
-            'Opens ${PulseService.openDayLabel()}',
+          const _HeroChip(
+            'Starting soon',
             bg: Colors.transparent,
             fg: _light,
             outline: true,
@@ -929,32 +1030,15 @@ class _WeekHeroState extends State<_WeekHero> {
         ),
         const SizedBox(height: 14),
         // From Monday (left) to the heart (the moment it opens).
-        // The moving part runs up to now, again and again.
-        PulseLine(progress: _weekProgress(), moving: true),
-        const SizedBox(height: 8),
+        // One beating dot: now.
+        PulseLine(progress: _weekProgress()),
+        const SizedBox(height: 10),
+        // When it starts and when it ends.
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(child: _when('Week started', _monday())),
-            _when('Opens', opensText, right: true),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                'Open till $closesText',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: _t(13, color: _light),
-              ),
-            ),
-            if (widget.total > 0)
-              Text(
-                '${widget.total} people',
-                style: _t(13, color: _soft),
-              ),
+            Expanded(child: _when('Starts', opensText)),
+            _when('Ends', closesText, right: true),
           ],
         ),
       ],
@@ -974,9 +1058,6 @@ class _WeekHeroState extends State<_WeekHero> {
     final submitted = widget.totals.submitted;
     final waiting = (widget.total - submitted).clamp(0, widget.total);
     final everyone = widget.total > 0 && submitted >= widget.total;
-    final closesText = PulseService.dateTimeLabel(
-      PulseService.closesAt().subtract(const Duration(minutes: 1)),
-    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -996,10 +1077,7 @@ class _WeekHeroState extends State<_WeekHero> {
           title,
           style: _t(28, weight: FontWeight.w700, letterSpacing: -0.6),
         ),
-        if (line.isNotEmpty) ...[
-          const SizedBox(height: 2),
-          Text(line, style: _t(14, color: _light)),
-        ],
+        ..._underTitle(line),
         const SizedBox(height: 10),
         // The line follows the answers. Everyone answered = the heart.
         PulseLine(
@@ -1024,29 +1102,14 @@ class _WeekHeroState extends State<_WeekHero> {
             ],
           ),
         ],
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         if (AppConfig.pulseOpenEveryDay)
           Text('Test mode: open every day', style: _t(13, color: _soft))
         else
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Closes $closesText',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: _t(13, color: _soft),
-                ),
-              ),
-              const SizedBox(width: 8),
-              LiveCountdown(
-                to: PulseService.closesAt(),
-                onDone: () {},
-                suffix: ' left',
-                color: _glow,
-                size: 13,
-              ),
-            ],
+        // Opened → Now (time left) → Closes.
+          _Timeline(
+            opensAt: PulseService.opensAt(_weekDate),
+            closesAt: PulseService.closesAt(_weekDate),
           ),
       ],
     );
@@ -1094,10 +1157,7 @@ class _WeekHeroState extends State<_WeekHero> {
           title,
           style: _t(28, weight: FontWeight.w700, letterSpacing: -0.6),
         ),
-        if (line.isNotEmpty) ...[
-          const SizedBox(height: 2),
-          Text(line, style: _t(14, color: _light)),
-        ],
+        ..._underTitle(line),
         const SizedBox(height: 10),
         // Faint: shows how far the answers got.
         PulseLine(
@@ -1118,9 +1178,239 @@ class _WeekHeroState extends State<_WeekHero> {
             ],
           ),
         ],
-        const SizedBox(height: 12),
+        if (!AppConfig.pulseOpenEveryDay) ...[
+          const SizedBox(height: 16),
+          // Opened → Closed, all done.
+          _Timeline(
+            opensAt: PulseService.opensAt(_weekDate),
+            closesAt: PulseService.closesAt(_weekDate),
+            closed: true,
+          ),
+        ],
+        const SizedBox(height: 14),
         bottom,
       ],
+    );
+  }
+}
+
+/// The time line at the bottom of the night-sky card:
+///
+///                  ( 2d 3h left )
+///   ●──────────────────●─────────────────────●
+///   Started at                          Ends at
+///   Wed, 8:20 PM                   Fri, 11:59 PM
+///
+/// The bright part of the line is the time LEFT (dot → end), so just
+/// after opening it is almost full, and it gets shorter until it ends.
+/// The blue dot is now. It moves along the line as time passes, and the
+/// time left moves with it. Once closed, the line is
+/// full and faint, there is no time left, and the end says "Ended at".
+class _Timeline extends StatefulWidget {
+  const _Timeline({
+    required this.opensAt,
+    required this.closesAt,
+    this.closed = false,
+    this.onClosed,
+  });
+
+  final DateTime opensAt;
+
+  /// Midnight after the last day. Shown as 11:59 PM.
+  final DateTime closesAt;
+  final bool closed;
+
+  /// Called when the time runs out, so the card can change.
+  final VoidCallback? onClosed;
+
+  @override
+  State<_Timeline> createState() => _TimelineState();
+}
+
+class _TimelineState extends State<_Timeline> {
+  static const Color _soft = Color(0xFF9FB4F0);
+  static const Color _glow = Color(0xFF7FA2FF);
+  static const Color _light = Color(0xFFC9D6FF);
+
+  // Moves the dot every 30 seconds.
+  Timer? _tick;
+
+  @override
+  void initState() {
+    super.initState();
+    if (!widget.closed) {
+      _tick = Timer.periodic(const Duration(seconds: 30), (_) {
+        if (mounted) setState(() {});
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _tick?.cancel();
+    super.dispose();
+  }
+
+  /// "Fri, 5:00 PM".
+  static String _dayTime(DateTime d) {
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    final h = d.hour % 12 == 0 ? 12 : d.hour % 12;
+    final m = d.minute.toString().padLeft(2, '0');
+    return '${days[d.weekday - 1]}, $h:$m ${d.hour < 12 ? 'AM' : 'PM'}';
+  }
+
+  static TextStyle _t(
+      double size, {
+        FontWeight weight = FontWeight.w400,
+        Color color = Colors.white,
+      }) =>
+      GoogleFonts.inter(fontSize: size, fontWeight: weight, color: color);
+
+  @override
+  Widget build(BuildContext context) {
+    final closed = widget.closed;
+    final all = widget.closesAt.difference(widget.opensAt).inSeconds;
+    final gone = DateTime.now().difference(widget.opensAt).inSeconds;
+    final progress = closed || all <= 0 ? 1.0 : (gone / all).clamp(0.0, 1.0);
+    const lineColor = _glow;
+    final endText = _dayTime(
+      widget.closesAt.subtract(const Duration(minutes: 1)),
+    );
+
+    Widget dot(Color c, double size, {bool glow = false}) => Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: c,
+        shape: BoxShape.circle,
+        boxShadow: glow
+            ? [BoxShadow(color: c.withValues(alpha: 0.25), spreadRadius: 4)]
+            : null,
+      ),
+    );
+
+    return LayoutBuilder(
+      builder: (context, box) {
+        final w = box.maxWidth;
+        // Where the "now" dot is (its left edge), 12 px wide.
+        final x = (w - 12) * progress;
+        final centre = x + 6;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // The time left, just above the dot, in a small glass pill.
+            if (!closed) ...[
+              SizedBox(
+                height: 22,
+                child: Align(
+                  // Follows the dot, but never goes off the card.
+                  alignment: Alignment(w <= 0 ? 0 : centre / w * 2 - 1, 0),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 9,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: LiveCountdown(
+                      to: widget.closesAt,
+                      onDone: widget.onClosed ?? () {},
+                      suffix: ' left',
+                      color: _light,
+                      size: 11.5,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 6),
+            ],
+            // The thin line with its dots.
+            SizedBox(
+              height: 12,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  // The whole time, faint.
+                  Positioned(
+                    left: 5,
+                    right: 5,
+                    top: 5,
+                    child: Container(
+                      height: 2,
+                      color: Colors.white.withValues(alpha: 0.18),
+                    ),
+                  ),
+                  // The time that is LEFT: bright, from the dot to the end.
+                  // It gets shorter as time passes. Once closed, nothing
+                  // is left, so the whole line is faint.
+                  if (!closed)
+                    Positioned(
+                      left: centre,
+                      right: 5,
+                      top: 5,
+                      child: Container(height: 2, color: lineColor),
+                    ),
+                  // Start: already passed, so faint.
+                  Positioned(
+                    left: 0,
+                    top: 1,
+                    child: dot(Colors.white.withValues(alpha: 0.45), 10),
+                  ),
+                  // End: still to come (white), faint once closed.
+                  Positioned(
+                    right: 0,
+                    top: 1,
+                    child: dot(
+                      closed
+                          ? Colors.white.withValues(alpha: 0.45)
+                          : Colors.white,
+                      10,
+                    ),
+                  ),
+                  // Now: a blue dot with a soft glow.
+                  if (!closed)
+                    Positioned(left: x, top: 0, child: dot(_glow, 12, glow: true)),
+                ],
+              ),
+            ),
+            const SizedBox(height: 9),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Started at', style: _t(12, color: _soft)),
+                      const SizedBox(height: 2),
+                      Text(
+                        _dayTime(widget.opensAt),
+                        style: _t(13, weight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        closed ? 'Ended at' : 'Ends at',
+                        style: _t(12, color: _soft),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(endText, style: _t(13, weight: FontWeight.w600)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -1175,6 +1465,73 @@ class _HeroChip extends StatelessWidget {
               fontSize: 12.5,
               fontWeight: outline ? FontWeight.w400 : FontWeight.w600,
               color: fg,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Before the Weekly Pulse opens, in place of the ring:
+///   👥 30 people can answer
+///      Answers and the summary show here once it opens.
+class _SoonNote extends StatelessWidget {
+  const _SoonNote({required this.total});
+
+  final int total;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: const Color(0xFFEDF0F6), width: 1.5),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF2F6FF),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(
+              Icons.groups_outlined,
+              color: AppColors.blue,
+              size: 22,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  total == 0
+                      ? 'No employees added yet'
+                      : total == 1
+                      ? '1 person can answer'
+                      : '$total people can answer',
+                  style: GoogleFonts.inter(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.ink,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Answers and the summary show here once it opens.',
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    height: 1.4,
+                    color: const Color(0xFF69728A),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -1534,9 +1891,11 @@ class _WeekCards extends StatelessWidget {
           } else {
             sub = '${t.submitted} answered';
           }
+          // Not open yet: an empty grey bar, never colours.
           final parts = [
-            for (final r in PulseRating.all)
-              if (t.countFor(r) > 0) r,
+            if (!isUpcoming)
+              for (final r in PulseRating.all)
+                if (t.countFor(r) > 0) r,
           ];
 
           return Material(

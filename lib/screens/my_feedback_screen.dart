@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../demo_data.dart';
 import '../models/employee.dart';
 import '../models/feedback_item.dart';
 import '../models/pulse_rating.dart';
@@ -115,7 +116,16 @@ class _MyFeedbackScreenState extends State<MyFeedbackScreen> {
       }),
     );
     if (!mounted) return;
-    setState(() => _answers = found.whereType<_Answer>().toList());
+    final answers = found.whereType<_Answer>().toList();
+    // Sample answers (DemoData), for weeks without a real answer.
+    if (DemoData.on) {
+      final have = {for (final a in answers) a.weekId};
+      DemoData.myAnswers().forEach((weekId, a) {
+        if (have.contains(weekId)) return;
+        answers.add(_Answer(weekId: weekId, rating: a.$1, at: a.$2));
+      });
+    }
+    setState(() => _answers = answers);
   }
 
   /// One row per week: the answer, and the comment if one was written.
@@ -1401,7 +1411,6 @@ class _StepDot extends StatelessWidget {
       );
     }
     return Container(
-
       width: 18,
       height: 18,
       decoration: BoxDecoration(
