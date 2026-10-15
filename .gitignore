@@ -43,9 +43,7 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
-assets/fcm_sender.json
 
 # Secrets - never upload
-assets/fcm_sender.json
-*.p8
 **/fcm_sender.json
+*.p8
