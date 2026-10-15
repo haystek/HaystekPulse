@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 
 import '../models/employee.dart';
 import '../config.dart';
@@ -233,6 +234,37 @@ class FeedbackService {
       docSubs.clear();
     }
 
+    // Listens to one feedback entry, live.
+    // A brand-new entry can be refused for a moment (the server checks
+    // its private owner link, which may not be saved yet). Firestore then
+    // stops that listener for good, and later status changes and replies
+    // would never show. So on an error, try again a few times.
+    void listenDoc(String id, [int attempt = 0]) {
+      docSubs[id] = _feedback.doc(id).snapshots().listen(
+            (doc) {
+          waiting.remove(id);
+          if (doc.exists) {
+            items[id] = FeedbackItem.fromDoc(doc);
+          } else {
+            items.remove(id);
+          }
+          emit();
+        },
+        onError: (Object error) {
+          debugPrint('[MyFeedback] $id: $error (try ${attempt + 1})');
+          waiting.remove(id);
+          emit();
+          if (attempt >= 5 || controller.isClosed) return;
+          Future<void>.delayed(Duration(seconds: 2 * (attempt + 1)), () {
+            // Still wanted, and not replaced meanwhile.
+            if (controller.isClosed || !docSubs.containsKey(id)) return;
+            docSubs[id]?.cancel();
+            listenDoc(id, attempt + 1);
+          });
+        },
+      );
+    }
+
     controller = StreamController<List<FeedbackItem>>(
       onListen: () {
         ownersSub = _owners.where('uid', isEqualTo: uid).snapshots().listen(
@@ -250,21 +282,7 @@ class FeedbackService {
             for (final id in current) {
               if (docSubs.containsKey(id)) continue;
               waiting.add(id);
-              docSubs[id] = _feedback.doc(id).snapshots().listen(
-                    (doc) {
-                  waiting.remove(id);
-                  if (doc.exists) {
-                    items[id] = FeedbackItem.fromDoc(doc);
-                  } else {
-                    items.remove(id);
-                  }
-                  emit();
-                },
-                onError: (Object _) {
-                  waiting.remove(id);
-                  emit();
-                },
-              );
+              listenDoc(id);
             }
 
             emit();
