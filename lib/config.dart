@@ -4,11 +4,14 @@ class AppConfig {
   /// `false` = it opens on the day and time below.
   static const bool pulseOpenEveryDay = false;
 
+
   // ---- TESTING (Tuesday 6:05 PM, closes at midnight) ----
-  static const int pulseOpenDay = DateTime.wednesday;
-  static const int pulseOpenHour = 16;// 6 PM
-  static const int pulseOpenMinute = 0;
-  static const int pulseOpenDays = 1;
+  // Default schedule. The real values come from Firebase: settings/pulse.
+  // Change them in the Firebase console; no new build needed.
+  static int pulseOpenDay = DateTime.friday;
+  static int pulseOpenHour = 17; // 5 PM
+  static int pulseOpenMinute = 0;
+  static int pulseOpenDays = 3;
 
   // ---- RELEASE (Friday 5:00 PM to Sunday night) ----
   // static const int pulseOpenDay = DateTime.friday;
@@ -18,8 +21,8 @@ class AppConfig {
 
   /// `true`: management is notified for every Weekly Pulse answer.
   /// `false`: no Weekly Pulse notifications to management.
-  static const bool notifyManagementOnEveryPulse = false;
-  static const bool notifyManagementOnPulseComments = false;
+  static const bool notifyManagementOnEveryPulse = true;
+  static const bool notifyManagementOnPulseComments = true;
 
   /// `true`: the employee is notified on every status change.
   static const bool notifyEmployeeOnEveryStatus = true;

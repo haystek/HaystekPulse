@@ -138,28 +138,32 @@ class FeedbackService {
     return controller.stream;
   }
 
-  /// Management sets the status. The reply is kept only for "Implemented",
-  /// where it is required.
+  /// Management sets the status. The reply is kept for "Implemented"
+  /// (required) and "Noted" (optional).
   Future<void> updateStatus({
     required String id,
     required String status,
     required String message,
   }) async {
     final implemented = status == FeedbackStatus.implemented;
+    final keepReply = FeedbackStatus.keepsReply(status);
     // Sample items (DemoData) are not in Firestore: keep the change in
     // memory only, and send no notification.
     if (id.startsWith(DemoData.idPrefix)) {
-      DemoData.update(id, status, implemented ? message.trim() : '');
+      DemoData.update(id, status, keepReply ? message.trim() : '');
       return;
     }
     await _feedback.doc(id).update(<String, dynamic>{
       'status': status,
-      'managementMessage':
-      implemented ? TextCrypto.encrypt(message.trim()) : '',
+      'managementMessage': keepReply && message.trim().isNotEmpty
+          ? TextCrypto.encrypt(message.trim())
+          : '',
       'updatedAt': FieldValue.serverTimestamp(),
     });
 
-    if (implemented || AppConfig.notifyEmployeeOnEveryStatus) {
+    if (implemented ||
+        status == FeedbackStatus.noted ||
+        AppConfig.notifyEmployeeOnEveryStatus) {
       unawaited(_notifyAuthor(id, status, message));
     }
   }
@@ -170,13 +174,19 @@ class FeedbackService {
     if (!PushSender.available) return;
     try {
       final implemented = status == FeedbackStatus.implemented;
+      final noted = status == FeedbackStatus.noted;
+      final hasMessage = message.trim().isNotEmpty;
       await PushSender.toTopic(
         NotificationService.feedbackTopic(id),
         title: implemented
             ? 'Your feedback is Implemented ✅'
+            : noted
+            ? 'Management has noted your feedback'
             : 'Your feedback is now ${FeedbackStatus.label(status)}',
-        body: implemented
+        body: (implemented || noted) && hasMessage
             ? PushSender.shorten(message)
+            : noted
+            ? 'Thank you for sharing. Tap to see it in My Feedback.'
             : 'Tap to see it in My Feedback.',
         data: {'type': PushSender.typeFeedbackReply, 'feedbackId': id},
       );

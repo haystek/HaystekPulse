@@ -49,7 +49,10 @@ Future<bool> sendPush({
           if (data != null && data.isNotEmpty) 'data': data,
           'android': {
             'priority': 'HIGH',
+            // Keep trying for one day if the phone is off or offline.
+            'ttl': '86400s',
             'notification': {
+              'visibility': 'PUBLIC',
               'channel_id': _channelId,
               'icon': 'ic_notification',
               'color': '#1B4FD8',
@@ -60,6 +63,7 @@ Future<bool> sendPush({
             },
           },
           'apns': {
+            'headers': {'apns-priority': '10'},
             'payload': {
               'aps': {'sound': 'default'},
             },

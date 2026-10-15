@@ -383,31 +383,10 @@ class _ManagementHomeScreenState extends State<ManagementHomeScreen>
                 ),
               ],
             ),
-            bottomNavigationBar: NavigationBar(
-              selectedIndex: _tab,
-              onDestinationSelected: (i) => setState(() => _tab = i),
-              backgroundColor: Colors.white,
-              indicatorColor: AppColors.blueTint,
-              destinations: [
-                const NavigationDestination(
-                  icon: Icon(Icons.monitor_heart_outlined),
-                  selectedIcon: Icon(Icons.monitor_heart, color: AppColors.blue),
-                  label: 'Weekly Pulse',
-                ),
-                NavigationDestination(
-                  icon: Badge(
-                    isLabelVisible: newCount > 0,
-                    label: Text('$newCount'),
-                    child: const Icon(Icons.edit_outlined),
-                  ),
-                  selectedIcon: Badge(
-                    isLabelVisible: newCount > 0,
-                    label: Text('$newCount'),
-                    child: const Icon(Icons.edit, color: AppColors.blue),
-                  ),
-                  label: 'Suggestion Box',
-                ),
-              ],
+            bottomNavigationBar: _BottomTabs(
+              index: _tab,
+              newCount: newCount,
+              onTap: (i) => setState(() => _tab = i),
             ),
           )),
         );
@@ -2171,20 +2150,38 @@ class _WhatPeopleSaid extends StatelessWidget {
             Expanded(
               child: Text(
                 'What people said',
-                style: _h(19, weight: FontWeight.w800),
+                style: _h(19, weight: FontWeight.bold),
               ),
             ),
             if (comments.isNotEmpty)
               TextButton(
                 onPressed: onSeeAll,
                 style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 7,
+                  ),
+                  backgroundColor: const Color(0xFFF3F4F6),
+                  foregroundColor: const Color(0xFF374151),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(24),
+                  ),
                   textStyle: const TextStyle(
-                    fontSize: 14.5,
+                    fontSize: 13,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-                child: Text('All ${comments.length}'),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('All ${comments.length}'),
+                    const SizedBox(width: 4),
+                    const Icon(
+                      Icons.arrow_forward_ios_rounded,
+                      size: 12,
+                    ),
+                  ],
+                ),
               ),
           ],
         ),
@@ -2216,7 +2213,10 @@ class _WhatPeopleSaid extends StatelessWidget {
 /// Difficult, yellow for Okay). The rating on top, the words in quotes,
 /// then who wrote it, the date, and whether it needs a reply.
 class _Quote extends StatelessWidget {
-  const _Quote({required this.item, required this.onTap});
+  const _Quote({
+    required this.item,
+    required this.onTap,
+  });
 
   final FeedbackItem item;
   final VoidCallback onTap;
@@ -2224,105 +2224,200 @@ class _Quote extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final rating = item.rating ?? PulseRating.okay;
-    final who = item.anonymous ? 'Anonymous' : (item.authorName ?? '');
+    final who = item.anonymous
+        ? 'Anonymous'
+        : ((item.authorName?.trim().isNotEmpty ?? false)
+        ? item.authorName!.trim()
+        : 'Employee');
+
     final date = _FeedbackCard._date(item.createdAt);
     final needsReply = item.status == FeedbackStatus.newItem;
+    final moodColor = _moodColor(rating);
+    final moodInk = _moodInk(rating);
 
-    return DecoratedBox(
-      decoration: _cardDecoration(),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: const Color(0xFFEAECEF),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.025),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: Material(
         color: Colors.transparent,
         borderRadius: BorderRadius.circular(20),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onTap,
-          child: IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // The coloured line on the left.
-                Container(width: 5, color: _moodColor(rating)),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // The rating, small and in its colour.
-                        Row(
-                          children: [
-                            Icon(
-                              PulseRating.icon(rating),
-                              size: 16,
-                              color: _moodColor(rating),
-                            ),
-                            const SizedBox(width: 5),
-                            Text(
-                              PulseRating.label(rating),
-                              style: TextStyle(
-                                color: _moodInk(rating),
-                                fontSize: 13,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        // The words.
-                        Text(
-                          item.text,
-                          maxLines: 4,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            height: 1.45,
-                            color: AppColors.ink,
-                            fontWeight: FontWeight.w600,
+                // Mood badge and navigation indicator.
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: moodColor.withOpacity(0.10),
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            PulseRating.icon(rating),
+                            size: 15,
+                            color: moodInk,
                           ),
-                        ),
-                        const SizedBox(height: 12),
-                        // Who, when, and the status.
-                        Row(
-                          children: [
-                            if (item.anonymous) ...[
-                              const Icon(
-                                Icons.lock_outline,
-                                size: 14,
+                          const SizedBox(width: 6),
+                          Text(
+                            PulseRating.label(rating),
+                            style: TextStyle(
+                              color: moodInk,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Spacer(),
+                    Icon(
+                      Icons.arrow_outward_rounded,
+                      size: 18,
+                      color: AppColors.muted.withOpacity(0.7),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 14),
+
+                // Feedback content.
+                Text(
+                  item.text.trim(),
+                  maxLines: 4,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 14.5,
+                    height: 1.55,
+                    color: AppColors.ink,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+                const Divider(
+                  height: 1,
+                  thickness: 1,
+                  color: Color(0xFFF0F1F3),
+                ),
+                const SizedBox(height: 13),
+
+                // Author and date.
+                Row(
+                  children: [
+                    Container(
+                      width: 34,
+                      height: 34,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF3F4F6),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        item.anonymous
+                            ? Icons.lock_outline_rounded
+                            : Icons.person_outline_rounded,
+                        size: 18,
+                        color: AppColors.muted,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            who,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.ink,
+                            ),
+                          ),
+                          if (date.isNotEmpty) ...[
+                            const SizedBox(height: 3),
+                            Text(
+                              date,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 11.5,
                                 color: AppColors.muted,
                               ),
-                              const SizedBox(width: 4),
-                            ],
-                            Expanded(
-                              child: Text(
-                                date.isEmpty ? who : '$who, $date',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: AppColors.muted,
-                                  fontSize: 13.5,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              needsReply
-                                  ? 'Needs reply'
-                                  : FeedbackStatus.label(item.status),
-                              style: TextStyle(
-                                color: needsReply
-                                    ? const Color(0xFFD9541E)
-                                    : AppColors.muted,
-                                fontSize: 13.5,
-                                fontWeight: needsReply
-                                    ? FontWeight.w800
-                                    : FontWeight.w500,
-                              ),
                             ),
                           ],
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 8),
+
+                    // Status pill.
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 7,
+                      ),
+                      decoration: BoxDecoration(
+                        color: needsReply
+                            ? const Color(0xFFFFF2E9)
+                            : const Color(0xFFF3F4F6),
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (needsReply) ...[
+                            Container(
+                              width: 6,
+                              height: 6,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFD9541E),
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                          ],
+                          Text(
+                            needsReply
+                                ? 'Needs reply'
+                                : FeedbackStatus.label(item.status),
+                            style: TextStyle(
+                              color: needsReply
+                                  ? const Color(0xFFD9541E)
+                                  : AppColors.muted,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -3450,6 +3545,11 @@ String _cardWhen(DateTime? d) {
 
 /// A round chip: an optional colour dot, the name and the number.
 /// The chosen one is blue.
+
+
+/// A filter chip: colour dot, name and count.
+/// Chosen: light blue with a blue border and a blue count.
+/// Not chosen: white with a thin grey border. Chips with 0 are dimmed.
 class _StatusChip extends StatelessWidget {
   const _StatusChip({
     required this.label,
@@ -3467,63 +3567,90 @@ class _StatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: selected ? AppColors.blue : Colors.white,
-      shape: StadiumBorder(
-        side: BorderSide(
-          color: selected ? AppColors.blue : const Color(0xFFD5DCE8),
-          width: 1.5,
+    const blue = AppColors.blue;
+    final empty = count == 0 && !selected;
+    final text = selected
+        ? blue
+        : empty
+        ? const Color(0xFFA0A8B8)
+        : const Color(0xFF344054);
+
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: '$label, $count',
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
+        height: 36,
+        decoration: ShapeDecoration(
+          color: selected ? const Color(0xFFEEF3FF) : Colors.white,
+          shape: StadiumBorder(
+            side: BorderSide(
+              color: selected ? blue : const Color(0xFFE3E8F1),
+              width: selected ? 1.4 : 1,
+            ),
+          ),
         ),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (dot != null) ...[
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: selected ? Colors.white : dot,
-                    shape: BoxShape.circle,
+        child: Material(
+          color: Colors.transparent,
+          shape: const StadiumBorder(),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 6, 0),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (dot != null) ...[
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: empty ? dot!.withValues(alpha: 0.4) : dot,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 7),
+                  ],
+                  Text(
+                    label,
+                    style: TextStyle(
+                      color: text,
+                      fontSize: 13,
+                      fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 7),
-              ],
-              Text(
-                label,
-                style: TextStyle(
-                  color: selected ? Colors.white : AppColors.ink,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(width: 7),
-              Container(
-                constraints: const BoxConstraints(minWidth: 22),
-                height: 22,
-                padding: const EdgeInsets.symmetric(horizontal: 6),
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: selected
-                      ? Colors.white.withValues(alpha: 0.22)
-                      : const Color(0xFFEEF1F6),
-                  borderRadius: BorderRadius.circular(11),
-                ),
-                child: Text(
-                  '$count',
-                  style: TextStyle(
-                    color: selected ? Colors.white : AppColors.muted,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
+                  const SizedBox(width: 7),
+                  // The count, in a small round badge.
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    height: 22,
+                    constraints: const BoxConstraints(minWidth: 22),
+                    padding: const EdgeInsets.symmetric(horizontal: 7),
+                    alignment: Alignment.center,
+                    decoration: ShapeDecoration(
+                      color: selected ? blue : const Color(0xFFF2F4F8),
+                      shape: const StadiumBorder(),
+                    ),
+                    child: Text(
+                      '$count',
+                      style: TextStyle(
+                        color: selected
+                            ? Colors.white
+                            : empty
+                            ? const Color(0xFFA0A8B8)
+                            : const Color(0xFF475467),
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
@@ -3776,6 +3903,141 @@ class _FeedbackCard extends StatelessWidget {
                 ),
               ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The bottom bar with the two tabs ("clean classic" design):
+/// icon and name, the chosen tab in blue with a short blue line on top,
+/// and a red badge with the number of new suggestions.
+class _BottomTabs extends StatelessWidget {
+  const _BottomTabs({
+    required this.index,
+    required this.newCount,
+    required this.onTap,
+  });
+
+  final int index;
+  final int newCount;
+  final ValueChanged<int> onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Color(0xFFEDF0F6))),
+      ),
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: 64,
+          child: Row(
+            children: [
+              _tab(
+                i: 0,
+                icon: Icons.monitor_heart_outlined,
+                activeIcon: Icons.monitor_heart,
+                label: 'Weekly Pulse',
+              ),
+              _tab(
+                i: 1,
+                icon: Icons.lightbulb_outline,
+                activeIcon: Icons.lightbulb,
+                label: 'Suggestion Box',
+                badge: newCount,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _tab({
+    required int i,
+    required IconData icon,
+    required IconData activeIcon,
+    required String label,
+    int badge = 0,
+  }) {
+    final selected = i == index;
+    final color = selected ? AppColors.blue : const Color(0xFF8E97AB);
+
+    return Expanded(
+      child: Semantics(
+        selected: selected,
+        button: true,
+        label: badge > 0 ? '$label, $badge new' : label,
+        child: InkWell(
+          onTap: () => onTap(i),
+          child: Stack(
+            alignment: Alignment.topCenter,
+            children: [
+              // The short blue line on top of the chosen tab.
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOut,
+                width: selected ? 44 : 0,
+                height: 3,
+                decoration: const BoxDecoration(
+                  color: AppColors.blue,
+                  borderRadius: BorderRadius.vertical(
+                    bottom: Radius.circular(3),
+                  ),
+                ),
+              ),
+              Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Icon(selected ? activeIcon : icon, size: 23, color: color),
+                        if (badge > 0)
+                          Positioned(
+                            top: -5,
+                            right: -11,
+                            child: Container(
+                              constraints: const BoxConstraints(minWidth: 18),
+                              height: 18,
+                              padding: const EdgeInsets.symmetric(horizontal: 5),
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFE2583E),
+                                borderRadius: BorderRadius.circular(9),
+                                border: Border.all(color: Colors.white, width: 2),
+                              ),
+                              child: Text(
+                                badge > 99 ? '99+' : '$badge',
+                                style: GoogleFonts.inter(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                  height: 1,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      label,
+                      style: GoogleFonts.inter(
+                        fontSize: 12.5,
+                        fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                        color: color,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
       ),

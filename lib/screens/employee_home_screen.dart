@@ -12,6 +12,7 @@ import '../models/feedback_item.dart';
 import '../models/pulse_rating.dart';
 import '../services/feedback_service.dart';
 import '../services/pulse_service.dart';
+import '../services/schedule_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/notification_bell.dart';
 import '../widgets/pulse_line.dart';
@@ -244,10 +245,18 @@ class _PulseCardState extends State<_PulseCard> with WidgetsBindingObserver {
         .map((doc) => doc.data()?['rating'] as String?);
   }
 
+  /// settings/pulse changed in Firebase: redraw at once. A new open
+  /// day means a new week id, so watch again.
+  void _onSchedule() {
+    if (!mounted) return;
+    setState(_watch);
+  }
+
   @override
   void initState() {
     super.initState();
     _watch();
+    ScheduleService.changed.addListener(_onSchedule);
     WidgetsBinding.instance.addObserver(this);
     // Look at the clock every 30 seconds: the card changes by itself
     // when the window opens or closes, or a new week starts.
@@ -266,6 +275,7 @@ class _PulseCardState extends State<_PulseCard> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    ScheduleService.changed.removeListener(_onSchedule);
     _timer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
@@ -312,7 +322,8 @@ class _PulseCardState extends State<_PulseCard> with WidgetsBindingObserver {
           return _DoneCard(
             week: week,
             rating: rating,
-            next: open || everyDay ? null : next,
+            // Always show the next one (also while this week is open).
+            nextAt: everyDay ? null : PulseService.nextOpensAt(now),
             onSeeMine: widget.onSeeMine,
           );
         }
@@ -924,27 +935,57 @@ class _TimelineState extends State<_Timeline> {
   }
 }
 
-/// 3. Done: a calm white card with a green tick.
+/// 3. Done: the answer large on a soft coloured top, and the next
+/// feedback date below. All dates come from settings/pulse.
 class _DoneCard extends StatelessWidget {
   const _DoneCard({
     required this.week,
     required this.rating,
-    required this.next,
+    required this.nextAt,
     required this.onSeeMine,
   });
 
   final String week;
   final String rating;
 
-  /// When the next one opens. Null while this week is still open.
-  final String? next;
+  /// When the next one opens. Null in test mode (open every day).
+  final DateTime? nextAt;
   final VoidCallback onSeeMine;
+
+  /// "in 8 days", "tomorrow", "today".
+  static String _inDays(DateTime at) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final day = DateTime(at.year, at.month, at.day);
+    final days = day.difference(today).inDays;
+    if (days <= 0) return 'today';
+    if (days == 1) return 'tomorrow';
+    return 'in $days days';
+  }
 
   @override
   Widget build(BuildContext context) {
     final color = PulseRating.color(rating);
+    // A darker shade of the answer colour, for small text on the tint.
+    final deep = Color.lerp(color, const Color(0xFF0E1A3A), 0.45)!;
+
+    // "Fri 23 Oct, 5:00 PM" -> "Fri 23 Oct" and "5:00 PM".
+    String? date;
+    String? time;
+    if (nextAt != null) {
+      final parts = PulseService.dateTimeLabel(nextAt!).split(', ');
+      date = parts.first;
+      time = parts.length > 1 ? parts[1] : null;
+    }
+
+    TextStyle cap(Color c) => _inter(
+      11,
+      weight: FontWeight.w600,
+      color: c,
+    ).copyWith(letterSpacing: 1.1);
+
     return Container(
-      padding: const EdgeInsets.all(20),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(26),
@@ -953,73 +994,164 @@ class _DoneCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _cardTop(
-            week,
-            const _Chip(
-              'Done',
-              bg: Color(0xFFE7F6EC),
-              fg: Color(0xFF15803D),
-              dot: Color(0xFF16A34A),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Icon(PulseRating.icon(rating), color: color, size: 26),
+          // Top: soft colour of the answer.
+          Container(
+            padding: const EdgeInsets.fromLTRB(20, 18, 16, 20),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  color.withValues(alpha: 0.13),
+                  color.withValues(alpha: 0.04),
+                ],
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'You said ${PulseRating.label(rating)}',
-                      style: _inter(20, weight: FontWeight.w700),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('FEEDBACK FOR THIS WEEK', style: cap(deep)),
+                          const SizedBox(height: 3),
+                          Text(
+                            week,
+                            style: _inter(13, color: deep)
+                                .copyWith(fontWeight: FontWeight.w400),
+                          ),
+                        ],
+                      ),
                     ),
-                    Text(
-                      'Thanks for sharing this week.',
-                      style: _inter(14, color: AppColors.muted),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x2615803D),
+                            blurRadius: 4,
+                            offset: Offset(0, 1),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.check,
+                            size: 14,
+                            color: Color(0xFF15803D),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Done',
+                            style: _inter(
+                              12,
+                              weight: FontWeight.w600,
+                              color: const Color(0xFF15803D),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
-              ),
-            ],
+                const SizedBox(height: 18),
+                Text('YOU SAID', style: cap(deep)),
+                const SizedBox(height: 2),
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        PulseRating.label(rating),
+                        style: _inter(
+                          32,
+                          weight: FontWeight.w800,
+                          color: color,
+                        ).copyWith(letterSpacing: -0.8, height: 1.15),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Icon(PulseRating.icon(rating), color: color, size: 30),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Thanks for sharing this week.',
+                  style: _inter(14, color: deep)
+                      .copyWith(fontWeight: FontWeight.w400),
+                ),
+              ],
+            ),
           ),
-          if (next != null) ...[
-            const SizedBox(height: 14),
-            Text.rich(
-              TextSpan(
-                children: [
-                  const TextSpan(text: 'Next one: '),
-                  TextSpan(
-                    text: next,
-                    style: _inter(13.5, weight: FontWeight.w600),
+
+          // Bottom: when the next one opens.
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 12, 16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Expanded(
+                  child: date == null
+                      ? Text(
+                    'You can answer again any day.',
+                    style: _inter(14, color: AppColors.muted),
+                  )
+                      : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'NEXT FEEDBACK',
+                        style: cap(const Color(0xFF8A94AD)),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        date,
+                        style: _inter(19, weight: FontWeight.w700)
+                            .copyWith(letterSpacing: -0.3),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        [
+                          if (time != null) 'at $time',
+                          _inDays(nextAt!),
+                        ].join(' · '),
+                        style: _inter(13.5, color: AppColors.muted)
+                            .copyWith(fontWeight: FontWeight.w400),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              style: _inter(13.5, color: const Color(0xFF4A5470)),
+                ),
+                TextButton(
+                  onPressed: onSeeMine,
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.blue,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 8,
+                    ),
+                    textStyle: _inter(14.5, weight: FontWeight.w600),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('See mine'),
+                      SizedBox(width: 2),
+                      Icon(Icons.chevron_right, size: 20),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ],
-          const SizedBox(height: 14),
-          OutlinedButton(
-            onPressed: onSeeMine,
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.blue,
-              minimumSize: const Size.fromHeight(50),
-              side: const BorderSide(color: Color(0xFFD9DEEA), width: 1.5),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              textStyle: _inter(15, weight: FontWeight.w600),
-            ),
-            child: const Text('See my Weekly Pulse'),
           ),
         ],
       ),
@@ -1290,6 +1422,8 @@ class _RecentActivityState extends State<_RecentActivity> {
         return const Color(0xFF0EA5A4);
       case FeedbackStatus.inProgress:
         return AppColors.blue;
+      case FeedbackStatus.noted:
+        return const Color(0xFF8E97AB);
       default:
         return const Color(0xFF16A34A);
     }

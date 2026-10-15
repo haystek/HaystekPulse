@@ -70,21 +70,44 @@ class FeedbackItem {
   }
 }
 
-/// The five statuses from the flow, stored as short codes.
+/// The statuses, stored as short codes.
+///
+/// [steps] are the five steps of the normal flow, in order:
+///   New → Under Review → Planned → In Progress → Implemented.
+/// [noted] is for feedback that needs no work, for example "I had a
+/// health issue this week". Management can add a short reply.
 class FeedbackStatus {
   static const String newItem = 'new';
   static const String underReview = 'under_review';
   static const String planned = 'planned';
   static const String inProgress = 'in_progress';
   static const String implemented = 'implemented';
+  static const String noted = 'noted';
 
-  static const List<String> all = [
+  /// The five steps, in order (used for the step line).
+  static const List<String> steps = [
     newItem,
     underReview,
     planned,
     inProgress,
     implemented,
   ];
+
+  /// Every status: the five steps, then Noted (used for lists, filters
+  /// and the "Change status to" buttons).
+  static const List<String> all = [
+    newItem,
+    underReview,
+    planned,
+    inProgress,
+    implemented,
+    noted,
+  ];
+
+  /// A reply is kept for these (required for Implemented, optional
+  /// for Noted).
+  static bool keepsReply(String status) =>
+      status == implemented || status == noted;
 
   static String label(String status) {
     switch (status) {
@@ -96,6 +119,8 @@ class FeedbackStatus {
         return 'In Progress';
       case implemented:
         return 'Implemented';
+      case noted:
+        return 'Noted';
       default:
         return 'New';
     }
@@ -111,11 +136,10 @@ class FeedbackStatus {
         return const Color(0xFFD9770B);
       case implemented:
         return const Color(0xFF178A47);
+      case noted:
+        return const Color(0xFF5B6478);
       default:
         return const Color(0xFF8A6A00);
-
-        // here we have to add colors
-
     }
   }
 }

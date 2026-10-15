@@ -84,8 +84,8 @@ class PulseService {
 
   /// The opening time as text, for example "5:00 PM" or "1:02 PM".
   static String openTimeLabel() {
-    const h = AppConfig.pulseOpenHour;
-    const m = AppConfig.pulseOpenMinute;
+    final h = AppConfig.pulseOpenHour;
+    final m = AppConfig.pulseOpenMinute;
     final hour12 = h % 12 == 0 ? 12 : h % 12;
     final minute = m.toString().padLeft(2, '0');
     return '$hour12:$minute ${h < 12 ? 'AM' : 'PM'}';

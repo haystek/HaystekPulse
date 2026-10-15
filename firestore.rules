@@ -78,10 +78,10 @@ service cloud.firestore {
       allow list: if isManagement();
 
       // Management changes only the status and the reply.
-      // "Implemented" requires a reply.
+      // "Implemented" requires a reply. "Noted" may have one.
       allow update: if isManagement()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'managementMessage', 'updatedAt'])
-        && request.resource.data.status in ['new', 'under_review', 'planned', 'in_progress', 'implemented']
+        && request.resource.data.status in ['new', 'under_review', 'planned', 'in_progress', 'implemented', 'noted']
         && request.resource.data.managementMessage is string
         && (request.resource.data.status != 'implemented'
             || request.resource.data.managementMessage.size() > 0);
@@ -182,16 +182,38 @@ service cloud.firestore {
     }
 
     // ---------------------------------------------------------------
-    // user_state/{uid}: when each person last opened the Notifications
-    // screen, used for the unread count on the bell. Private to them.
+    // user_state/{uid}: private to each person.
+    // - notificationsSeenAt: when they last opened Notifications (bell count),
+    // - hiddenNotifications: ids of notifications they deleted,
+    // - notificationsTipSeen: they closed the "Quick tip".
+    // Deleting a notification only adds an id here. Feedback and
+    // broadcasts are never deleted.
     // ---------------------------------------------------------------
     match /user_state/{uid} {
       allow read: if signedIn() && request.auth.uid == uid;
 
-      allow write: if signedIn()
+      allow create, update: if signedIn()
         && request.auth.uid == uid
-        && request.resource.data.keys().hasOnly(['notificationsSeenAt'])
-        && request.resource.data.notificationsSeenAt is timestamp;
+        && request.resource.data.keys().hasOnly([
+             'notificationsSeenAt', 'hiddenNotifications', 'notificationsTipSeen'])
+        && (!('notificationsSeenAt' in request.resource.data)
+            || request.resource.data.notificationsSeenAt is timestamp)
+        && (!('hiddenNotifications' in request.resource.data)
+            || (request.resource.data.hiddenNotifications is list
+                && request.resource.data.hiddenNotifications.size() <= 500))
+        && (!('notificationsTipSeen' in request.resource.data)
+            || request.resource.data.notificationsTipSeen is bool);
+
+      allow delete: if false;
+    }
+
+    // ---------------------------------------------------------------
+    // settings/pulse: the Weekly Pulse schedule (day, time, how many days).
+    // Every phone reads it. It is changed only in the Firebase console.
+    // ---------------------------------------------------------------
+    match /settings/{id} {
+      allow read: if true;
+      allow write: if false;
     }
 
     // Everything else stays closed.

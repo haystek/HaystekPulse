@@ -18,6 +18,7 @@ import '../widgets/top_banner.dart';
 import 'feedback_service.dart';
 import 'pulse_service.dart';
 import 'push_sender.dart';
+import 'schedule_service.dart';
 
 /// Receiving notifications: permission, this device's token, and the
 /// groups (topics) this device belongs to.
@@ -113,6 +114,11 @@ class NotificationService {
     if (!supported || _startedFor == employee.uid) return;
     _startedFor = employee.uid;
     _employee = employee;
+    // Listen first, before anything that can fail or be slow, so a
+    // notification that arrives while the app is open is always shown.
+    _foregroundSub ??= FirebaseMessaging.onMessage.listen(_showInApp);
+    _tappedSub ??= FirebaseMessaging.onMessageOpenedApp.listen(_open);
+    _tokenSub ??= _fm.onTokenRefresh.listen((t) => _token = t);
     try {
       await _fm.requestPermission();
       await _initLocal();
@@ -122,12 +128,17 @@ class NotificationService {
         badge: true,
         sound: true,
       );
+    } catch (error) {
+      debugPrint('Notification setup: $error');
+    }
+    try {
+      // The token is not needed for groups (topics). If it is slow, carry
+      // on and join the groups anyway.
       _token = await _fm.getToken().timeout(const Duration(seconds: 15));
-      _foregroundSub ??= FirebaseMessaging.onMessage.listen(_showInApp);
-      _tokenSub ??= _fm.onTokenRefresh.listen((t) => _token = t);
-
-      // A notification tapped while the app was in the background.
-      _tappedSub ??= FirebaseMessaging.onMessageOpenedApp.listen(_open);
+    } catch (error) {
+      debugPrint('No notification token yet: $error');
+    }
+    try {
 
       // A notification tapped while the app was fully closed.
       if (!_checkedLaunchMessage) {
@@ -154,10 +165,23 @@ class NotificationService {
         await _fm.subscribeToTopic(topicEmployees);
         await _syncPendingTopics(employee.uid);
         await _syncFeedbackTopics(employee.uid);
+        // The week names come from the open day. If the schedule is
+        // changed in Firebase, join the new weeks' reminder groups.
+        ScheduleService.changed.addListener(_onScheduleChanged);
       }
     } catch (error) {
       debugPrint('Notifications not started: $error');
     }
+  }
+
+  void _onScheduleChanged() {
+    final e = _employee;
+    if (e == null || e.isManagement) return;
+    unawaited(
+      _syncPendingTopics(e.uid).catchError(
+            (Object error) => debugPrint('Could not rejoin the groups: $error'),
+      ),
+    );
   }
 
   /// Joins the "pending" group for this week and the coming weeks, so a
@@ -234,6 +258,7 @@ class NotificationService {
     _startedFor = null;
     _token = null;
     _employee = null;
+    ScheduleService.changed.removeListener(_onScheduleChanged);
     try {
       // Leave every group first, then forget this phone's address, so the
       // next person to sign in starts clean.
@@ -258,12 +283,18 @@ class NotificationService {
   void _showInApp(RemoteMessage message) {
     final n = message.notification;
     if (n == null) return;
-    final overlay = navigatorKey.currentState?.overlay;
-    if (overlay == null) return;
     final title = (n.title ?? '').trim();
     final body = (n.body ?? '').trim();
     if (title.isEmpty && body.isEmpty) return;
     final type = message.data['type'] as String?;
+
+    // Android: always put it in the phone's notification bar, with sound,
+    // even if the banner below cannot be shown.
+    // (iPhone shows it by itself, because of the setting in start().)
+    _showInBar(message, title, body);
+
+    final overlay = navigatorKey.currentState?.overlay;
+    if (overlay == null) return;
 
     var icon = Icons.notifications_none;
     var color = AppColors.blue;
@@ -306,9 +337,10 @@ class NotificationService {
       actionLabel: action,
       onAction: action == null ? null : () => _open(message),
     );
+  }
 
-    // Android: also put it in the phone's notification bar, with sound.
-    // (iPhone shows it by itself, because of the setting in start().)
+  /// Android: shows the notification in the phone's notification bar.
+  void _showInBar(RemoteMessage message, String title, String body) {
     if (_localReady && defaultTargetPlatform == TargetPlatform.android) {
       unawaited(
         _local.show(
