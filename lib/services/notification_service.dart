@@ -162,12 +162,14 @@ class NotificationService {
         await _fm.subscribeToTopic(topicManagement);
       } else {
         await _fm.unsubscribeFromTopic(topicManagement);
+        // The week names come from the open day. If the schedule is
+        // changed in Firebase, join the new weeks' reminder groups.
+        // Listen first, so a change during start-up is not missed.
+        ScheduleService.changed.removeListener(_onScheduleChanged);
+        ScheduleService.changed.addListener(_onScheduleChanged);
         await _fm.subscribeToTopic(topicEmployees);
         await _syncPendingTopics(employee.uid);
         await _syncFeedbackTopics(employee.uid);
-        // The week names come from the open day. If the schedule is
-        // changed in Firebase, join the new weeks' reminder groups.
-        ScheduleService.changed.addListener(_onScheduleChanged);
       }
     } catch (error) {
       debugPrint('Notifications not started: $error');
@@ -184,10 +186,34 @@ class NotificationService {
     );
   }
 
+  /// When the reminder groups were last checked (see [refreshPending]).
+  DateTime? _lastPendingSync;
+
+  /// Checks the reminder groups again. Called each time the employee
+  /// home opens or the app comes back to the front, so a phone is never
+  /// left out of this week's reminder (for example after test answers
+  /// were deleted, or when Android kept the app alive in the
+  /// background). At most once every 20 seconds.
+  Future<void> refreshPending() async {
+    final e = _employee;
+    if (!supported || e == null || e.isManagement) return;
+    final last = _lastPendingSync;
+    if (last != null &&
+        DateTime.now().difference(last) < const Duration(seconds: 20)) {
+      return;
+    }
+    try {
+      await _syncPendingTopics(e.uid);
+    } catch (error) {
+      debugPrint('Could not check the reminder groups: $error');
+    }
+  }
+
   /// Joins the "pending" group for this week and the coming weeks, so a
   /// reminder reaches this phone even if the app is not opened that week.
   /// Leaves this week's group if the pulse is already answered.
   Future<void> _syncPendingTopics(String uid) async {
+    _lastPendingSync = DateTime.now();
     final now = DateTime.now();
     final answered =
         await PulseService.instance.myRatingThisWeek(uid) != null;
@@ -197,8 +223,10 @@ class NotificationService {
       );
       if (i == 0 && answered) {
         await _fm.unsubscribeFromTopic(pendingTopic(weekId));
+        debugPrint('[Reminder] answered, left ${pendingTopic(weekId)}');
       } else {
         await _fm.subscribeToTopic(pendingTopic(weekId));
+        if (i == 0) debugPrint('[Reminder] joined ${pendingTopic(weekId)}');
       }
     }
   }

@@ -48,3 +48,4 @@ assets/fcm_sender.json
 # Secrets - never upload
 assets/fcm_sender.json
 *.p8
+**/fcm_sender.json

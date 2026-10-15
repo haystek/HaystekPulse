@@ -11,6 +11,7 @@ import '../models/employee.dart';
 import '../models/feedback_item.dart';
 import '../models/pulse_rating.dart';
 import '../services/feedback_service.dart';
+import '../services/notification_service.dart';
 import '../services/pulse_service.dart';
 import '../services/schedule_service.dart';
 import '../theme/app_theme.dart';
@@ -258,6 +259,8 @@ class _PulseCardState extends State<_PulseCard> with WidgetsBindingObserver {
     _watch();
     ScheduleService.changed.addListener(_onSchedule);
     WidgetsBinding.instance.addObserver(this);
+    // Make sure this phone is in this week's reminder group.
+    NotificationService.instance.refreshPending();
     // Look at the clock every 30 seconds: the card changes by itself
     // when the window opens or closes, or a new week starts.
     _timer = Timer.periodic(const Duration(seconds: 30), (_) {
@@ -270,7 +273,10 @@ class _PulseCardState extends State<_PulseCard> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed && mounted) setState(() {});
+    if (state == AppLifecycleState.resumed && mounted) {
+      setState(() {});
+      NotificationService.instance.refreshPending();
+    }
   }
 
   @override
