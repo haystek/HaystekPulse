@@ -53,9 +53,27 @@ String _hint(String status) {
   }
 }
 
+/// Example text inside the reply box, for each status.
+String _replyHint(String status) {
+  switch (status) {
+    case FeedbackStatus.underReview:
+      return 'For example: We are discussing this with the team leads.';
+    case FeedbackStatus.planned:
+      return 'For example: We will do this next month.';
+    case FeedbackStatus.inProgress:
+      return 'For example: Work has started. It should be done by Friday.';
+    case FeedbackStatus.implemented:
+      return 'Tell them what has been done';
+    case FeedbackStatus.noted:
+      return 'For example: Thanks for letting us know. Take care.';
+    default:
+      return 'Write a short message';
+  }
+}
+
 /// Management: open one entry, move it to a new status, and reply.
-/// The reply is required for "Implemented" and optional for "Noted"
-/// (for feedback that needs no work, like "I was unwell this week").
+/// The reply is required for "Implemented" and optional for every
+/// other status except "New".
 ///
 /// Design B: the employee's words on the night-sky header, a small
 /// progress line, and the statuses to move to as cards.
@@ -85,13 +103,11 @@ class _FeedbackDetailScreenState extends State<FeedbackDetailScreen> {
 
   bool get _implemented => _status == FeedbackStatus.implemented;
 
-  bool get _noted => _status == FeedbackStatus.noted;
+  /// The reply box shows for every status except New.
+  /// Needed for Implemented, optional for the others.
+  bool get _showsReply => _status != FeedbackStatus.newItem;
 
-  /// The reply box shows for Implemented (required) and Noted (optional).
-  bool get _showsReply => _implemented || _noted;
-
-  /// Something to save: a new status, or an edit to the reply of a
-  /// feedback that is already Implemented or Noted.
+  /// Something to save: a new status, or an edit to the reply.
   bool get _canSave => _chosen != null || _showsReply;
 
   /// First name of the author, or null when anonymous or unknown.
@@ -117,12 +133,22 @@ class _FeedbackDetailScreenState extends State<FeedbackDetailScreen> {
   }
 
   /// Tap a status card. Tap again to undo the choice.
-  /// When the reply box opens (Implemented or Noted), scroll down so
-  /// the box is in view.
+  /// A new status starts with an empty reply box, so the old reply
+  /// (for example the Implemented one) is not sent again by mistake.
+  /// Undo brings the saved reply back. Text you typed is kept.
+  /// When the reply box opens, scroll down so the box is in view.
   void _choose(String s) {
-    final hadReply = _showsReply;
-    setState(() => _chosen = s == _chosen ? null : s);
-    if (_showsReply && !hadReply) {
+    final saved = widget.item.managementMessage;
+    setState(() {
+      _chosen = s == _chosen ? null : s;
+      if (_chosen == null) {
+        _message.text = saved;
+      } else if (_message.text == saved) {
+        _message.clear();
+      }
+    });
+    // A status was chosen: always bring the reply box into view.
+    if (_chosen != null && _showsReply) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!_scroll.hasClients) return;
         _scroll.animateTo(
@@ -256,18 +282,6 @@ class _FeedbackDetailScreenState extends State<FeedbackDetailScreen> {
                                 chosen: _chosen,
                                 onTap: _busy ? null : _choose,
                               ),
-                              // if (!_showsReply) ...[
-                              //   const SizedBox(height: 12),
-                              //   Text(
-                              //     'The employee sees the new status in '
-                              //         'My Feedback.',
-                              //     style: _t(
-                              //       13.5,
-                              //       color: AppColors.muted,
-                              //       height: 1.4,
-                              //     ),
-                              //   ),
-                              // ],
                               if (_showsReply) ...[
                                 const SizedBox(height: 22),
                                 Row(
@@ -284,12 +298,12 @@ class _FeedbackDetailScreenState extends State<FeedbackDetailScreen> {
                                       ),
                                     ),
                                     Text(
-                                      _noted ? 'Optional' : 'Needed',
+                                      _implemented ? 'Needed' : 'Optional',
                                       style: _t(
                                         12.5,
-                                        color: _noted
-                                            ? AppColors.muted
-                                            : AppColors.blue,
+                                        color: _implemented
+                                            ? AppColors.blue
+                                            : AppColors.muted,
                                         weight: FontWeight.w600,
                                       ),
                                     ),
@@ -301,16 +315,17 @@ class _FeedbackDetailScreenState extends State<FeedbackDetailScreen> {
                                   minLines: 3,
                                   maxLines: 8,
                                   maxLength: 1000,
+                                  // When typing, keep the whole box and the
+                                  // line under it above the keyboard.
+                                  scrollPadding:
+                                  const EdgeInsets.only(bottom: 140),
                                   textCapitalization:
                                   TextCapitalization.sentences,
                                   style: _t(15, height: 1.45),
                                   decoration: InputDecoration(
                                     filled: true,
                                     fillColor: Colors.white,
-                                    hintText: _noted
-                                        ? 'For example: Thanks for letting '
-                                        'us know. Take care.'
-                                        : 'Tell them what has been done',
+                                    hintText: _replyHint(_status),
                                     hintStyle: _t(
                                       15,
                                       color: const Color(0xFF9AA3B8),
@@ -487,7 +502,7 @@ class _Header extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           Text(
-            '${item.text.trim()}',
+            item.text.trim(),
             style: _t(
               19.5,
               color: Colors.white,

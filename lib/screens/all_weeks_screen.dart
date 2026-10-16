@@ -150,7 +150,7 @@ class _AllWeeksScreenState extends State<AllWeeksScreen> {
         padding: EdgeInsets.fromLTRB(4, 0, 4, 6),
         child: Text(
           'Tap a week to see it on the dashboard.',
-          style: TextStyle(color: AppColors.muted, fontSize: 14.5),
+          style: TextStyle(color: AppColors.muted, fontSize: 12.5),
         ),
       ),
     ];
@@ -295,8 +295,8 @@ class _WeekCard extends StatelessWidget {
               _MoodBar(totals: totals),
               const SizedBox(height: 10),
               Wrap(
-                spacing: 14,
-                runSpacing: 6,
+                spacing: 20,
+                runSpacing: 60,
                 children: [
                   for (final rating in PulseRating.all)
                     _Legend(rating: rating, count: totals.countFor(rating)),
@@ -352,7 +352,7 @@ class _MoodBar extends StatelessWidget {
     return ClipRRect(
       borderRadius: BorderRadius.circular(5),
       child: SizedBox(
-        height: 10,
+        height: 4,
         child: shown.isEmpty
             ? const ColoredBox(
           color: Color(0xFFEDF0F6),
@@ -390,8 +390,8 @@ class _Legend extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 9,
-          height: 9,
+          width: 2,
+          height: 2,
           decoration: BoxDecoration(
             color: _moodColor(rating),
             shape: BoxShape.circle,

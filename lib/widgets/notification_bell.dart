@@ -58,7 +58,15 @@ class _NotificationBellState extends State<NotificationBell> {
               child: Badge(
                 isLabelVisible: unread > 0,
                 backgroundColor: AppColors.alert,
-                label: Text(unread > 9 ? '9+' : '$unread'),
+                label: Text('$unread'),
+                // Smaller number and a smaller red badge.
+                textStyle: const TextStyle(
+                  fontSize: 9.5,
+                  fontWeight: FontWeight.w600,
+                  height: 1,
+                ),
+                largeSize: 14,
+                padding: const EdgeInsets.symmetric(horizontal: 3.5),
                 child: const Icon(
                   Icons.notifications_none,
                   color: AppColors.ink,

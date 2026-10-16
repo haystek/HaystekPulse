@@ -104,10 +104,9 @@ class FeedbackStatus {
     noted,
   ];
 
-  /// A reply is kept for these (required for Implemented, optional
-  /// for Noted).
-  static bool keepsReply(String status) =>
-      status == implemented || status == noted;
+  /// A reply is kept for every status except New (required for
+  /// Implemented, optional for the others).
+  static bool keepsReply(String status) => status != newItem;
 
   static String label(String status) {
     switch (status) {

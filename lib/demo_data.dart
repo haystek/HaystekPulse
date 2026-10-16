@@ -57,13 +57,32 @@ class DemoData {
 
   static bool isDemo(FeedbackItem item) => item.id.startsWith(idPrefix);
 
-  /// (rating, text, anonymous, name, status) for each sample comment.
-  static const List<(String, String, bool, String, String)> _comments = [
-    (PulseRating.difficult, 'Too many late-night calls with the client this week. Hard to switch off.', true, '', FeedbackStatus.newItem),
-    (PulseRating.okay, 'Release went fine, but the build server was slow every day.', false, 'Ravi Kumar', FeedbackStatus.underReview),
-    (PulseRating.okay, 'Not sure what my priorities are after the team change.', true, '', FeedbackStatus.newItem),
-    (PulseRating.difficult, 'Laptop keeps freezing. Lost half a day on Wednesday.', false, 'Priya S', FeedbackStatus.planned),
-    (PulseRating.okay, 'Good week overall, but the AC on the 3rd floor is too cold.', false, 'Arjun Reddy', FeedbackStatus.implemented),
+  // -------------------------------------------------------------------
+  // Weekly Pulse comment samples (management)
+  // -------------------------------------------------------------------
+
+  /// (rating, text, anonymous, name, status, reply) for each sample
+  /// comment. The two "New" ones have no reply, to test "Needs reply".
+  static const List<(String, String, bool, String, String, String)>
+  _comments = [
+    // New, no reply yet.
+    (PulseRating.difficult, 'Too many late-night calls with the client this week. Hard to switch off.', true, '', FeedbackStatus.newItem, ''),
+    // Okay.
+    (PulseRating.okay, 'Work was fine, but too many meetings. I had little time to actually code.', false, 'Ravi Kumar', FeedbackStatus.planned, 'Thanks for sharing. We’re trying no-meeting Wednesday afternoons from next week.'),
+    // Difficult.
+    (PulseRating.difficult, 'Very stressful week. The deadline was too tight and I worked late three days.', true, '', FeedbackStatus.underReview, 'Thank you for telling us. Your manager will talk with you this week about the workload and timelines.'),
+    // Okay.
+    (PulseRating.okay, 'The requirements changed twice this week, so I had to redo some work.', false, 'Priya S', FeedbackStatus.inProgress, 'Sorry about that. We’ve asked the product team to finalise requirements before the sprint starts.'),
+    // Difficult.
+    (PulseRating.difficult, 'I’m stuck on a task and don’t know who to ask for help.', false, 'Karthik M', FeedbackStatus.inProgress, 'We’ve assigned a senior developer to pair with you. They’ll reach out today.'),
+    // New, no reply yet.
+    (PulseRating.okay, 'Not sure what my priorities are after the team change.', true, '', FeedbackStatus.newItem, ''),
+    // Okay.
+    (PulseRating.okay, 'Okay week. The AC in our bay is too cold.', false, 'Arjun Reddy', FeedbackStatus.implemented, 'We’ve asked facilities to adjust the temperature.'),
+    // Difficult.
+    (PulseRating.difficult, 'The production issue on Tuesday was hard. Nobody knew who was on call.', false, 'Sneha Rao', FeedbackStatus.implemented, 'We’ve now made an on-call list and shared it with everyone.'),
+    // Difficult.
+    (PulseRating.difficult, 'Not feeling well this week, and it was hard to focus.', true, '', FeedbackStatus.noted, 'Please take care of yourself. You can take leave if you need it, and talk to HR anytime.'),
   ];
 
   /// Sample comments for one week (none for weeks without sample totals).
@@ -80,7 +99,7 @@ class DemoData {
     return [
       for (var j = 0; j < count; j++)
             () {
-          final c = _comments[(index + j) % _comments.length];
+          final c = _comments[(index * 2 + j) % _comments.length];
           return _withChanges(FeedbackItem(
             id: '$idPrefix${weekId}_$j',
             source: 'pulse',
@@ -89,9 +108,8 @@ class DemoData {
             authorName: c.$3 ? null : c.$4,
             rating: c.$1,
             weekId: weekId,
-            // Newer weeks keep "new" comments; older ones look answered.
-            status: index == back ? c.$5 : FeedbackStatus.implemented,
-            managementMessage: index == back ? '' : 'Thanks, we have looked into this.',
+            status: c.$5,
+            managementMessage: c.$6,
             createdAt: week.add(Duration(hours: 18 + j * 5)),
           ));
         }(),
@@ -99,20 +117,20 @@ class DemoData {
   }
 
   // -------------------------------------------------------------------
-  // Suggestion Box samples
+  // Suggestion Box samples (management)
   // -------------------------------------------------------------------
 
   /// (days ago, text, anonymous, name, employee ID, status, reply).
+  /// The two "New" ones have no reply, to test "Needs reply".
   static const List<(int, String, bool, String, String, String, String)>
   _suggestions = [
     (0, 'Can we have a quiet room for calls? The open area is very noisy after lunch.', false, 'Sneha Rao', 'HST1012', FeedbackStatus.newItem, ''),
     (1, 'Please add more vegetarian options in the canteen on Fridays.', true, '', '', FeedbackStatus.newItem, ''),
-    (3, 'A short weekly demo where each team shows what they built would help everyone.', false, 'Karthik M', 'HST1027', FeedbackStatus.underReview, ''),
-    (6, 'The second-floor printer jams every day. Maybe time for a new one?', false, 'Anitha P', 'HST1009', FeedbackStatus.planned, ''),
-    (9, 'Flexible start time (9 to 10:30) would really help people who travel far.', true, '', '', FeedbackStatus.inProgress, ''),
-    (14, 'Water dispenser on the 3rd floor is not cold any more.', false, 'Ravi Kumar', 'HST1001', FeedbackStatus.implemented, 'Fixed on Monday. Thanks for telling us!'),
-    (21, 'Can we get a second monitor for developers who ask for it?', false, 'Priya S', 'HST1018', FeedbackStatus.implemented, 'Approved. Ask IT and they will set it up this week.'),
-    (33, 'Monthly team lunch would be great for people in different projects to meet.', true, '', '', FeedbackStatus.underReview, ''),
+    (2, 'Can we have a water dispenser on the 3rd floor? Everyone walks down to the 2nd floor to fill bottles.', false, 'Ravi Kumar', 'HST1001', FeedbackStatus.planned, 'Good point. We’ve ordered one, and it should be installed next week.'),
+    (4, 'The meeting room booking often clashes. Two teams show up for the same slot.', false, 'Karthik M', 'HST1027', FeedbackStatus.inProgress, 'Thanks for raising this. We’re moving all bookings to the shared calendar from Monday.'),
+    (7, 'Please allow work from home on Fridays.', true, '', '', FeedbackStatus.underReview, 'We’re discussing this with team leads and will share a decision by the end of the month.'),
+    (12, 'The Wi-Fi is very slow after 4 PM.', false, 'Anitha P', 'HST1009', FeedbackStatus.implemented, 'We upgraded the internet plan last week. Please let us know if it’s still slow.'),
+    (20, 'Can we have a short team lunch once a month?', false, 'Priya S', 'HST1018', FeedbackStatus.noted, 'Thanks for the idea. We’ve noted it for next quarter’s budget.'),
   ];
 
   /// Sample Suggestion Box entries, newest first.
@@ -175,12 +193,12 @@ class DemoData {
   /// (weeks ago, rating) for the employee's sample Weekly Pulse answers.
   /// This week is left out, so the real "Rate your week" still works.
   static const List<(int, String)> _myAnswers = [
-    (1, PulseRating.good),
-    (2, PulseRating.okay),
+    (1, PulseRating.okay),
+    (2, PulseRating.difficult),
     (3, PulseRating.great),
-    (4, PulseRating.difficult),
-    (5, PulseRating.good),
-    (6, PulseRating.great),
+    (4, PulseRating.okay),
+    (5, PulseRating.difficult),
+    (6, PulseRating.good),
   ];
 
   /// When a sample answer was sent: the open day of that week, 7:30 PM.
@@ -202,15 +220,21 @@ class DemoData {
   /// (weeks ago, text, anonymous, status, reply) for the comments written
   /// with the Okay and Difficult sample answers above.
   static const List<(int, String, bool, String, String)> _myComments = [
-    (2, 'Too many meetings this week, hard to finish my own work.', false, FeedbackStatus.implemented, 'Thanks. From next week, Wednesday afternoon is meeting-free.'),
-    (4, 'The laptop keeps freezing during builds. Lost a lot of time.', true, FeedbackStatus.planned, ''),
+    (1, 'Work was fine, but too many meetings. I had little time to actually code.', false, FeedbackStatus.planned, 'Thanks for sharing. We’re trying no-meeting Wednesday afternoons from next week.'),
+    (2, 'Very stressful week. The deadline was too tight and I worked late three days.', true, FeedbackStatus.underReview, 'Thank you for telling us. Your manager will talk with you this week about the workload and timelines.'),
+    (4, 'Okay week. The AC in our bay is too cold.', false, FeedbackStatus.implemented, 'We’ve asked facilities to adjust the temperature.'),
+    (5, 'Not feeling well this week, and it was hard to focus.', true, FeedbackStatus.noted, 'Please take care of yourself. You can take leave if you need it, and talk to HR anytime.'),
   ];
 
   /// (days ago, text, anonymous, status, reply) for sample suggestions.
+  /// The first one is New with no reply, to test rows without a reply.
   static const List<(int, String, bool, String, String)> _mySuggestions = [
-    (2, 'Can we have a quiet room for calls? The open area is noisy after lunch.', false, FeedbackStatus.newItem, ''),
-    (9, 'A short monthly demo where each team shows what they built.', true, FeedbackStatus.underReview, ''),
-    (20, 'Second monitor for developers who ask for it.', false, FeedbackStatus.implemented, 'Approved. Ask IT and they will set it up this week.'),
+    (1, 'Can we have a quiet room for calls? The open area is noisy after lunch.', false, FeedbackStatus.newItem, ''),
+    (3, 'Can we have a water dispenser on the 3rd floor? Everyone walks down to the 2nd floor to fill bottles.', false, FeedbackStatus.planned, 'Good point. We’ve ordered one, and it should be installed next week.'),
+    (6, 'The meeting room booking often clashes. Two teams show up for the same slot.', false, FeedbackStatus.inProgress, 'Thanks for raising this. We’re moving all bookings to the shared calendar from Monday.'),
+    (10, 'Please allow work from home on Fridays.', true, FeedbackStatus.underReview, 'We’re discussing this with team leads and will share a decision by the end of the month.'),
+    (15, 'The Wi-Fi is very slow after 4 PM.', false, FeedbackStatus.implemented, 'We upgraded the internet plan last week. Please let us know if it’s still slow.'),
+    (24, 'Can we have a short team lunch once a month?', false, FeedbackStatus.noted, 'Thanks for the idea. We’ve noted it for next quarter’s budget.'),
   ];
 
   /// Everything the employee "sent": sample suggestions and the comments

@@ -1,1 +1,45 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"haystek-pulse","appId":"1:735749067933:android:5ff7633afaacbfb06d3074","fileOutput":"android/app/google-services.json"}},"ios":{"default":{"projectId":"haystek-pulse","appId":"1:735749067933:ios:6c9a3f8d57d9ebf06d3074","uploadDebugSymbols":false,"fileOutput":"ios/Runner/GoogleService-Info.plist"}},"dart":{"lib/firebase_options.dart":{"projectId":"haystek-pulse","configurations":{"android":"1:735749067933:android:5ff7633afaacbfb06d3074","ios":"1:735749067933:ios:6c9a3f8d57d9ebf06d3074","web":"1:735749067933:web:e82e288e76a9d0e26d3074"}}}}}}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "haystek-pulse",
+          "appId": "1:735749067933:android:5ff7633afaacbfb06d3074",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "ios": {
+        "default": {
+          "projectId": "haystek-pulse",
+          "appId": "1:735749067933:ios:6c9a3f8d57d9ebf06d3074",
+          "uploadDebugSymbols": false,
+          "fileOutput": "ios/Runner/GoogleService-Info.plist"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "haystek-pulse",
+          "configurations": {
+            "android": "1:735749067933:android:5ff7633afaacbfb06d3074",
+            "ios": "1:735749067933:ios:6c9a3f8d57d9ebf06d3074",
+            "web": "1:735749067933:web:e82e288e76a9d0e26d3074"
+          }
+        }
+      }
+    }
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "disallowLegacyRuntimeConfig": true,
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ]
+    }
+  ]
+}

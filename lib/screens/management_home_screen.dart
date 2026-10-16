@@ -470,10 +470,7 @@ class _ManagementHomeScreenState extends State<ManagementHomeScreen>
                         child: IconButton(
                           tooltip: 'Search comments',
                           onPressed: () => _push(
-                            const WeekCommentsScreen(
-                              weekId: null,
-                              focusSearch: true,
-                            ),
+                            const WeekCommentsScreen(weekId: null),
                           ),
                           icon: const Icon(
                             Icons.search,
@@ -1111,9 +1108,26 @@ class _WeekHeroState extends State<_WeekHero> {
     if (widget.isThisWeek) {
       final nextWeek = PulseService.shortWeekLabel(PulseService.nextWeekId());
       final next = PulseService.dateTimeLabel(PulseService.nextOpensAt());
-      bottom = Text(
-        'Next: $nextWeek opens $next',
-        style: _t(13, color: _soft),
+      bottom = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'NEXT WEEKLY PULSE',
+            style: _t(11, weight: FontWeight.w600, color: _soft)
+                .copyWith(letterSpacing: 1.1),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            nextWeek,
+            style: _t(15, weight: FontWeight.w600, color: Colors.white),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            'Opens $next',
+            style: _t(13, color: _soft),
+          ),
+        ],
       );
     } else {
       bottom = Text('This week is closed.', style: _t(13, color: _soft));
@@ -2530,7 +2544,7 @@ class _WeekCommentsScreenState extends State<WeekCommentsScreen> {
   /// "Pick a week": All weeks, then every week from this week back to
   /// the first week with comments.
   Future<void> _pickWeek(List<FeedbackItem> all, List<String> weeks) async {
-    Widget row({
+    FocusScope.of(context).unfocus();    Widget row({
       required String title,
       required String subtitle,
       required int count,
@@ -2616,6 +2630,7 @@ class _WeekCommentsScreenState extends State<WeekCommentsScreen> {
         ),
       )),
     );
+    FocusManager.instance.primaryFocus?.unfocus();
   }
 
   @override
