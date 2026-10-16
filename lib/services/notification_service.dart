@@ -123,10 +123,12 @@ class NotificationService {
       await _fm.requestPermission();
       await _initLocal();
       // iPhone: show the normal notification even when the app is open.
+      // iPhone: when the app is open, our own banner shows it,
+      // so no phone notification on top of it.
       await _fm.setForegroundNotificationPresentationOptions(
-        alert: true,
+        alert: false,
         badge: true,
-        sound: true,
+        sound: false,
       );
     } catch (error) {
       debugPrint('Notification setup: $error');
@@ -316,13 +318,13 @@ class NotificationService {
     if (title.isEmpty && body.isEmpty) return;
     final type = message.data['type'] as String?;
 
-    // Android: always put it in the phone's notification bar, with sound,
-    // even if the banner below cannot be shown.
-    // (iPhone shows it by itself, because of the setting in start().)
-    _showInBar(message, title, body);
-
+    // App is open: show only our banner. Use the phone's notification
+    // bar only if the banner cannot be shown, so nothing is lost.
     final overlay = navigatorKey.currentState?.overlay;
-    if (overlay == null) return;
+    if (overlay == null) {
+      _showInBar(message, title, body);
+      return;
+    }
 
     var icon = Icons.notifications_none;
     var color = AppColors.blue;

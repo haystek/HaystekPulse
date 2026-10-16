@@ -891,10 +891,8 @@ class _WeekRow extends StatelessWidget {
               if (week.isNotEmpty) Text(week, style: _t(12, color: _soft)),
             ],
           ),
-          if (comment == null) ...[
-            const SizedBox(height: 4),
-            Text('No comment', style: _t(13.5, color: _soft)),
-          ] else ...[
+          // Only when there is a comment. Great / Good: just the answer.
+          if (comment != null) ...[
             const SizedBox(height: 6),
             Text(
               comment.text,
@@ -904,6 +902,7 @@ class _WeekRow extends StatelessWidget {
             const SizedBox(height: 10),
             _StatusLine(status: comment.status),
           ],
+
         ],
       ),
     );
