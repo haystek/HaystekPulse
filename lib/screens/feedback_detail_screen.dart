@@ -72,8 +72,10 @@ String _replyHint(String status) {
 }
 
 /// Management: open one entry, move it to a new status, and reply.
-/// The reply is required for "Implemented" and optional for every
-/// other status except "New".
+/// The last reply sent shows on its own (not inside the box). The reply
+/// box opens only after a new status is chosen, and starts empty: what
+/// is written there goes with the new status. Needed for "Implemented",
+/// optional for the others.
 ///
 /// Design B: the employee's words on the night-sky header, a small
 /// progress line, and the statuses to move to as cards.
@@ -103,17 +105,13 @@ class _FeedbackDetailScreenState extends State<FeedbackDetailScreen> {
 
   bool get _implemented => _status == FeedbackStatus.implemented;
 
-  /// The reply box shows for every status except New.
+  /// The reply box shows once a new status is chosen (not for New).
   /// Needed for Implemented, optional for the others.
-  bool get _showsReply => _status != FeedbackStatus.newItem;
+  bool get _showsReply =>
+      _chosen != null && _chosen != FeedbackStatus.newItem;
 
-  /// The reply was changed from the saved one.
-  bool get _replyChanged =>
-      _message.text.trim() != widget.item.managementMessage.trim();
-
-  /// Something to save: a new status, or a changed reply. Opening an
-  /// entry again without changing anything leaves the button off.
-  bool get _canSave => _chosen != null || (_showsReply && _replyChanged);
+  /// Something to save: only a new status (with its reply).
+  bool get _canSave => _chosen != null;
 
   /// First name of the author, or null when anonymous or unknown.
   String? get _firstName {
@@ -127,11 +125,8 @@ class _FeedbackDetailScreenState extends State<FeedbackDetailScreen> {
   @override
   void initState() {
     super.initState();
-    _message = TextEditingController(text: widget.item.managementMessage);
-    // Redraw while typing, so the button turns on once the reply changes.
-    _message.addListener(() {
-      if (mounted) setState(() {});
-    });
+    // Starts empty: the last reply shows on its own above.
+    _message = TextEditingController();
   }
 
   @override
@@ -142,19 +137,12 @@ class _FeedbackDetailScreenState extends State<FeedbackDetailScreen> {
   }
 
   /// Tap a status card. Tap again to undo the choice.
-  /// A new status starts with an empty reply box, so the old reply
-  /// (for example the Implemented one) is not sent again by mistake.
-  /// Undo brings the saved reply back. Text you typed is kept.
+  /// Text you typed is kept when you switch between statuses.
   /// When the reply box opens, scroll down so the box is in view.
   void _choose(String s) {
-    final saved = widget.item.managementMessage;
     setState(() {
       _chosen = s == _chosen ? null : s;
-      if (_chosen == null) {
-        _message.text = saved;
-      } else if (_message.text == saved) {
-        _message.clear();
-      }
+      _error = null;
     });
     // A status was chosen: always bring the reply box into view.
     if (_chosen != null && _showsReply) {
@@ -187,9 +175,7 @@ class _FeedbackDetailScreenState extends State<FeedbackDetailScreen> {
       messenger.showSnackBar(
         SnackBar(
           content: Text(
-            _chosen == null
-                ? 'Reply saved.'
-                : 'Status updated to ${FeedbackStatus.label(_status)}.',
+            'Status updated to ${FeedbackStatus.label(_status)}.',
           ),
         ),
       );
@@ -281,6 +267,14 @@ class _FeedbackDetailScreenState extends State<FeedbackDetailScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
+                              // The reply already sent, on its own.
+                              if (widget.item.hasReply) ...[
+                                _LastReply(
+                                  text: widget.item.managementMessage,
+                                  date: _date(widget.item.updatedAt),
+                                ),
+                                const SizedBox(height: 22),
+                              ],
                               Text(
                                 'Move it to',
                                 style: _t(15.5, weight: FontWeight.w700),
@@ -362,8 +356,12 @@ class _FeedbackDetailScreenState extends State<FeedbackDetailScreen> {
                                   },
                                 ),
                                 Text(
-                                  '${name ?? 'The employee'} gets a '
-                                      'notification and sees it in My Feedback.',
+                                  _implemented
+                                      ? '${name ?? 'The employee'} gets a '
+                                      'notification and sees it in My Feedback.'
+                                      : 'Leave it empty to send only the new '
+                                      'status. ${name ?? 'The employee'} sees '
+                                      'it in My Feedback.',
                                   style: _t(
                                     13,
                                     color: AppColors.muted,
@@ -418,9 +416,7 @@ class _FeedbackDetailScreenState extends State<FeedbackDetailScreen> {
                       )
                           : Text(
                         _chosen == null
-                            ? (_showsReply && _replyChanged
-                            ? 'Save reply'
-                            : 'Choose a status')
+                            ? 'Choose a status'
                             : 'Change to '
                             '${FeedbackStatus.label(_chosen!)}',
                       ),
@@ -431,6 +427,58 @@ class _FeedbackDetailScreenState extends State<FeedbackDetailScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// The reply already sent to the employee: a light green card with a
+/// small label and the date. Read only.
+class _LastReply extends StatelessWidget {
+  const _LastReply({required this.text, required this.date});
+
+  final String text;
+  final String date;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE8F7EE),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.check_circle_outline,
+                size: 16,
+                color: Color(0xFF15803D),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  'Your last reply',
+                  style: _t(
+                    12.5,
+                    color: const Color(0xFF15803D),
+                    weight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              if (date.isNotEmpty)
+                Text(
+                  date,
+                  style: _t(12, color: const Color(0xFF15803D)),
+                ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(text, style: _t(14.5, weight: FontWeight.w400, height: 1.45)),
+        ],
       ),
     );
   }
