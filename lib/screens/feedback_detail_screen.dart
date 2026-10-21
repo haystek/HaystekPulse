@@ -107,8 +107,13 @@ class _FeedbackDetailScreenState extends State<FeedbackDetailScreen> {
   /// Needed for Implemented, optional for the others.
   bool get _showsReply => _status != FeedbackStatus.newItem;
 
-  /// Something to save: a new status, or an edit to the reply.
-  bool get _canSave => _chosen != null || _showsReply;
+  /// The reply was changed from the saved one.
+  bool get _replyChanged =>
+      _message.text.trim() != widget.item.managementMessage.trim();
+
+  /// Something to save: a new status, or a changed reply. Opening an
+  /// entry again without changing anything leaves the button off.
+  bool get _canSave => _chosen != null || (_showsReply && _replyChanged);
 
   /// First name of the author, or null when anonymous or unknown.
   String? get _firstName {
@@ -123,6 +128,10 @@ class _FeedbackDetailScreenState extends State<FeedbackDetailScreen> {
   void initState() {
     super.initState();
     _message = TextEditingController(text: widget.item.managementMessage);
+    // Redraw while typing, so the button turns on once the reply changes.
+    _message.addListener(() {
+      if (mounted) setState(() {});
+    });
   }
 
   @override
@@ -409,7 +418,7 @@ class _FeedbackDetailScreenState extends State<FeedbackDetailScreen> {
                       )
                           : Text(
                         _chosen == null
-                            ? (_showsReply
+                            ? (_showsReply && _replyChanged
                             ? 'Save reply'
                             : 'Choose a status')
                             : 'Change to '
