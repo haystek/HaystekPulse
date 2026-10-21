@@ -1,7 +1,8 @@
 /**
  * Haystek Pulse: automatic notifications.
- * Every Friday at 5:45 PM (India time), tell all employees that the
- * Weekly Pulse opens at 6 PM.
+ * 15 minutes before the Weekly Pulse opens, tell all employees.
+ * Live time: Friday 5:45 PM (India time). For testing, change the time
+ * in Cloud Scheduler (the next deploy sets it back to this time).
  */
 
 const { onSchedule } = require("firebase-functions/v2/scheduler");
@@ -17,8 +18,8 @@ exports.pulseHeadsUp = onSchedule(
     region: "asia-south1",
   },
   async () => {
-    const title = "Weekly Pulse opens at 6 PM 💙";
-    const body = "Take a minute to rate your week. Open until Sunday night.";
+    const title = "Weekly Pulse opens in 15 minutes 💙";
+    const body = "Take a minute to rate your week when it opens.";
 
     await admin.messaging().send({
       topic: "employees",

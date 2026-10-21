@@ -29,91 +29,72 @@ TextStyle _title(double size, {Color color = AppColors.ink}) =>
 
 /// Asks "Sign out?", then shows "Signing out…" while it happens.
 /// Used by the account menu and the Profile screen.
+/// Asks "Sign out?" and signs out only after the dialog has closed.
 Future<void> confirmSignOut(BuildContext context) async {
-  final yes = await showDialog<bool>(
+  final ok = await showDialog<bool>(
     context: context,
-    builder: (dialogContext) => _inter(
-      dialogContext,
-      AlertDialog(
-        title: Text('Sign out?', style: _title(20)),
-        content: const Text(
-          'You won\'t get Weekly Pulse reminders or replies on this phone '
-              'until you sign in again.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            style: TextButton.styleFrom(
-              textStyle: const TextStyle(fontWeight: FontWeight.w500),
-            ),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            style: FilledButton.styleFrom(
-              textStyle: const TextStyle(fontWeight: FontWeight.w500),
-            ),
-            child: const Text('Sign out'),
-          ),
-        ],
-      ),
-    ),
-  );
-  if (yes != true || !context.mounted) return;
-
-  final nav = Navigator.of(context, rootNavigator: true);
-  showDialog<void>(
-    context: context,
-    barrierDismissible: false,
-    builder: (dialogContext) => _inter(
-      dialogContext,
-      PopScope(
-        canPop: false,
-        child: Dialog(
-          backgroundColor: Colors.white,
-          surfaceTintColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 22, 20, 22),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // The same moving heartbeat as the sign-in screen.
-                const SizedBox(
-                  height: 70,
-                  width: double.infinity,
-                  child: HeartbeatMonitor(
-                    duration: Duration(milliseconds: 1600),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text('Signing out please wait ...', style: _title(18)),
-                const SizedBox(height: 4),
-                const Text(
-                  'See you next week!',
-                  style: TextStyle(color: AppColors.muted, fontSize: 14),
-                ),
-              ],
-            ),
-          ),
+    builder: (dialogContext) => AlertDialog(
+      backgroundColor: Colors.white,
+      surfaceTintColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+      contentPadding: const EdgeInsets.fromLTRB(24, 10, 24, 0),
+      actionsPadding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
+      title: Text(
+        'Sign out?',
+        style: GoogleFonts.inter(
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
+          color: AppColors.ink,
         ),
       ),
+      content: Text(
+        'You’ll need your email and password to sign in again.',
+        style: GoogleFonts.inter(
+          fontSize: 15,
+          height: 1.45,
+          color: AppColors.muted,
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(false),
+          style: TextButton.styleFrom(
+            foregroundColor: AppColors.muted,
+            minimumSize: const Size(0, 44),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            textStyle: GoogleFonts.inter(
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          // Only close the dialog here. Signing out happens after it.
+          onPressed: () => Navigator.of(dialogContext).pop(true),
+          style: FilledButton.styleFrom(
+            backgroundColor: AppColors.blue,
+            foregroundColor: Colors.white,
+            minimumSize: const Size(0, 44),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            shape: const StadiumBorder(),
+            textStyle: GoogleFonts.inter(
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          child: const Text('Sign out'),
+        ),
+      ],
     ),
   );
+  if (ok != true || !context.mounted) return;
 
-  // Wait at least a moment, so people see it happen.
-  await Future.wait([
-    AuthService.instance.signOut().catchError((_) {}),
-    Future<void>.delayed(const Duration(milliseconds: 1600)),
-  ]);
-
-  // Close the "Signing out…" box and any open screens, so the sign-in
-  // screen shows.
-  nav.popUntil((route) => route.isFirst);
+  // Close every screen above home, then sign out.
+  Navigator.of(context, rootNavigator: true).popUntil((r) => r.isFirst);
+  await AuthService.instance.signOut();
 }
-
 /// The signed-in person's details, change password and sign out.
 /// Works for management and employees.
 class ProfileScreen extends StatelessWidget {

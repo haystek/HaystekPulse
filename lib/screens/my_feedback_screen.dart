@@ -12,9 +12,12 @@ import '../theme/app_theme.dart';
 import '../widgets/ui.dart';
 
 /// Everything this employee has sent, in two tabs that never mix.
-/// Look: a quiet list. Each row has the date on the left, the answer in
-/// its colour, the employee's words in soft grey, management's reply
-/// with a thin green line, and the status in one small line.
+/// Look ("cards" design): a blue switch for the two tabs, blue filter
+/// chips, and each item as a white card with a thin border: an icon, the
+/// status chip and the date on top, the words (2 lines), and "Management
+/// replied" on its own line when there is a reply. Tapping a card opens
+/// it in a bottom sheet with the full text and the reply.
+/// Light font weights, nothing heavy.
 ///
 /// - Suggestions: filter by status, the same five steps the status box
 ///   shows (New, Under review, Planned, In progress, Implemented).
@@ -48,7 +51,7 @@ ThemeData _interTheme(BuildContext context) {
 /// Inter for the few titles that set their own style.
 TextStyle _title(double size) => GoogleFonts.inter(
   fontSize: size,
-  fontWeight: FontWeight.w700,
+  fontWeight: FontWeight.w600,
   color: AppColors.ink,
   letterSpacing: -0.4,
 );
@@ -345,9 +348,11 @@ class _MyFeedbackScreenState extends State<MyFeedbackScreen> {
           surfaceTintColor: Colors.white,
           leadingWidth: 68,
           leading: const AppBackButton(),
-          titleSpacing: 4,
-          centerTitle: false,
-          title: Text('My Feedback', style: _title(22)),
+          // No title on the left: the name sits on the right in a rounded pill.
+          title: const SizedBox.shrink(),
+          actions: const [
+            _TitlePill('My Feedback', icon: Icons.chat_bubble_outline),
+          ],
         ),
         body: SafeArea(
           child: Align(
@@ -453,44 +458,51 @@ class _MyFeedbackScreenState extends State<MyFeedbackScreen> {
                   return ListView(
                     padding: const EdgeInsets.fromLTRB(0, 4, 0, 28),
                     children: [
-                      // The two tabs: text with a blue line under the
-                      // chosen one.
+                      // The two tabs: a light grey switch, the chosen one
+                      // blue.
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: DecoratedBox(
-                          decoration: const BoxDecoration(
-                            border: Border(
-                              bottom: BorderSide(color: _line),
-                            ),
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: _panel,
+                            borderRadius: BorderRadius.circular(22),
                           ),
                           child: Row(
                             children: [
-                              _Tab(
-                                label: 'Suggestions',
-                                count: box.length,
-                                selected: _tab == 0,
-                                onTap: () => setState(() => _tab = 0),
+                              Expanded(
+                                child: _Tab(
+                                  label: 'Suggestions',
+                                  count: box.length,
+                                  selected: _tab == 0,
+                                  onTap: () => setState(() => _tab = 0),
+                                ),
                               ),
-                              const SizedBox(width: 24),
-                              _Tab(
-                                label: 'Weekly Pulse',
-                                count: entries.length,
-                                selected: _tab == 1,
-                                onTap: () => setState(() => _tab = 1),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: _Tab(
+                                  label: 'Weekly Pulse',
+                                  count: entries.length,
+                                  selected: _tab == 1,
+                                  onTap: () => setState(() => _tab = 1),
+                                ),
                               ),
                             ],
                           ),
                         ),
                       ),
                       const SizedBox(height: 14),
-                      // Still loading the weeks: only the loader, at the
-                      // top in the middle.
+                      // Still loading the weeks: only the loader, in the
+                      // middle of the space under the tabs.
                       if (loadingWeeks)
-                        const _Loader()
+                        SizedBox(
+                          height: MediaQuery.sizeOf(context).height * 0.55,
+                          child: const _Loader(),
+                        )
                       else ...[
                         // Chips for this tab.
                         SizedBox(
-                          height: 32,
+                          height: 34,
                           child: ListView.separated(
                             scrollDirection: Axis.horizontal,
                             padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -536,6 +548,7 @@ class _MyFeedbackScreenState extends State<MyFeedbackScreen> {
                             ),
                           ),
                         ...list,
+                        const SizedBox(height: 4),
                       ],
                     ],
                   );
@@ -554,13 +567,23 @@ class _MyFeedbackScreenState extends State<MyFeedbackScreen> {
 // ---------------------------------------------------------------------
 
 /// Soft grey for small, less important text.
-const Color _soft = Color(0xFF98A1B6);
+const Color _soft = Color(0xFF8E97AB);
 
-/// Grey for the employee's own words.
+/// Grey for the employee's own words in a Weekly Pulse comment.
 const Color _words = Color(0xFF5B6680);
 
-/// Thin lines between rows.
-const Color _line = Color(0xFFEDF0F5);
+/// Thin borders around cards and chips.
+const Color _line = Color(0xFFE3E8F1);
+
+/// The thin line above "Management replied".
+const Color _divider = Color(0xFFEDF0F5);
+
+/// Light grey for the tab switch.
+const Color _panel = Color(0xFFF6F8FB);
+
+/// Management's reply: light green box, green label.
+const Color _replyBg = Color(0xFFE8F7EE);
+const Color _replyFg = Color(0xFF15803D);
 
 /// Inter with a chosen size, weight and colour.
 TextStyle _t(
@@ -580,26 +603,25 @@ TextStyle _t(
 
 /// Small capitals: "OCTOBER 2026", "MANAGEMENT REPLIED".
 TextStyle _caps(Color color) =>
-    _t(10.5, weight: FontWeight.w600, color: color, letterSpacing: 1.2);
+    _t(11, weight: FontWeight.w500, color: color, letterSpacing: 1.1);
 
 // ---------------------------------------------------------------------
 // Pieces
 // ---------------------------------------------------------------------
 
-/// A small loader at the top, in the middle.
+/// A small blue loader in the middle of the space it is given.
 class _Loader extends StatelessWidget {
   const _Loader();
 
   @override
   Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.only(top: 40),
-      child: Align(
-        alignment: Alignment.topCenter,
-        child: SizedBox(
-          width: 28,
-          height: 28,
-          child: CircularProgressIndicator(strokeWidth: 2.5),
+    return const Center(
+      child: SizedBox(
+        width: 28,
+        height: 28,
+        child: CircularProgressIndicator(
+          strokeWidth: 2.5,
+          color: AppColors.blue,
         ),
       ),
     );
@@ -626,8 +648,8 @@ class _Message extends StatelessWidget {
   }
 }
 
-/// One tab: name and a small count. The chosen one is dark with a blue
-/// line under it.
+/// One tab in the switch: name and a small count. The chosen one is
+/// blue with white text.
 class _Tab extends StatelessWidget {
   const _Tab({
     required this.label,
@@ -646,34 +668,52 @@ class _Tab extends StatelessWidget {
     return Semantics(
       button: true,
       selected: selected,
-      child: InkWell(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(0, 10, 0, 10),
-          decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(
-                color: selected ? AppColors.blue : Colors.transparent,
-                width: 2,
-              ),
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              Text(
-                label,
-                style: _t(
-                  15,
-                  weight: selected ? FontWeight.w600 : FontWeight.w500,
-                  color: selected ? AppColors.ink : _soft,
+      child: Material(
+        color: selected ? AppColors.blue : Colors.transparent,
+        shape: const StadiumBorder(),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: SizedBox(
+            height: 38,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Flexible(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: _t(
+                      14,
+                      weight: FontWeight.w500,
+                      color: selected ? Colors.white : AppColors.muted,
+                    ),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 5),
-              Text('$count', style: _t(12.5, color: _soft)),
-            ],
+                const SizedBox(width: 6),
+                Container(
+                  constraints: const BoxConstraints(minWidth: 20),
+                  height: 20,
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? Colors.white.withValues(alpha: 0.22)
+                        : _line,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    '$count',
+                    style: _t(
+                      11.5,
+                      weight: FontWeight.w500,
+                      color: selected ? Colors.white : AppColors.muted,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -681,7 +721,7 @@ class _Tab extends StatelessWidget {
   }
 }
 
-/// A small soft chip. The chosen one is dark.
+/// A filter chip: white with a thin border. The chosen one is blue.
 class _Chip extends StatelessWidget {
   const _Chip({
     required this.label,
@@ -696,21 +736,26 @@ class _Chip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: selected ? AppColors.ink : const Color(0xFFF3F5F9),
-      shape: const StadiumBorder(),
+      color: selected ? AppColors.blue : Colors.white,
+      shape: StadiumBorder(
+        side: BorderSide(
+          color: selected ? AppColors.blue : _line,
+          width: 1.2,
+        ),
+      ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 13),
+          padding: const EdgeInsets.symmetric(horizontal: 14),
           child: Center(
             widthFactor: 1,
             child: Text(
               label,
               style: _t(
                 13,
-                weight: selected ? FontWeight.w500 : FontWeight.w400,
-                color: selected ? Colors.white : _words,
+                weight: FontWeight.w500,
+                color: selected ? Colors.white : AppColors.muted,
               ),
             ),
           ),
@@ -738,8 +783,7 @@ class _DateButton extends StatelessWidget {
       onPressed: onTap,
       style: TextButton.styleFrom(
         foregroundColor: AppColors.blue,
-        backgroundColor:
-        active ? const Color(0xFFEEF3FF) : Colors.transparent,
+        backgroundColor: active ? AppColors.blueTint : Colors.transparent,
         padding: const EdgeInsets.fromLTRB(12, 6, 6, 6),
         minimumSize: const Size(0, 34),
         shape: const StadiumBorder(),
@@ -749,7 +793,10 @@ class _DateButton extends StatelessWidget {
         children: [
           const Icon(Icons.calendar_today_outlined, size: 14),
           const SizedBox(width: 6),
-          Text(label, style: _t(13, weight: FontWeight.w500, color: AppColors.blue)),
+          Text(
+            label,
+            style: _t(13, weight: FontWeight.w500, color: AppColors.blue),
+          ),
           const Icon(Icons.arrow_drop_down, size: 20),
         ],
       ),
@@ -766,68 +813,126 @@ class _MonthHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 2),
+      padding: const EdgeInsets.fromLTRB(22, 16, 20, 8),
       child: Text(label.toUpperCase(), style: _caps(_soft)),
     );
   }
 }
 
-/// The base of every row: the date on the left (big day, small month),
-/// the content on the right, and a thin line under it.
-class _Row extends StatelessWidget {
-  const _Row({required this.date, required this.child});
+/// The base of every item ("text first" design): a white card with a
+/// thin border. Top line: chips on the left, the date on the right. Then
+/// up to 2 lines of text. When management has replied, a thin line and
+/// "Management replied" on its own line. The arrow sits in the middle on
+/// the right.
+class _Card extends StatelessWidget {
+  const _Card({
+    required this.chips,
+    required this.date,
+    required this.body,
+    this.replied = false,
+    this.onTap,
+  });
 
-  final DateTime date;
-  final Widget child;
+  final List<Widget> chips;
+  final String date;
+  final Widget body;
+  final bool replied;
+
+  /// Opens the bottom sheet. Null: nothing more to show (Great / Good),
+  /// so the card can't be tapped and has no arrow.
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        decoration: const BoxDecoration(
-          border: Border(bottom: BorderSide(color: _line)),
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+      child: Material(
+        color: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+          side: const BorderSide(color: _line, width: 1.5),
         ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              width: 36,
-              child: Column(
-                children: [
-                  Text(
-                    '${date.day}',
-                    style: _t(
-                      20,
-                      weight: FontWeight.w600,
-                      height: 1.1,
-                      letterSpacing: -0.4,
-                    ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(16, 14, onTap == null ? 16 : 8, 14),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Chips on the left, date on the right.
+                      Row(
+                        children: [
+                          for (var i = 0; i < chips.length; i++) ...[
+                            if (i > 0) const SizedBox(width: 6),
+                            chips[i],
+                          ],
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              date,
+                              textAlign: TextAlign.right,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: _t(12, color: _soft),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      body,
+                      if (replied) ...[
+                        const SizedBox(height: 10),
+                        const Divider(height: 1, thickness: 1, color: _divider),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.chat_bubble_outline,
+                              size: 14,
+                              color: _replyFg,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Management replied',
+                              style: _t(
+                                12.5,
+                                weight: FontWeight.w500,
+                                color: _replyFg,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    _shortMonths[date.month - 1].toUpperCase(),
-                    style: _t(
-                      10,
-                      weight: FontWeight.w600,
-                      color: _soft,
-                      letterSpacing: 0.8,
-                    ),
-                  ),
+                ),
+                if (onTap != null) ...[
+                  const SizedBox(width: 6),
+                  const Icon(Icons.chevron_right, color: _soft),
                 ],
-              ),
+              ],
             ),
-            const SizedBox(width: 16),
-            Expanded(child: child),
-          ],
+          ),
         ),
       ),
     );
   }
 }
 
-/// One suggestion: how it was sent, the words, the reply and status.
+/// Up to 2 lines of the person's own words.
+Widget _twoLines(String text, {Color color = AppColors.ink}) => Text(
+  text,
+  maxLines: 2,
+  overflow: TextOverflow.ellipsis,
+  style: _t(14.5, color: color, height: 1.45),
+);
+
+/// One suggestion: status and date, the words, and whether management
+/// replied. Tap for the full text and the reply.
 class _SuggestionRow extends StatelessWidget {
   const _SuggestionRow({required this.item});
 
@@ -835,28 +940,20 @@ class _SuggestionRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _Row(
-      date: item.createdAt ?? DateTime.now(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            item.anonymous ? 'Sent anonymously' : 'Sent with your name',
-            style: _t(12, color: _soft),
-          ),
-          const SizedBox(height: 3),
-          Text(item.text, style: _t(15, height: 1.5)),
-          if (item.hasReply) _Reply(text: item.managementMessage),
-          const SizedBox(height: 10),
-          _StatusLine(status: item.status),
-        ],
-      ),
+    final date = item.createdAt ?? DateTime.now();
+    return _Card(
+      chips: [_StatusChip(status: item.status)],
+      date: '${date.day} ${_shortMonths[date.month - 1]} · '
+          '${item.anonymous ? 'Name hidden' : 'With your name'}',
+      body: _twoLines(item.text),
+      replied: item.hasReply,
+      onTap: () => _showFeedbackSheet(context, item),
     );
   }
 }
 
-/// One Weekly Pulse week: the answer in its colour, the week, the
-/// comment (soft grey), the reply and status.
+/// One Weekly Pulse week: the answer (and the status when there is a
+/// comment) with the week, then the comment, or "You said Great".
 class _WeekRow extends StatelessWidget {
   const _WeekRow({required this.entry});
 
@@ -870,142 +967,331 @@ class _WeekRow extends StatelessWidget {
     final name = weekId == null ? '' : PulseService.weekName(weekId);
     final week = weekId == null
         ? ''
-        : (name.isNotEmpty ? name : PulseService.weekLabel(weekId));
-    final color = rating == null ? AppColors.blue : _moodText(rating);
+        : (name.isNotEmpty ? name : 'Week of ${PulseService.weekLabel(weekId)}');
 
-    return _Row(
-      date: entry.date,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              Expanded(
-                child: Text(
-                  rating == null ? 'Weekly Pulse' : PulseRating.label(rating),
-                  style: _t(15.5, weight: FontWeight.w600, color: color),
-                ),
-              ),
-              if (week.isNotEmpty) Text(week, style: _t(12, color: _soft)),
-            ],
-          ),
-          // Only when there is a comment. Great / Good: just the answer.
-          if (comment != null) ...[
-            const SizedBox(height: 6),
-            Text(
-              comment.text,
-              style: _t(14.5, color: _words, height: 1.5),
-            ),
-            if (comment.hasReply) _Reply(text: comment.managementMessage),
-            const SizedBox(height: 10),
-            _StatusLine(status: comment.status),
-          ],
-
-        ],
+    return _Card(
+      chips: [
+        if (rating != null) _RatingChip(rating: rating),
+        if (comment != null) _StatusChip(status: comment.status),
+      ],
+      date: week,
+      body: comment != null
+          ? _twoLines(comment.text)
+          : Text(
+        rating == null
+            ? 'Weekly Pulse'
+            : 'You said ${PulseRating.label(rating)}',
+        style: _t(
+          14.5,
+          weight: FontWeight.w500,
+          color: rating == null ? AppColors.blue : _moodText(rating),
+        ),
       ),
+      replied: comment?.hasReply ?? false,
+      // Only a written comment opens. Great / Good have nothing more.
+      onTap: comment == null ? null : () => _showFeedbackSheet(context, comment),
     );
   }
 }
 
-/// Management's reply: a thin green line on the left, a small label,
-/// and the reply in dark text.
-class _Reply extends StatelessWidget {
-  const _Reply({required this.text});
+/// The answer as a small chip in its own colour: "Difficult", "Great".
+class _RatingChip extends StatelessWidget {
+  const _RatingChip({required this.rating});
 
-  final String text;
+  final String rating;
 
   @override
   Widget build(BuildContext context) {
+    final color = PulseRating.color(rating);
     return Container(
-      margin: const EdgeInsets.only(top: 10),
-      padding: const EdgeInsets.fromLTRB(12, 2, 0, 2),
-      decoration: const BoxDecoration(
-        border: Border(
-          left: BorderSide(color: Color(0xFFBFE3CB), width: 2),
-        ),
+      padding: const EdgeInsets.fromLTRB(6, 3, 8, 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(11),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
+          Icon(PulseRating.icon(rating), size: 13, color: _moodText(rating)),
+          const SizedBox(width: 4),
           Text(
-            'Management replied',
-            style: _t(
-              11.5,
-              weight: FontWeight.w600,
-              color: const Color(0xFF3F7C55),
-            ),
+            PulseRating.label(rating),
+            style: _t(11.5, weight: FontWeight.w500, color: _moodText(rating)),
           ),
-          const SizedBox(height: 2),
-          Text(text, style: _t(14, height: 1.45)),
         ],
       ),
     );
   }
 }
 
-/// The status in one small line: "● Under Review   Step 2 of 5",
-/// "✓ Implemented", or "Noted by management".
-class _StatusLine extends StatelessWidget {
-  const _StatusLine({required this.status});
+/// "21 Oct 2026, 7:45 PM".
+String _fullDate(DateTime? d) {
+  if (d == null) return '';
+  final h = d.hour % 12 == 0 ? 12 : d.hour % 12;
+  final m = d.minute.toString().padLeft(2, '0');
+  return '${d.day} ${_shortMonths[d.month - 1]} ${d.year}, '
+      '$h:$m ${d.hour < 12 ? 'AM' : 'PM'}';
+}
+
+/// One suggestion or Weekly Pulse comment in a sheet from the bottom:
+/// type and status, the full text, when it was sent and whether the name
+/// was hidden, and management's reply. Swipe down or tap Close.
+/// Same as the one on the home screen.
+void _showFeedbackSheet(BuildContext context, FeedbackItem f) {
+  showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    backgroundColor: Colors.white,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+    ),
+    builder: (context) {
+      final maxH = MediaQuery.of(context).size.height * 0.85;
+      final rating = f.rating;
+      final weekId = f.weekId;
+      return ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: maxH),
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Type and status.
+                      Row(
+                        children: [
+                          Icon(
+                            f.isFromBox
+                                ? Icons.lightbulb_outline
+                                : (rating != null
+                                ? PulseRating.icon(rating)
+                                : Icons.favorite_border),
+                            size: 18,
+                            color: f.isFromBox || rating == null
+                                ? AppColors.blue
+                                : PulseRating.color(rating),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            f.isFromBox ? 'Suggestion' : 'Weekly Pulse',
+                            style: _t(
+                              13.5,
+                              weight: FontWeight.w500,
+                              color: AppColors.blue,
+                            ),
+                          ),
+                          const Spacer(),
+                          _StatusChip(status: f.status),
+                        ],
+                      ),
+                      if (!f.isFromBox && rating != null) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          'You said ${PulseRating.label(rating)}'
+                              '${weekId != null ? ' · Week of ${PulseService.weekLabel(weekId)}' : ''}',
+                          style: _t(13, color: AppColors.muted),
+                        ),
+                      ],
+                      const SizedBox(height: 14),
+
+                      // The full text.
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: _panel,
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: SelectableText(
+                          f.text,
+                          style: _t(15.5, height: 1.5),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+
+                      // When, and whether the name was hidden.
+                      Row(
+                        children: [
+                          Icon(
+                            f.anonymous
+                                ? Icons.lock_outline
+                                : Icons.person_outline,
+                            size: 15,
+                            color: _soft,
+                          ),
+                          const SizedBox(width: 5),
+                          Expanded(
+                            child: Text(
+                              [
+                                _fullDate(f.createdAt),
+                                f.anonymous
+                                    ? 'Name hidden'
+                                    : 'Sent with your name',
+                              ].where((x) => x.isNotEmpty).join(' · '),
+                              style: _t(12.5, color: _soft),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 18),
+
+                      // Management's reply.
+                      Text('MANAGEMENT REPLY', style: _caps(AppColors.muted)),
+                      const SizedBox(height: 8),
+                      if (f.hasReply)
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: _replyBg,
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              SelectableText(
+                                f.managementMessage,
+                                style: _t(15, height: 1.5),
+                              ),
+                              if (f.updatedAt != null) ...[
+                                const SizedBox(height: 8),
+                                Text(
+                                  _fullDate(f.updatedAt),
+                                  style: _t(12, color: _replyFg),
+                                ),
+                              ],
+                            ],
+                          ),
+                        )
+                      else
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(color: _line, width: 1.5),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.schedule,
+                                size: 18,
+                                color: _soft,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'No reply yet. You’ll get a notification '
+                                      'when management replies.',
+                                  style: _t(
+                                    13.5,
+                                    color: AppColors.muted,
+                                    height: 1.4,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 6, 20, 12),
+                child: FilledButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.blue,
+                    minimumSize: const Size.fromHeight(52),
+                    shape: const StadiumBorder(),
+                    textStyle: _t(15.5, weight: FontWeight.w500),
+                  ),
+                  child: const Text('Close'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
+/// A small coloured chip with the status, same colours as the home
+/// screen: New amber, Under Review and In Progress blue, Planned teal,
+/// Noted grey, Implemented green.
+class _StatusChip extends StatelessWidget {
+  const _StatusChip({required this.status});
 
   final String status;
 
   @override
   Widget build(BuildContext context) {
-    if (status == FeedbackStatus.noted) {
-      return Row(
-        children: [
-          const Icon(
-            Icons.bookmark_added_outlined,
-            size: 14,
-            color: Color(0xFF5B6478),
-          ),
-          const SizedBox(width: 6),
-          Text(
-            'Noted by management',
-            style: _t(
-              12.5,
-              weight: FontWeight.w500,
-              color: const Color(0xFF5B6478),
-            ),
-          ),
-        ],
-      );
-    }
-    const steps = FeedbackStatus.steps;
-    final found = steps.indexOf(status);
-    final at = found < 0 ? 0 : found;
-    final done = status == FeedbackStatus.implemented;
-    final color = Color.lerp(_statusDot(steps[at]), AppColors.ink, 0.2)!;
+    final (fg, bg) = _statusColors(status);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(11),
+      ),
+      child: Text(
+        FeedbackStatus.label(status),
+        style: _t(11.5, weight: FontWeight.w500, color: fg),
+      ),
+    );
+  }
+}
 
-    return Row(
-      children: [
-        if (done)
-          Icon(Icons.check, size: 15, color: color)
-        else
-          Container(
-            width: 6,
-            height: 6,
-            decoration: BoxDecoration(
-              color: _statusDot(steps[at]),
-              shape: BoxShape.circle,
-            ),
-          ),
-        const SizedBox(width: 6),
-        Text(
-          FeedbackStatus.label(steps[at]),
-          style: _t(12.5, weight: FontWeight.w500, color: color),
+/// Screen name on the right of the AppBar: pill with an icon.
+/// Same as the Suggestion Box and Weekly Pulse.
+class _TitlePill extends StatelessWidget {
+  const _TitlePill(this.text, {required this.icon});
+
+  final String text;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 16),
+      child: Container(
+        height: 42,
+        padding: const EdgeInsets.fromLTRB(5, 5, 16, 5),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(21),
+          border: Border.all(color: AppColors.blue.withValues(alpha: 0.35)),
         ),
-        if (!done) ...[
-          const SizedBox(width: 8),
-          Text(
-            'Step ${at + 1} of ${steps.length}',
-            style: _t(12, color: _soft),
-          ),
-        ],
-      ],
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: const BoxDecoration(
+                color: AppColors.blue,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 17, color: Colors.white),
+            ),
+            const SizedBox(width: 9),
+            Text(
+              text,
+              style: GoogleFonts.inter(
+                fontSize: 16,
+                fontWeight: FontWeight.normal,
+                color: AppColors.ink,
+                letterSpacing: -0.4,
+                height: 1.2,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -1050,21 +1336,20 @@ Color _moodText(String rating) {
   }
 }
 
-/// Same status colours as management.
-Color _statusDot(String status) {
+/// Text colour and light background of each status chip.
+(Color, Color) _statusColors(String status) {
   switch (status) {
     case FeedbackStatus.newItem:
-      return const Color(0xFFE9A83B);
+      return (const Color(0xFFB7791F), const Color(0xFFFFF6E5));
     case FeedbackStatus.underReview:
-      return const Color(0xFF8B5CF6);
-    case FeedbackStatus.planned:
-      return const Color(0xFF0EA5A4);
     case FeedbackStatus.inProgress:
-      return AppColors.blue;
+      return (AppColors.blue, AppColors.blueTint);
+    case FeedbackStatus.planned:
+      return (const Color(0xFF0F766E), const Color(0xFFE6F6F5));
     case FeedbackStatus.noted:
-      return const Color(0xFF8E97AB);
+      return (const Color(0xFF5B6478), const Color(0xFFEEF0F4));
     default:
-      return const Color(0xFF16A34A);
+      return (const Color(0xFF15803D), const Color(0xFFE8F7EE));
   }
 }
 

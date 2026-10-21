@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -46,8 +48,11 @@ class AuthService {
         .update({'mustChangePassword': false});
   }
 
+  /// Signs out at once. The notification cleanup (leaving this phone's
+  /// groups) runs in the background, so the login screen shows straight
+  /// away. A new sign-in waits for that cleanup to finish.
   Future<void> signOut() async {
-    await NotificationService.instance.stop();
+    unawaited(NotificationService.instance.stop());
     await _auth.signOut();
   }
 

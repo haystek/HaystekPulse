@@ -74,7 +74,10 @@ class _ManagementHomeScreenState extends State<ManagementHomeScreen>
   late final Stream<List<FeedbackItem>> _feedback;
 
   /// The totals of every week, live. Used for the heartbeat line.
-  late final Stream<Map<String, PulseTotals>> _weeks;
+  late Stream<Map<String, PulseTotals>> _weeks;
+
+  /// Counts automatic retries after a loading error.
+  int _retries = 0;
   bool _sending = false;
 
   /// True while Refresh is loading. Shows a spinner in the center.
@@ -114,12 +117,7 @@ class _ManagementHomeScreenState extends State<ManagementHomeScreen>
   void initState() {
     super.initState();
     _feedback = FeedbackService.instance.watchAll();
-    _weeks = FirebaseFirestore.instance.collection('pulse_weeks').snapshots().map(
-          (snap) => {
-        for (final doc in snap.docs)
-          doc.id: PulseTotals.fromMap(doc.data()),
-      },
-    );
+    _weeks = _watchWeeks();
     _load();
     WidgetsBinding.instance.addObserver(this);
     // Look at the clock every 5 seconds, so the screen changes by itself
@@ -394,6 +392,8 @@ class _ManagementHomeScreenState extends State<ManagementHomeScreen>
     );
   }
 
+
+
   /// Tab 1. Week cards to pick a week, a ring with the answers, one
   /// remind button, and the week's comments.
   Widget _buildPulseTab(List<FeedbackItem> all) {
@@ -416,13 +416,20 @@ class _ManagementHomeScreenState extends State<ManagementHomeScreen>
           stream: _weeks,
           builder: (context, weekSnap) {
             if (totalSnap.hasError || weekSnap.hasError) {
-              return const _CenterNote(
-                'Could not load the Weekly Pulse. Open the menu at the top '
-                    'right and choose Refresh.',
-              );
+              // Tries again by itself every 3 seconds until it loads.
+              return _AutoRetry(key: ValueKey(_retries), onRetry: _retry);
             }
             if (!totalSnap.hasData || !weekSnap.hasData) {
-              return const Center(child: CircularProgressIndicator());
+              return const Center(
+                child: SizedBox(
+                  width: 28,
+                  height: 28,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                    color: AppColors.blue,
+                  ),
+                ),
+              );
             }
             final weeks = <String, PulseTotals>{
               if (DemoData.on) ...DemoData.weeks(thisWeek),
@@ -568,6 +575,118 @@ class _ManagementHomeScreenState extends State<ManagementHomeScreen>
           },
         );
       },
+    );
+  }
+
+  /// The totals of every week, live.
+  ///
+  /// The first time, it waits for fresh numbers from the server instead of
+  /// showing the older copy saved on the phone, so the card does not jump
+  /// from an old result to the real one. Offline: after 4 seconds it shows
+  /// the saved copy anyway. After that, every change shows at once.
+  Stream<Map<String, PulseTotals>> _watchWeeks() {
+    late final StreamController<Map<String, PulseTotals>> controller;
+    StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? sub;
+    Timer? fallback;
+    QuerySnapshot<Map<String, dynamic>>? saved;
+    var live = false;
+
+    Map<String, PulseTotals> toMap(QuerySnapshot<Map<String, dynamic>> snap) => {
+      for (final doc in snap.docs) doc.id: PulseTotals.fromMap(doc.data()),
+    };
+
+    controller = StreamController<Map<String, PulseTotals>>(
+      onListen: () {
+        // Offline: show the saved copy after 4 seconds.
+        fallback = Timer(const Duration(seconds: 4), () {
+          final s = saved;
+          if (!live && s != null && !controller.isClosed) {
+            live = true;
+            controller.add(toMap(s));
+          }
+        });
+        sub = FirebaseFirestore.instance
+            .collection('pulse_weeks')
+            .snapshots(includeMetadataChanges: true)
+            .listen(
+              (snap) {
+            // First time: skip the saved copy, wait for the server.
+            if (!live && snap.metadata.isFromCache) {
+              saved = snap;
+              return;
+            }
+            live = true;
+            fallback?.cancel();
+            if (!controller.isClosed) controller.add(toMap(snap));
+          },
+          onError: (Object e) {
+            if (!controller.isClosed) controller.addError(e);
+          },
+        );
+      },
+      onCancel: () async {
+        fallback?.cancel();
+        await sub?.cancel();
+      },
+    );
+    return controller.stream;
+  }
+
+  /// Loading failed: try again by itself.
+  void _retry() {
+    if (!mounted) return;
+    setState(() {
+      _retries++;
+      _weeks = _watchWeeks();
+      _load();
+    });
+  }
+}
+
+/// Shown while the screen could not load: a spinner and
+/// "Reconnecting…". Tries again by itself after 3 seconds.
+class _AutoRetry extends StatefulWidget {
+  const _AutoRetry({super.key, required this.onRetry});
+
+  final VoidCallback onRetry;
+
+  @override
+  State<_AutoRetry> createState() => _AutoRetryState();
+}
+
+class _AutoRetryState extends State<_AutoRetry> {
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer(const Duration(seconds: 3), widget.onRetry);
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 28,
+            height: 28,
+            child: CircularProgressIndicator(strokeWidth: 2.5),
+          ),
+          SizedBox(height: 12),
+          Text(
+            'Reconnecting…',
+            style: TextStyle(color: AppColors.muted, fontSize: 14.5),
+          ),
+        ],
+      ),
     );
   }
 }

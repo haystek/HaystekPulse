@@ -11,6 +11,48 @@ import 'notification_service.dart';
 import 'push_sender.dart';
 import 'text_crypto.dart';
 
+/// How long Send may take before the person is told to try again.
+const Duration sendLimit = Duration(seconds: 15);
+
+/// Why sending did not work, in words the person understands.
+/// The screens show [message] as it is.
+class SendError implements Exception {
+  const SendError(this.message, {this.alreadyAnswered = false});
+
+  final String message;
+
+  /// Weekly Pulse only: this week was already answered (on any phone).
+  final bool alreadyAnswered;
+
+  static const String noInternet =
+      'Could not send. Please check your internet connection and try again.';
+
+  /// Turns any error into a [SendError] with the right message:
+  /// - no internet or too slow  -> [noInternet]
+  /// - not allowed by the server -> [notAllowed]
+  /// - anything else             -> "Something went wrong"
+  static SendError from(Object error, {required String notAllowed}) {
+    if (error is SendError) return error;
+    debugPrint('[Send] $error');
+    if (error is TimeoutException) return const SendError(noInternet);
+    if (error is FirebaseException) {
+      switch (error.code) {
+        case 'unavailable':
+        case 'deadline-exceeded':
+        case 'network-request-failed':
+          return const SendError(noInternet);
+        case 'permission-denied':
+        case 'unauthenticated':
+          return SendError(notAllowed);
+      }
+    }
+    return const SendError('Something went wrong. Please try again.');
+  }
+
+  @override
+  String toString() => message;
+}
+
 class FeedbackService {
   FeedbackService._();
   static final FeedbackService instance = FeedbackService._();
@@ -35,37 +77,65 @@ class FeedbackService {
     return snap.docs.map((d) => d.id).toList();
   }
 
-  /// Saves a Suggestion Box entry.
+  /// A new, unused id for a suggestion. The Suggestion Box takes one when
+  /// it opens and uses it for every Send, so tapping Send again after an
+  /// error can never make a second copy.
+  String newSuggestionId() => _feedback.doc().id;
+
+  /// Saves a Suggestion Box entry, straight on the server.
   ///
   /// Two documents are written together, with the same ID:
   /// - `feedback/{id}`: what management sees. The name is left out
   ///   when [anonymous] is true.
   /// - `feedback_owners/{id}`: the private link to the author.
+  ///
+  /// It is either saved on the server, or it throws a [SendError] with a
+  /// clear message (no internet, not allowed, …) within [sendLimit].
+  /// Nothing is kept on the phone to be sent later.
   Future<void> submitSuggestion({
     required Employee employee,
     required String text,
     required bool anonymous,
+    String? id,
   }) async {
-    final ref = _feedback.doc();
-    final batch = _db.batch();
+    final ref = _feedback.doc(id);
+    final owner = _owners.doc(ref.id);
 
-    batch.set(ref, <String, dynamic>{
-      'source': 'box',
-      'text': TextCrypto.encrypt(text.trim()),
-      'anonymous': anonymous,
-      if (!anonymous) 'authorName': employee.name,
-      if (!anonymous) 'authorEmployeeId': employee.employeeId,
-      'status': FeedbackStatus.newItem,
-      'managementMessage': '',
-      'createdAt': FieldValue.serverTimestamp(),
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
-
-    batch.set(_owners.doc(ref.id), <String, dynamic>{
-      'uid': employee.uid,
-      'createdAt': FieldValue.serverTimestamp(),
-    });
-    await batch.commit();
+    try {
+      await _db.runTransaction<void>(
+            (tx) async {
+          tx.set(ref, <String, dynamic>{
+            'source': 'box',
+            'text': TextCrypto.encrypt(text.trim()),
+            'anonymous': anonymous,
+            if (!anonymous) 'authorName': employee.name,
+            if (!anonymous) 'authorEmployeeId': employee.employeeId,
+            'status': FeedbackStatus.newItem,
+            'managementMessage': '',
+            'createdAt': FieldValue.serverTimestamp(),
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+          tx.set(owner, <String, dynamic>{
+            'uid': employee.uid,
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+        },
+        timeout: sendLimit,
+        maxAttempts: 3,
+      ).timeout(sendLimit + const Duration(seconds: 2));
+    } catch (error) {
+      // Send tapped again after a try that reached the server late: it
+      // is already saved, so that is a success, not an error.
+      if (id != null && await _alreadySaved(owner, employee.uid)) {
+        // Saved before: carry on as a success.
+      } else {
+        throw SendError.from(
+          error,
+          notAllowed: 'This could not be sent. Please sign in again '
+              'and try once more.',
+        );
+      }
+    }
 
     // This phone joins the group for this entry, so the author hears
     // about status changes. Management sends to the group and never
@@ -85,6 +155,22 @@ class FeedbackService {
         },
       ),
     );
+  }
+
+  /// True if this suggestion is already on the server (its private owner
+  /// link exists and is this person's).
+  Future<bool> _alreadySaved(
+      DocumentReference<Map<String, dynamic>> owner,
+      String uid,
+      ) async {
+    try {
+      final doc = await owner
+          .get(const GetOptions(source: Source.server))
+          .timeout(const Duration(seconds: 5));
+      return doc.exists && doc.data()?['uid'] == uid;
+    } catch (_) {
+      return false;
+    }
   }
 
   /// One entry by its ID, or null if it does not exist.

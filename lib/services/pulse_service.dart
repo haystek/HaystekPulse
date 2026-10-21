@@ -8,6 +8,7 @@ import '../models/feedback_item.dart';
 import '../models/pulse_rating.dart';
 import '../models/pulse_totals.dart';
 import 'notification_feed.dart';
+import 'feedback_service.dart' show SendError, sendLimit;
 import 'notification_service.dart';
 import 'push_sender.dart';
 import 'text_crypto.dart';
@@ -225,10 +226,18 @@ class PulseService {
     return doc.data()?['rating'] as String?;
   }
 
-  /// Saves this week's answer in one go:
+  /// Saves this week's answer straight on the server, in one go:
   /// - the employee's private response (one per week),
   /// - +1 on the week's totals,
   /// - for Okay or Difficult, the written feedback and its private owner link.
+  ///
+  /// It first checks on the server that this week is not answered yet
+  /// (from any phone), so the totals are never counted twice, also when
+  /// Send is tapped again after an error.
+  ///
+  /// It is either saved on the server, or it throws a [SendError] with a
+  /// clear message within [sendLimit]. Nothing is kept on the phone to be
+  /// sent later.
   Future<void> submit({
     required Employee employee,
     required String rating,
@@ -236,51 +245,71 @@ class PulseService {
     bool anonymous = false,
   }) async {
     final weekId = currentWeekId();
-    final batch = _db.batch();
+    final responseRef = _responses.doc('${weekId}_${employee.uid}');
+    final feedbackRef =
+    PulseRating.needsText(rating) ? _db.collection('feedback').doc() : null;
+    final String? feedbackId = feedbackRef?.id;
 
-    batch.set(_responses.doc('${weekId}_${employee.uid}'), <String, dynamic>{
-      'uid': employee.uid,
-      'weekId': weekId,
-      'rating': rating,
-      'createdAt': FieldValue.serverTimestamp(),
-    });
+    try {
+      await _db.runTransaction<void>(
+            (tx) async {
+          final existing = await tx.get(responseRef);
+          if (existing.exists) {
+            throw const SendError(
+              'You have already answered this week. Thank you.',
+              alreadyAnswered: true,
+            );
+          }
 
-    batch.set(
-      _weeks.doc(weekId),
-      <String, dynamic>{
-        rating: FieldValue.increment(1),
-        'submitted': FieldValue.increment(1),
-      },
-      SetOptions(merge: true),
-    );
+          tx.set(responseRef, <String, dynamic>{
+            'uid': employee.uid,
+            'weekId': weekId,
+            'rating': rating,
+            'createdAt': FieldValue.serverTimestamp(),
+          });
 
-    String? feedbackId;
-    if (PulseRating.needsText(rating)) {
-      final ref = _db.collection('feedback').doc();
-      feedbackId = ref.id;
-      batch.set(ref, <String, dynamic>{
-        'source': 'pulse',
-        'rating': rating,
-        'weekId': weekId,
-        'text': TextCrypto.encrypt(text.trim()),
-        'anonymous': anonymous,
-        if (!anonymous) 'authorName': employee.name,
-        if (!anonymous) 'authorEmployeeId': employee.employeeId,
-        'status': FeedbackStatus.newItem,
-        'managementMessage': '',
-        'createdAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
-      batch.set(
-        _db.collection('feedback_owners').doc(ref.id),
-        <String, dynamic>{
-          'uid': employee.uid,
-          'createdAt': FieldValue.serverTimestamp(),
+          tx.set(
+            _weeks.doc(weekId),
+            <String, dynamic>{
+              rating: FieldValue.increment(1),
+              'submitted': FieldValue.increment(1),
+            },
+            SetOptions(merge: true),
+          );
+
+          if (feedbackRef != null) {
+            tx.set(feedbackRef, <String, dynamic>{
+              'source': 'pulse',
+              'rating': rating,
+              'weekId': weekId,
+              'text': TextCrypto.encrypt(text.trim()),
+              'anonymous': anonymous,
+              if (!anonymous) 'authorName': employee.name,
+              if (!anonymous) 'authorEmployeeId': employee.employeeId,
+              'status': FeedbackStatus.newItem,
+              'managementMessage': '',
+              'createdAt': FieldValue.serverTimestamp(),
+              'updatedAt': FieldValue.serverTimestamp(),
+            });
+            tx.set(
+              _db.collection('feedback_owners').doc(feedbackRef.id),
+              <String, dynamic>{
+                'uid': employee.uid,
+                'createdAt': FieldValue.serverTimestamp(),
+              },
+            );
+          }
         },
+        timeout: sendLimit,
+        maxAttempts: 3,
+      ).timeout(sendLimit + const Duration(seconds: 2));
+    } catch (error) {
+      throw SendError.from(
+        error,
+        notAllowed: 'This could not be sent. The Weekly Pulse may have '
+            'just closed. Please go back and check.',
       );
     }
-
-    await batch.commit();
 
     // The author's phone joins the group for this comment, so only they
     // hear about status changes. Management never learns which phone.

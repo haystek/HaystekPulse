@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -51,6 +52,9 @@ class NotificationService {
 
   /// The feedback groups this phone joined, so sign-out can leave them.
   final Set<String> _followed = <String>{};
+
+  /// The sign-out cleanup, while it is still running.
+  Future<void>? _stopping;
 
   bool get supported => !kIsWeb;
 
@@ -112,6 +116,10 @@ class NotificationService {
   /// Called once the signed-in person's record has loaded.
   Future<void> start(Employee employee) async {
     if (!supported || _startedFor == employee.uid) return;
+    // Only for the person signed in right now. Just after a sign-out the
+    // old screens can still ask once with the previous person's record;
+    // that must not put this phone back in their groups.
+    if (FirebaseAuth.instance.currentUser?.uid != employee.uid) return;
     _startedFor = employee.uid;
     _employee = employee;
     // Listen first, before anything that can fail or be slow, so a
@@ -119,6 +127,15 @@ class NotificationService {
     _foregroundSub ??= FirebaseMessaging.onMessage.listen(_showInApp);
     _tappedSub ??= FirebaseMessaging.onMessageOpenedApp.listen(_open);
     _tokenSub ??= _fm.onTokenRefresh.listen((t) => _token = t);
+    // A sign-out just before this: let its cleanup finish first, so it
+    // cannot delete the new sign-in's address.
+    final stopping = _stopping;
+    if (stopping != null) await stopping;
+    // Signed out (or someone else signed in) while waiting: stop here.
+    if (FirebaseAuth.instance.currentUser?.uid != employee.uid ||
+        _startedFor != employee.uid) {
+      return;
+    }
     try {
       await _fm.requestPermission();
       await _initLocal();
@@ -162,6 +179,8 @@ class NotificationService {
         await _fm.unsubscribeFromTopic(topicEmployees);
         await _leavePendingTopics();
         await _fm.subscribeToTopic(topicManagement);
+        // Once more at the end, for the same reason as below.
+        await _fm.unsubscribeFromTopic(topicEmployees);
       } else {
         await _fm.unsubscribeFromTopic(topicManagement);
         // The week names come from the open day. If the schedule is
@@ -172,6 +191,10 @@ class NotificationService {
         await _fm.subscribeToTopic(topicEmployees);
         await _syncPendingTopics(employee.uid);
         await _syncFeedbackTopics(employee.uid);
+        // Once more at the end: Android can replay an old "join
+        // management" from the previous account after the new address
+        // is made. This makes sure the employee phone is out of it.
+        await _fm.unsubscribeFromTopic(topicManagement);
       }
     } catch (error) {
       debugPrint('Notifications not started: $error');
@@ -283,28 +306,39 @@ class NotificationService {
 
   /// Called on sign-out, so the next person to use this phone does not
   /// receive the previous person's notifications.
-  Future<void> stop() async {
-    if (!supported) return;
+  ///
+  /// Not awaited by sign-out: the person goes to the login screen at once
+  /// and this finishes in the background (about a second).
+  Future<void> stop() {
+    if (!supported) return Future<void>.value();
     _startedFor = null;
     _token = null;
     _employee = null;
     ScheduleService.changed.removeListener(_onScheduleChanged);
+    final followed = _followed.toList();
+    _followed.clear();
+    return _stopping = _cleanUp(followed).whenComplete(() => _stopping = null);
+  }
+
+  /// Deleting this phone's address (token) removes it from every group at
+  /// once, so that is the only step normally needed. If it fails (for
+  /// example no internet), leave the groups instead, all at the same time.
+  Future<void> _cleanUp(List<String> followed) async {
     try {
-      // Leave every group first, then forget this phone's address, so the
-      // next person to sign in starts clean.
-      await _fm.unsubscribeFromTopic(topicManagement);
-      await _fm.unsubscribeFromTopic(topicEmployees);
-      await _leavePendingTopics();
-      final followed = _followed.toList();
-      _followed.clear();
-      await Future.wait(followed.map(_fm.unsubscribeFromTopic));
+      await _fm.deleteToken().timeout(const Duration(seconds: 10));
+      return;
     } catch (error) {
-      debugPrint('Could not leave the groups: $error');
+      debugPrint('Could not clear the address, leaving the groups: $error');
     }
     try {
-      await _fm.deleteToken();
+      await Future.wait([
+        _fm.unsubscribeFromTopic(topicManagement),
+        _fm.unsubscribeFromTopic(topicEmployees),
+        _leavePendingTopics(),
+        ...followed.map(_fm.unsubscribeFromTopic),
+      ]);
     } catch (error) {
-      debugPrint('Could not clear notifications: $error');
+      debugPrint('Could not leave the groups: $error');
     }
   }
 
@@ -317,6 +351,14 @@ class NotificationService {
     final body = (n.body ?? '').trim();
     if (title.isEmpty && body.isEmpty) return;
     final type = message.data['type'] as String?;
+
+    // Only notifications meant for this person's role. One phone used
+    // with a management and an employee account can still be in the other
+    // role's group for a while; never show the other side's messages.
+    if (!_isForMe(type)) {
+      debugPrint('[Notify] ignored "$type": not for this role');
+      return;
+    }
 
     // App is open: show only our banner. Use the phone's notification
     // bar only if the banner cannot be shown, so nothing is lost.
@@ -367,6 +409,26 @@ class NotificationService {
       actionLabel: action,
       onAction: action == null ? null : () => _open(message),
     );
+  }
+
+  /// Whether a notification of this type is meant for the person signed
+  /// in: new feedback and pulse responses for management; replies and
+  /// Weekly Pulse reminders for employees. Unknown types are shown.
+  bool _isForMe(String? type) {
+    final e = _employee;
+    if (e == null) return false;
+    switch (type) {
+      case PushSender.typeFeedbackNew:
+      case PushSender.typePulseResponse:
+        return e.isManagement;
+      case PushSender.typeFeedbackReply:
+      case PushSender.typePulseOpen:
+      case PushSender.typePulseReminder:
+      case 'pulse_soon':
+        return !e.isManagement;
+      default:
+        return true;
+    }
   }
 
   /// Android: shows the notification in the phone's notification bar.

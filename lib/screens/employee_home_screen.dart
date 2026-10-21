@@ -23,11 +23,8 @@ import 'profile_screen.dart';
 import 'suggestion_box_screen.dart';
 import 'weekly_pulse_screen.dart';
 
-const Color _purple = Color(0xFF7C3AED);
-const Color _purpleTint = Color(0xFFF1EBFE);
-
-/// Light grey panels (Suggestion Box and feedback rows).
-const Color _panel = Color(0xFFF6F8FB);
+/// Thin borders around the feedback rows.
+const Color _line = Color(0xFFE3E8F1);
 
 /// Soft grey for small, less important text.
 const Color _soft = Color(0xFF8E97AB);
@@ -52,8 +49,8 @@ TextStyle _inter(
 /// - a white top with the logo, the bell and the account button,
 /// - a greeting with the person's name,
 /// - the Weekly Pulse as one blue card: when it closes, time left, button,
-/// - a quiet Suggestion Box panel with a Write button,
-/// - your feedback (latest 3, with See all).
+/// - the Suggestion Box as a light blue card with a blue Write button,
+/// - your feedback (latest 3, with See all): white rows with a status chip.
 class EmployeeHomeScreen extends StatelessWidget {
   const EmployeeHomeScreen({super.key, required this.employee});
 
@@ -235,15 +232,33 @@ class _PulseCard extends StatefulWidget {
 class _PulseCardState extends State<_PulseCard> with WidgetsBindingObserver {
   Timer? _timer;
   late String _weekId;
-  late Stream<String?> _myRating;
+
+  /// This week's answer, and whether it came from the copy saved on the
+  /// phone (it can be old) or from the server.
+  late Stream<({String? rating, bool cached})> _myRating;
+
+  /// After 4 seconds, stop waiting for the server (offline) and use the
+  /// copy saved on the phone.
+  bool _stopWaiting = false;
+  Timer? _waitTimer;
 
   void _watch() {
     _weekId = PulseService.currentWeekId();
     _myRating = FirebaseFirestore.instance
         .collection('pulse_responses')
         .doc('${_weekId}_${widget.employee.uid}')
-        .snapshots()
-        .map((doc) => doc.data()?['rating'] as String?);
+        .snapshots(includeMetadataChanges: true)
+        .map(
+          (doc) => (
+      rating: doc.data()?['rating'] as String?,
+      cached: doc.metadata.isFromCache,
+      ),
+    );
+    _stopWaiting = false;
+    _waitTimer?.cancel();
+    _waitTimer = Timer(const Duration(seconds: 4), () {
+      if (mounted) setState(() => _stopWaiting = true);
+    });
   }
 
   /// settings/pulse changed in Firebase: redraw at once. A new open
@@ -283,6 +298,7 @@ class _PulseCardState extends State<_PulseCard> with WidgetsBindingObserver {
   void dispose() {
     ScheduleService.changed.removeListener(_onSchedule);
     _timer?.cancel();
+    _waitTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -293,10 +309,11 @@ class _PulseCardState extends State<_PulseCard> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<String?>(
+    return StreamBuilder<({String? rating, bool cached})>(
       stream: _myRating,
       builder: (context, snap) {
-        final rating = snap.data;
+        final answer = snap.data;
+        final rating = answer?.rating;
         final now = DateTime.now();
         // Test mode: open every day, so no dates are shown.
         const everyDay = AppConfig.pulseOpenEveryDay;
@@ -324,6 +341,14 @@ class _PulseCardState extends State<_PulseCard> with WidgetsBindingObserver {
           );
         }
 
+        // Not sure yet whether this week is answered: the phone's saved
+        // copy says "not answered", but it can be old. Wait for the server
+        // (at most 4 seconds), so the card does not show "Rate your week"
+        // first and then jump to "Done".
+        final unsure = answer == null ||
+            (answer.cached && answer.rating == null && !_stopWaiting);
+        if (unsure) return const _LoadingCard();
+
         if (rating != null) {
           return _DoneCard(
             week: week,
@@ -347,6 +372,33 @@ class _PulseCardState extends State<_PulseCard> with WidgetsBindingObserver {
 
         return _MissedCard(week: week, closesText: closesText, next: next);
       },
+    );
+  }
+}
+
+/// Shown for a moment while this week's answer loads: a light grey card
+/// with a small spinner, about the size of the real card, so nothing
+/// jumps around.
+class _LoadingCard extends StatelessWidget {
+  const _LoadingCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 232,
+      decoration: BoxDecoration(
+        color: const Color(0xFFF6F8FB),
+        borderRadius: BorderRadius.circular(26),
+      ),
+      alignment: Alignment.center,
+      child: const SizedBox(
+        width: 26,
+        height: 26,
+        child: CircularProgressIndicator(
+          strokeWidth: 2.5,
+          color: AppColors.blue,
+        ),
+      ),
     );
   }
 }
@@ -1232,8 +1284,8 @@ class _MissedCard extends StatelessWidget {
 // Suggestion Box
 // ---------------------------------------------------------------------
 
-/// A quiet grey panel: icon, "Suggestion Box", a short line and a dark
-/// Write button. Tapping anywhere on it opens the Suggestion Box.
+/// A light blue card: a blue bulb tile, "Suggestion Box", a short line
+/// and a round blue Write button. Tapping anywhere opens the box.
 class _SuggestCard extends StatelessWidget {
   const _SuggestCard({required this.onTap});
 
@@ -1242,26 +1294,26 @@ class _SuggestCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: _panel,
+      color: AppColors.blueTint,
       borderRadius: BorderRadius.circular(22),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
+          padding: const EdgeInsets.all(16),
           child: Row(
             children: [
               Container(
-                width: 40,
-                height: 40,
+                width: 44,
+                height: 44,
                 decoration: BoxDecoration(
-                  color: _purpleTint,
-                  borderRadius: BorderRadius.circular(12),
+                  color: AppColors.blue,
+                  borderRadius: BorderRadius.circular(14),
                 ),
                 child: const Icon(
                   Icons.lightbulb_outline,
-                  color: _purple,
-                  size: 21,
+                  color: Colors.white,
+                  size: 22,
                 ),
               ),
               const SizedBox(width: 12),
@@ -1271,12 +1323,12 @@ class _SuggestCard extends StatelessWidget {
                   children: [
                     Text(
                       'Suggestion Box',
-                      style: _inter(15.5, weight: FontWeight.w600),
+                      style: _inter(16, weight: FontWeight.w700),
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Share an idea or a problem, any day',
-                      style: _inter(13, color: _soft),
+                      'Ideas, concerns, requests. Any day.',
+                      style: _inter(13, color: AppColors.muted, height: 1.35),
                     ),
                   ],
                 ),
@@ -1285,14 +1337,12 @@ class _SuggestCard extends StatelessWidget {
               FilledButton(
                 onPressed: onTap,
                 style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.ink,
+                  backgroundColor: AppColors.blue,
                   foregroundColor: Colors.white,
                   minimumSize: const Size(0, 40),
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  textStyle: _inter(14, weight: FontWeight.w600),
+                  padding: const EdgeInsets.symmetric(horizontal: 18),
+                  shape: const StadiumBorder(),
+                  textStyle: _inter(14, weight: FontWeight.w700),
                 ),
                 child: const Text('Write'),
               ),
@@ -1331,8 +1381,9 @@ class _Recent {
     required this.icon,
     required this.iconColor,
     required this.iconBg,
-    this.dot,
+    this.status,
     this.hasReply = false,
+    this.item,
   });
 
   final DateTime date;
@@ -1342,8 +1393,16 @@ class _Recent {
   final IconData icon;
   final Color iconColor;
   final Color iconBg;
-  final Color? dot;
+
+  /// The FeedbackStatus, shown as a small chip. Null for an answer with
+  /// no comment.
+  final String? status;
   final bool hasReply;
+
+  /// The suggestion or comment behind this row. Tapping the row opens it
+  /// in a bottom sheet. Null for an answer with no comment (nothing more
+  /// to show, so the row can't be tapped).
+  final FeedbackItem? item;
 }
 
 class _RecentActivityState extends State<_RecentActivity> {
@@ -1418,23 +1477,6 @@ class _RecentActivityState extends State<_RecentActivity> {
     return DateTime(p[0], p[1], p[2]);
   }
 
-  static Color _statusDot(String status) {
-    switch (status) {
-      case FeedbackStatus.newItem:
-        return const Color(0xFFE9A83B);
-      case FeedbackStatus.underReview:
-        return const Color(0xFF8B5CF6);
-      case FeedbackStatus.planned:
-        return const Color(0xFF0EA5A4);
-      case FeedbackStatus.inProgress:
-        return AppColors.blue;
-      case FeedbackStatus.noted:
-        return const Color(0xFF8E97AB);
-      default:
-        return const Color(0xFF16A34A);
-    }
-  }
-
   /// Suggestions + pulse comments + pulse answers, newest first.
   List<_Recent> _merge(
       List<FeedbackItem> items,
@@ -1467,14 +1509,14 @@ class _RecentActivityState extends State<_RecentActivity> {
             title: c.text,
             sub: [
               'You said ${PulseRating.label(rating)}',
-              FeedbackStatus.label(c.status),
               _date(c.createdAt ?? at),
             ].join(' · '),
             icon: PulseRating.icon(rating),
             iconColor: color,
             iconBg: color.withValues(alpha: 0.12),
-            dot: _statusDot(c.status),
+            status: c.status,
             hasReply: c.hasReply,
+            item: c,
           ),
         );
       } else {
@@ -1504,14 +1546,14 @@ class _RecentActivityState extends State<_RecentActivity> {
           sub: [
             if (!f.isFromBox && rating != null)
               'You said ${PulseRating.label(rating)}',
-            FeedbackStatus.label(f.status),
             _date(f.createdAt),
           ].where((x) => x.isNotEmpty).join(' · '),
           icon: f.isFromBox ? Icons.lightbulb_outline : Icons.favorite,
-          iconColor: f.isFromBox ? _purple : AppColors.blue,
-          iconBg: f.isFromBox ? _purpleTint : AppColors.blueTint,
-          dot: _statusDot(f.status),
+          iconColor: AppColors.blue,
+          iconBg: AppColors.blueTint,
+          status: f.status,
           hasReply: f.hasReply,
+          item: f,
         ),
       );
     }
@@ -1551,8 +1593,8 @@ class _RecentActivityState extends State<_RecentActivity> {
                         'Your feedback',
                         style: _inter(
                           18,
-                          weight: FontWeight.w700,
-                          letterSpacing: -0.2,
+                          weight: FontWeight.w800,
+                          letterSpacing: -0.3,
                         ),
                       ),
                     ),
@@ -1560,6 +1602,7 @@ class _RecentActivityState extends State<_RecentActivity> {
                       // Opens My Feedback on the tab of the newest item.
                       onPressed: () => widget.onOpen(rows.first.isBox ? 0 : 1),
                       style: TextButton.styleFrom(
+                        foregroundColor: AppColors.blue,
                         padding: const EdgeInsets.symmetric(horizontal: 4),
                         textStyle: _inter(14.5, weight: FontWeight.w600),
                       ),
@@ -1587,7 +1630,7 @@ class _RecentActivityState extends State<_RecentActivity> {
       children: [
         Text(
           'Your feedback',
-          style: _inter(18, weight: FontWeight.w700, letterSpacing: -0.2),
+          style: _inter(18, weight: FontWeight.w800, letterSpacing: -0.3),
         ),
         const SizedBox(height: 10),
         CustomPaint(
@@ -1621,15 +1664,22 @@ class _RecentActivityState extends State<_RecentActivity> {
     );
   }
 
+  /// One white row with a thin border: icon, type and status chip,
+  /// the text, and the date (+ "Management replied" in green).
   Widget _row(_Recent r) {
     return Material(
-      color: _panel,
-      borderRadius: BorderRadius.circular(18),
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: const BorderSide(color: _line, width: 1.5),
+      ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () => widget.onOpen(r.isBox ? 0 : 1),
+        // A suggestion or comment opens in a bottom sheet. "You said
+        // Good" has nothing more to show, so it can't be tapped.
+        onTap: r.item == null ? null : () => _showFeedbackSheet(context, r.item!),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(14, 13, 10, 13),
+          padding: const EdgeInsets.fromLTRB(12, 12, 10, 12),
           child: Row(
             children: [
               Container(
@@ -1646,21 +1696,29 @@ class _RecentActivityState extends State<_RecentActivity> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // What it is: Weekly Pulse or Suggestion.
-                    Text(
-                      r.isBox ? 'Suggestion' : 'Weekly Pulse',
-                      style: _inter(
-                        12.5,
-                        weight: FontWeight.w600,
-                        color: r.isBox ? _purple : AppColors.blue,
-                      ),
+                    // What it is, and its status.
+                    Row(
+                      children: [
+                        Text(
+                          r.isBox ? 'Suggestion' : 'Weekly Pulse',
+                          style: _inter(
+                            12,
+                            weight: FontWeight.w700,
+                            color: AppColors.blue,
+                          ),
+                        ),
+                        if (r.status != null) ...[
+                          const SizedBox(width: 6),
+                          _statusChip(r.status!),
+                        ],
+                      ],
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 3),
                     Text(
                       r.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: _inter(15, weight: FontWeight.w500),
+                      style: _inter(15, weight: FontWeight.normal),
                     ),
                     const SizedBox(height: 3),
                     Text.rich(
@@ -1672,8 +1730,8 @@ class _RecentActivityState extends State<_RecentActivity> {
                             TextSpan(
                               text: '  ·  Management replied',
                               style: _inter(
-                                13,
-                                weight: FontWeight.w500,
+                                12.5,
+                                weight: FontWeight.w600,
                                 color: const Color(0xFF15803D),
                               ),
                             ),
@@ -1681,18 +1739,263 @@ class _RecentActivityState extends State<_RecentActivity> {
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: _inter(13, color: _soft),
+                      style: _inter(12.5, color: _soft),
                     ),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right, color: _soft),
+              if (r.item != null)
+                const Icon(Icons.chevron_right, color: _soft)
+              else
+                const SizedBox(width: 8),
             ],
           ),
         ),
       ),
     );
   }
+}
+
+/// Text colour and light background of each status chip.
+(Color, Color) _statusColors(String status) {
+  switch (status) {
+    case FeedbackStatus.newItem:
+      return (const Color(0xFFB7791F), const Color(0xFFFFF6E5));
+    case FeedbackStatus.underReview:
+    case FeedbackStatus.inProgress:
+      return (AppColors.blue, AppColors.blueTint);
+    case FeedbackStatus.planned:
+      return (const Color(0xFF0F766E), const Color(0xFFE6F6F5));
+    case FeedbackStatus.noted:
+      return (const Color(0xFF5B6478), const Color(0xFFEEF0F4));
+    default:
+      return (const Color(0xFF15803D), const Color(0xFFE8F7EE));
+  }
+}
+
+/// A small coloured chip with the status, e.g. "New" or "Implemented".
+Widget _statusChip(String status, {double size = 11.5}) {
+  final (fg, bg) = _statusColors(status);
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+    decoration: BoxDecoration(
+      color: bg,
+      borderRadius: BorderRadius.circular(11),
+    ),
+    child: Text(
+      FeedbackStatus.label(status),
+      style: _inter(size, weight: FontWeight.w400, color: fg),
+    ),
+  );
+}
+
+/// "21 Oct 2026, 7:45 PM".
+String _fullDate(DateTime? d) {
+  if (d == null) return '';
+  const months = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  ];
+  final h = d.hour % 12 == 0 ? 12 : d.hour % 12;
+  final m = d.minute.toString().padLeft(2, '0');
+  return '${d.day} ${months[d.month - 1]} ${d.year}, '
+      '$h:$m ${d.hour < 12 ? 'AM' : 'PM'}';
+}
+
+/// One suggestion or Weekly Pulse comment, in a sheet from the bottom:
+/// type and status, the full text, when it was sent and whether the name
+/// was hidden, and management's reply. Swipe down or tap Close.
+void _showFeedbackSheet(BuildContext context, FeedbackItem f) {
+  showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    backgroundColor: Colors.white,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+    ),
+    builder: (context) {
+      final maxH = MediaQuery.of(context).size.height * 0.85;
+      final rating = f.rating;
+      return ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: maxH),
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Type and status.
+                      Row(
+                        children: [
+                          Icon(
+                            f.isFromBox
+                                ? Icons.lightbulb_outline
+                                : (rating != null
+                                ? PulseRating.icon(rating)
+                                : Icons.favorite),
+                            size: 18,
+                            color: f.isFromBox || rating == null
+                                ? AppColors.blue
+                                : PulseRating.color(rating),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            f.isFromBox ? 'Suggestion' : 'Weekly Pulse',
+                            style: _inter(
+                              13.5,
+                              weight: FontWeight.w700,
+                              color: AppColors.blue,
+                            ),
+                          ),
+                          const Spacer(),
+                          _statusChip(f.status, size: 12.5),
+                        ],
+                      ),
+                      if (!f.isFromBox && rating != null) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          'You said ${PulseRating.label(rating)}'
+                              '${f.weekId != null ? ' · Week of ${PulseService.weekLabel(f.weekId!)}' : ''}',
+                          style: _inter(13, color: AppColors.muted),
+                        ),
+                      ],
+                      const SizedBox(height: 14),
+
+                      // The full text.
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF6F8FB),
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: SelectableText(
+                          f.text,
+                          style: _inter(15.5, height: 1.5),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+
+                      // When, and whether the name was hidden.
+                      Row(
+                        children: [
+                          Icon(
+                            f.anonymous
+                                ? Icons.lock_outline
+                                : Icons.person_outline,
+                            size: 15,
+                            color: _soft,
+                          ),
+                          const SizedBox(width: 5),
+                          Expanded(
+                            child: Text(
+                              [
+                                _fullDate(f.createdAt),
+                                f.anonymous ? 'Name hidden' : 'Sent with your name',
+                              ].where((x) => x.isNotEmpty).join(' · '),
+                              style: _inter(12.5, color: _soft),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 18),
+
+                      // Management's reply.
+                      Text(
+                        'MANAGEMENT REPLY',
+                        style: _inter(
+                          11.5,
+                          weight: FontWeight.w700,
+                          color: AppColors.muted,
+                          letterSpacing: 0.6,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      if (f.hasReply)
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE8F7EE),
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              SelectableText(
+                                f.managementMessage,
+                                style: _inter(15, height: 1.5),
+                              ),
+                              if (f.updatedAt != null) ...[
+                                const SizedBox(height: 8),
+                                Text(
+                                  _fullDate(f.updatedAt),
+                                  style: _inter(
+                                    12,
+                                    color: const Color(0xFF15803D),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        )
+                      else
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(color: _line, width: 1.5),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.schedule,
+                                size: 18,
+                                color: _soft,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'No reply yet. You’ll get a notification '
+                                      'when management replies.',
+                                  style: _inter(
+                                    13.5,
+                                    color: AppColors.muted,
+                                    height: 1.4,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 6, 20, 12),
+                child: FilledButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.blue,
+                    minimumSize: const Size.fromHeight(52),
+                    shape: const StadiumBorder(),
+                    textStyle: _inter(15.5, weight: FontWeight.w700),
+                  ),
+                  child: const Text('Close'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
 }
 
 /// A rounded dashed border, for the empty "Your feedback" box.
