@@ -1142,7 +1142,7 @@ void _showFeedbackSheet(BuildContext context, FeedbackItem f) {
                       const SizedBox(height: 18),
 
                       // Management's reply.
-                      Text('MANAGEMENT REPLY', style: _caps(AppColors.muted)),
+                      Text('Management reply', style: _caps(AppColors.muted)),
                       const SizedBox(height: 8),
                       if (f.hasReply)
                         Container(

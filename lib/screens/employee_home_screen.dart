@@ -1805,7 +1805,14 @@ String _fullDate(DateTime? d) {
 /// One suggestion or Weekly Pulse comment, in a sheet from the bottom:
 /// type and status, the full text, when it was sent and whether the name
 /// was hidden, and management's reply. Swipe down or tap Close.
+/// One suggestion or Weekly Pulse comment in a sheet from the bottom.
+/// Calm layout, three text sizes only:
+///   header  – type + status, then date · name hidden   (13)
+///   body    – the full text                              (16)
+///   reply   – highlighted green card, or "No reply yet"  (15 / 13)
+///   footer  – a quiet Close button
 void _showFeedbackSheet(BuildContext context, FeedbackItem f) {
+  const green = Color(0xFF15803D);
   showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
@@ -1815,10 +1822,19 @@ void _showFeedbackSheet(BuildContext context, FeedbackItem f) {
       borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
     ),
     builder: (context) {
-      final maxH = MediaQuery.of(context).size.height * 0.85;
       final rating = f.rating;
+      final typeColor = f.isFromBox || rating == null
+          ? AppColors.blue
+          : PulseRating.color(rating);
+      final meta = [
+        _fullDate(f.createdAt),
+        f.anonymous ? 'Name hidden' : 'Sent with your name',
+      ].where((x) => x.isNotEmpty).join('  ·  ');
+
       return ConstrainedBox(
-        constraints: BoxConstraints(maxHeight: maxH),
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.85,
+        ),
         child: SafeArea(
           top: false,
           child: Column(
@@ -1827,11 +1843,11 @@ void _showFeedbackSheet(BuildContext context, FeedbackItem f) {
             children: [
               Flexible(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // Type and status.
+                      // Header: what it is, and its status.
                       Row(
                         children: [
                           Icon(
@@ -1839,153 +1855,126 @@ void _showFeedbackSheet(BuildContext context, FeedbackItem f) {
                                 ? Icons.lightbulb_outline
                                 : (rating != null
                                 ? PulseRating.icon(rating)
-                                : Icons.favorite),
+                                : Icons.favorite_border),
                             size: 18,
-                            color: f.isFromBox || rating == null
-                                ? AppColors.blue
-                                : PulseRating.color(rating),
+                            color: typeColor,
                           ),
-                          const SizedBox(width: 6),
-                          Text(
-                            f.isFromBox ? 'Suggestion' : 'Weekly Pulse',
-                            style: _inter(
-                              13.5,
-                              weight: FontWeight.w700,
-                              color: AppColors.blue,
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              f.isFromBox
+                                  ? 'Suggestion'
+                                  : rating == null
+                                  ? 'Weekly Pulse'
+                                  : 'Weekly Pulse · ${PulseRating.label(rating)}',
+                              style: _inter(13, weight: FontWeight.w500, color: typeColor),
                             ),
                           ),
-                          const Spacer(),
-                          _statusChip(f.status, size: 12.5),
+                          _statusChip(f.status, size: 12),
                         ],
                       ),
-                      if (!f.isFromBox && rating != null) ...[
-                        const SizedBox(height: 6),
-                        Text(
-                          'You said ${PulseRating.label(rating)}'
-                              '${f.weekId != null ? ' · Week of ${PulseService.weekLabel(f.weekId!)}' : ''}',
-                          style: _inter(13, color: AppColors.muted),
-                        ),
-                      ],
-                      const SizedBox(height: 14),
-
-                      // The full text.
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF6F8FB),
-                          borderRadius: BorderRadius.circular(18),
-                        ),
-                        child: SelectableText(
-                          f.text,
-                          style: _inter(15.5, height: 1.5),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-
-                      // When, and whether the name was hidden.
+                      const SizedBox(height: 6),
                       Row(
                         children: [
                           Icon(
-                            f.anonymous
-                                ? Icons.lock_outline
-                                : Icons.person_outline,
-                            size: 15,
+                            f.anonymous ? Icons.lock_outline : Icons.person_outline,
+                            size: 14,
                             color: _soft,
                           ),
-                          const SizedBox(width: 5),
+                          const SizedBox(width: 6),
                           Expanded(
-                            child: Text(
-                              [
-                                _fullDate(f.createdAt),
-                                f.anonymous ? 'Name hidden' : 'Sent with your name',
-                              ].where((x) => x.isNotEmpty).join(' · '),
-                              style: _inter(12.5, color: _soft),
-                            ),
+                            child: Text(meta, style: _inter(13, color: _soft)),
                           ),
                         ],
                       ),
                       const SizedBox(height: 18),
 
-                      // Management's reply.
-                      Text(
-                        'MANAGEMENT REPLY',
-                        style: _inter(
-                          11.5,
-                          weight: FontWeight.w700,
-                          color: AppColors.muted,
-                          letterSpacing: 0.6,
-                        ),
+                      // Body: the person's own words, plain and readable.
+                      SelectableText(
+                        f.text,
+                        style: _inter(16, height: 1.55),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 22),
+                      const Divider(height: 1, color: _line),
+                      const SizedBox(height: 18),
+
+                      // Reply: the highlight of the sheet.
                       if (f.hasReply)
                         Container(
-                          padding: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFE8F7EE),
-                            borderRadius: BorderRadius.circular(18),
+                            color: const Color(0xFFF1FAF4),
+                            borderRadius: BorderRadius.circular(16),
+                            border: const Border(
+                              left: BorderSide(color: green, width: 3),
+                            ),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              Row(
+                                children: [
+                                  const Icon(Icons.chat_bubble_outline, size: 15, color: green),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      'Reply from management',
+                                      style: _inter(13, weight: FontWeight.w500, color: green),
+                                    ),
+                                  ),
+                                  if (f.updatedAt != null)
+                                    Text(
+                                      _fullDate(f.updatedAt),
+                                      style: _inter(12, color: green),
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
                               SelectableText(
                                 f.managementMessage,
                                 style: _inter(15, height: 1.5),
                               ),
-                              if (f.updatedAt != null) ...[
-                                const SizedBox(height: 8),
-                                Text(
-                                  _fullDate(f.updatedAt),
-                                  style: _inter(
-                                    12,
-                                    color: const Color(0xFF15803D),
-                                  ),
-                                ),
-                              ],
                             ],
                           ),
                         )
                       else
-                        Container(
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(18),
-                            border: Border.all(color: _line, width: 1.5),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(
-                                Icons.schedule,
-                                size: 18,
-                                color: _soft,
+                        Row(
+                          children: [
+                            Container(
+                              width: 34,
+                              height: 34,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFF6F8FB),
+                                shape: BoxShape.circle,
                               ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  'No reply yet. You’ll get a notification '
-                                      'when management replies.',
-                                  style: _inter(
-                                    13.5,
-                                    color: AppColors.muted,
-                                    height: 1.4,
-                                  ),
-                                ),
+                              child: const Icon(Icons.schedule, size: 17, color: _soft),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'No reply yet. You’ll get a notification when '
+                                    'management replies.',
+                                style: _inter(13, color: AppColors.muted, height: 1.45),
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                     ],
                   ),
                 ),
               ),
+
+              // Footer: a quiet Close button.
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 6, 20, 12),
-                child: FilledButton(
+                padding: const EdgeInsets.fromLTRB(24, 8, 24, 12),
+                child: OutlinedButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.blue,
-                    minimumSize: const Size.fromHeight(52),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.ink,
+                    minimumSize: const Size.fromHeight(50),
+                    side: const BorderSide(color: _line, width: 1.5),
                     shape: const StadiumBorder(),
-                    textStyle: _inter(15.5, weight: FontWeight.w700),
+                    textStyle: _inter(15, weight: FontWeight.w500),
                   ),
                   child: const Text('Close'),
                 ),
