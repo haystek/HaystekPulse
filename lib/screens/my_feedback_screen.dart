@@ -12,11 +12,9 @@ import '../theme/app_theme.dart';
 import '../widgets/ui.dart';
 
 /// Everything this employee has sent, in two tabs that never mix.
-/// Look ("cards" design): a blue switch for the two tabs, blue filter
-/// chips, and each item as a white card with a thin border: an icon, the
-/// status chip and the date on top, the words (2 lines), and "Management
-/// replied" on its own line when there is a reply. Tapping a card opens
-/// it in a bottom sheet with the full text and the reply.
+/// Look: a blue switch for the two tabs, blue filter chips, and each
+/// item as the same row as "Your feedback" on the home screen. Tapping a
+/// row opens it in a bottom sheet with the full text and the reply.
 /// Light font weights, nothing heavy.
 ///
 /// - Suggestions: filter by status, the same five steps the status box
@@ -575,9 +573,6 @@ const Color _words = Color(0xFF5B6680);
 /// Thin borders around cards and chips.
 const Color _line = Color(0xFFE3E8F1);
 
-/// The thin line above "Management replied".
-const Color _divider = Color(0xFFEDF0F5);
-
 /// Light grey for the tab switch.
 const Color _panel = Color(0xFFF6F8FB);
 
@@ -819,23 +814,34 @@ class _MonthHeader extends StatelessWidget {
   }
 }
 
-/// The base of every item ("text first" design): a white card with a
-/// thin border. Top line: chips on the left, the date on the right. Then
-/// up to 2 lines of text. When management has replied, a thin line and
-/// "Management replied" on its own line. The arrow sits in the middle on
-/// the right.
+/// One row, the same look as "Your feedback" on the home screen: a white
+/// card with a thin border, an icon tile on the left, then
+///   type (blue) + status chip
+///   the text, one line
+///   date / week, and "Management replied" in green
+/// and the arrow on the right, in the middle.
 class _Card extends StatelessWidget {
   const _Card({
-    required this.chips,
-    required this.date,
-    required this.body,
+    required this.icon,
+    required this.iconColor,
+    required this.iconBg,
+    required this.kind,
+    required this.title,
+    required this.sub,
+    this.titleColor = AppColors.ink,
+    this.status,
     this.replied = false,
     this.onTap,
   });
 
-  final List<Widget> chips;
-  final String date;
-  final Widget body;
+  final IconData icon;
+  final Color iconColor;
+  final Color iconBg;
+  final String kind;
+  final String title;
+  final Color titleColor;
+  final String sub;
+  final String? status;
   final bool replied;
 
   /// Opens the bottom sheet. Null: nothing more to show (Great / Good),
@@ -856,64 +862,73 @@ class _Card extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           child: Padding(
-            padding: EdgeInsets.fromLTRB(16, 14, onTap == null ? 16 : 8, 14),
+            padding: const EdgeInsets.fromLTRB(12, 12, 10, 12),
             child: Row(
               children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: iconBg,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon, color: iconColor, size: 20),
+                ),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Chips on the left, date on the right.
                       Row(
                         children: [
-                          for (var i = 0; i < chips.length; i++) ...[
-                            if (i > 0) const SizedBox(width: 6),
-                            chips[i],
-                          ],
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              date,
-                              textAlign: TextAlign.right,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: _t(12, color: _soft),
+                          Text(
+                            kind,
+                            style: _t(
+                              12,
+                              weight: FontWeight.w500,
+                              color: AppColors.blue,
                             ),
                           ),
+                          if (status != null) ...[
+                            const SizedBox(width: 6),
+                            _StatusChip(status: status!),
+                          ],
                         ],
                       ),
-                      const SizedBox(height: 8),
-                      body,
-                      if (replied) ...[
-                        const SizedBox(height: 10),
-                        const Divider(height: 1, thickness: 1, color: _divider),
-                        const SizedBox(height: 10),
-                        Row(
+                      const SizedBox(height: 3),
+                      Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: _t(15, color: titleColor),
+                      ),
+                      const SizedBox(height: 3),
+                      Text.rich(
+                        TextSpan(
                           children: [
-                            const Icon(
-                              Icons.chat_bubble_outline,
-                              size: 14,
-                              color: _replyFg,
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              'Management replied',
-                              style: _t(
-                                12.5,
-                                weight: FontWeight.w500,
-                                color: _replyFg,
+                            TextSpan(text: sub),
+                            if (replied)
+                              TextSpan(
+                                text: '  ·  Management replied',
+                                style: _t(
+                                  12.5,
+                                  weight: FontWeight.w500,
+                                  color: _replyFg,
+                                ),
                               ),
-                            ),
                           ],
                         ),
-                      ],
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: _t(12.5, color: _soft),
+                      ),
                     ],
                   ),
                 ),
-                if (onTap != null) ...[
-                  const SizedBox(width: 6),
-                  const Icon(Icons.chevron_right, color: _soft),
-                ],
+                if (onTap != null)
+                  const Icon(Icons.chevron_right, color: _soft)
+                else
+                  const SizedBox(width: 8),
               ],
             ),
           ),
@@ -923,16 +938,7 @@ class _Card extends StatelessWidget {
   }
 }
 
-/// Up to 2 lines of the person's own words.
-Widget _twoLines(String text, {Color color = AppColors.ink}) => Text(
-  text,
-  maxLines: 2,
-  overflow: TextOverflow.ellipsis,
-  style: _t(14.5, color: color, height: 1.45),
-);
-
-/// One suggestion: status and date, the words, and whether management
-/// replied. Tap for the full text and the reply.
+/// One suggestion. Tap for the full text and the reply.
 class _SuggestionRow extends StatelessWidget {
   const _SuggestionRow({required this.item});
 
@@ -942,18 +948,22 @@ class _SuggestionRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final date = item.createdAt ?? DateTime.now();
     return _Card(
-      chips: [_StatusChip(status: item.status)],
-      date: '${date.day} ${_shortMonths[date.month - 1]} · '
+      icon: Icons.lightbulb_outline,
+      iconColor: AppColors.blue,
+      iconBg: AppColors.blueTint,
+      kind: 'Suggestion',
+      status: item.status,
+      title: item.text,
+      sub: '${date.day} ${_shortMonths[date.month - 1]} · '
           '${item.anonymous ? 'Name hidden' : 'With your name'}',
-      body: _twoLines(item.text),
       replied: item.hasReply,
       onTap: () => _showFeedbackSheet(context, item),
     );
   }
 }
 
-/// One Weekly Pulse week: the answer (and the status when there is a
-/// comment) with the week, then the comment, or "You said Great".
+/// One Weekly Pulse week: the comment, or "You said Great" when there
+/// is no comment (that one can't be tapped).
 class _WeekRow extends StatelessWidget {
   const _WeekRow({required this.entry});
 
@@ -968,58 +978,25 @@ class _WeekRow extends StatelessWidget {
     final week = weekId == null
         ? ''
         : (name.isNotEmpty ? name : 'Week of ${PulseService.weekLabel(weekId)}');
+    final color = rating == null ? AppColors.blue : PulseRating.color(rating);
+    final said = rating == null ? '' : 'You said ${PulseRating.label(rating)}';
 
     return _Card(
-      chips: [
-        if (rating != null) _RatingChip(rating: rating),
-        if (comment != null) _StatusChip(status: comment.status),
-      ],
-      date: week,
-      body: comment != null
-          ? _twoLines(comment.text)
-          : Text(
-        rating == null
-            ? 'Weekly Pulse'
-            : 'You said ${PulseRating.label(rating)}',
-        style: _t(
-          14.5,
-          weight: FontWeight.w500,
-          color: rating == null ? AppColors.blue : _moodText(rating),
-        ),
-      ),
+      icon: rating == null ? Icons.favorite_border : PulseRating.icon(rating),
+      iconColor: color,
+      iconBg: color.withValues(alpha: 0.12),
+      kind: 'Weekly Pulse',
+      status: comment?.status,
+      title: comment?.text ?? (said.isEmpty ? 'Weekly Pulse' : said),
+      titleColor: comment == null && rating != null
+          ? _moodText(rating)
+          : AppColors.ink,
+      sub: [
+        if (comment != null && said.isNotEmpty) said,
+        week,
+      ].where((x) => x.isNotEmpty).join(' · '),
       replied: comment?.hasReply ?? false,
-      // Only a written comment opens. Great / Good have nothing more.
       onTap: comment == null ? null : () => _showFeedbackSheet(context, comment),
-    );
-  }
-}
-
-/// The answer as a small chip in its own colour: "Difficult", "Great".
-class _RatingChip extends StatelessWidget {
-  const _RatingChip({required this.rating});
-
-  final String rating;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = PulseRating.color(rating);
-    return Container(
-      padding: const EdgeInsets.fromLTRB(6, 3, 8, 3),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(11),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(PulseRating.icon(rating), size: 13, color: _moodText(rating)),
-          const SizedBox(width: 4),
-          Text(
-            PulseRating.label(rating),
-            style: _t(11.5, weight: FontWeight.w500, color: _moodText(rating)),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -1033,9 +1010,17 @@ String _fullDate(DateTime? d) {
       '$h:$m ${d.hour < 12 ? 'AM' : 'PM'}';
 }
 
-/// One suggestion or Weekly Pulse comment in a sheet from the bottom:
-/// type and status, the full text, when it was sent and whether the name
-/// was hidden, and management's reply. Swipe down or tap Close.
+/// Opens one suggestion or Weekly Pulse comment in the bottom sheet.
+/// Used by the Notifications screen too.
+void showMyFeedbackSheet(BuildContext context, FeedbackItem f) =>
+    _showFeedbackSheet(context, f);
+
+/// One suggestion or Weekly Pulse comment in a sheet from the bottom.
+/// Calm layout, three text sizes only:
+///   header  – type + status, then date · name hidden   (13)
+///   body    – the full text                              (16)
+///   reply   – highlighted green card, or "No reply yet"  (15 / 13)
+///   footer  – a quiet Close button
 /// Same as the one on the home screen.
 void _showFeedbackSheet(BuildContext context, FeedbackItem f) {
   showModalBottomSheet<void>(
@@ -1047,11 +1032,19 @@ void _showFeedbackSheet(BuildContext context, FeedbackItem f) {
       borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
     ),
     builder: (context) {
-      final maxH = MediaQuery.of(context).size.height * 0.85;
       final rating = f.rating;
-      final weekId = f.weekId;
+      final typeColor = f.isFromBox || rating == null
+          ? AppColors.blue
+          : PulseRating.color(rating);
+      final meta = [
+        _fullDate(f.createdAt),
+        f.anonymous ? 'Name hidden' : 'Sent with your name',
+      ].where((x) => x.isNotEmpty).join('  ·  ');
+
       return ConstrainedBox(
-        constraints: BoxConstraints(maxHeight: maxH),
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.85,
+        ),
         child: SafeArea(
           top: false,
           child: Column(
@@ -1060,11 +1053,11 @@ void _showFeedbackSheet(BuildContext context, FeedbackItem f) {
             children: [
               Flexible(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // Type and status.
+                      // Header: what it is, and its status.
                       Row(
                         children: [
                           Icon(
@@ -1074,142 +1067,143 @@ void _showFeedbackSheet(BuildContext context, FeedbackItem f) {
                                 ? PulseRating.icon(rating)
                                 : Icons.favorite_border),
                             size: 18,
-                            color: f.isFromBox || rating == null
-                                ? AppColors.blue
-                                : PulseRating.color(rating),
+                            color: typeColor,
                           ),
-                          const SizedBox(width: 6),
-                          Text(
-                            f.isFromBox ? 'Suggestion' : 'Weekly Pulse',
-                            style: _t(
-                              13.5,
-                              weight: FontWeight.w500,
-                              color: AppColors.blue,
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              f.isFromBox
+                                  ? 'Suggestion'
+                                  : rating == null
+                                  ? 'Weekly Pulse'
+                                  : 'Weekly Pulse · ${PulseRating.label(rating)}',
+                              style: _t(
+                                13,
+                                weight: FontWeight.w500,
+                                color: typeColor,
+                              ),
                             ),
                           ),
-                          const Spacer(),
                           _StatusChip(status: f.status),
                         ],
                       ),
-                      if (!f.isFromBox && rating != null) ...[
-                        const SizedBox(height: 6),
-                        Text(
-                          'You said ${PulseRating.label(rating)}'
-                              '${weekId != null ? ' · Week of ${PulseService.weekLabel(weekId)}' : ''}',
-                          style: _t(13, color: AppColors.muted),
-                        ),
-                      ],
-                      const SizedBox(height: 14),
-
-                      // The full text.
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: _panel,
-                          borderRadius: BorderRadius.circular(18),
-                        ),
-                        child: SelectableText(
-                          f.text,
-                          style: _t(15.5, height: 1.5),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-
-                      // When, and whether the name was hidden.
+                      const SizedBox(height: 6),
                       Row(
                         children: [
                           Icon(
                             f.anonymous
                                 ? Icons.lock_outline
                                 : Icons.person_outline,
-                            size: 15,
+                            size: 14,
                             color: _soft,
                           ),
-                          const SizedBox(width: 5),
+                          const SizedBox(width: 6),
                           Expanded(
-                            child: Text(
-                              [
-                                _fullDate(f.createdAt),
-                                f.anonymous
-                                    ? 'Name hidden'
-                                    : 'Sent with your name',
-                              ].where((x) => x.isNotEmpty).join(' · '),
-                              style: _t(12.5, color: _soft),
-                            ),
+                            child: Text(meta, style: _t(13, color: _soft)),
                           ),
                         ],
                       ),
                       const SizedBox(height: 18),
 
-                      // Management's reply.
-                      Text('Management reply', style: _caps(AppColors.muted)),
-                      const SizedBox(height: 8),
+                      // Body: the person's own words, plain and readable.
+                      SelectableText(f.text, style: _t(16, height: 1.55)),
+                      const SizedBox(height: 22),
+                      const Divider(height: 1, color: _line),
+                      const SizedBox(height: 18),
+
+                      // Reply: the highlight of the sheet.
                       if (f.hasReply)
                         Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
+                          padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+                          decoration: const BoxDecoration(
                             color: _replyBg,
-                            borderRadius: BorderRadius.circular(18),
+                            borderRadius: BorderRadius.all(Radius.circular(16)),
+                            border: Border(
+                              left: BorderSide(color: _replyFg, width: 3),
+                            ),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.chat_bubble_outline,
+                                    size: 15,
+                                    color: _replyFg,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      'Reply from management',
+                                      style: _t(
+                                        13,
+                                        weight: FontWeight.w500,
+                                        color: _replyFg,
+                                      ),
+                                    ),
+                                  ),
+                                  if (f.updatedAt != null)
+                                    Text(
+                                      _fullDate(f.updatedAt),
+                                      style: _t(12, color: _replyFg),
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
                               SelectableText(
                                 f.managementMessage,
                                 style: _t(15, height: 1.5),
                               ),
-                              if (f.updatedAt != null) ...[
-                                const SizedBox(height: 8),
-                                Text(
-                                  _fullDate(f.updatedAt),
-                                  style: _t(12, color: _replyFg),
-                                ),
-                              ],
                             ],
                           ),
                         )
                       else
-                        Container(
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(18),
-                            border: Border.all(color: _line, width: 1.5),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(
+                        Row(
+                          children: [
+                            Container(
+                              width: 34,
+                              height: 34,
+                              decoration: const BoxDecoration(
+                                color: _panel,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
                                 Icons.schedule,
-                                size: 18,
+                                size: 17,
                                 color: _soft,
                               ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  'No reply yet. You’ll get a notification '
-                                      'when management replies.',
-                                  style: _t(
-                                    13.5,
-                                    color: AppColors.muted,
-                                    height: 1.4,
-                                  ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'No reply yet. You’ll get a notification '
+                                    'when management replies.',
+                                style: _t(
+                                  13,
+                                  color: AppColors.muted,
+                                  height: 1.45,
                                 ),
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                     ],
                   ),
                 ),
               ),
+
+              // Footer: a quiet Close button.
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 6, 20, 12),
-                child: FilledButton(
+                padding: const EdgeInsets.fromLTRB(24, 8, 24, 12),
+                child: OutlinedButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.blue,
-                    minimumSize: const Size.fromHeight(52),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.ink,
+                    minimumSize: const Size.fromHeight(50),
+                    side: const BorderSide(color: _line, width: 1.5),
                     shape: const StadiumBorder(),
-                    textStyle: _t(15.5, weight: FontWeight.w500),
+                    textStyle: _t(15, weight: FontWeight.w500),
                   ),
                   child: const Text('Close'),
                 ),

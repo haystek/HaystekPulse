@@ -155,6 +155,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         final item = n.item;
         if (item != null) screen = FeedbackDetailScreen(item: item);
       case AppNotificationKind.feedbackReply:
+      // Open that one suggestion or comment in the bottom sheet, with
+      // the reply. If it is not known, open My Feedback on the right
+      // tab (Weekly Pulse comments on the Weekly Pulse tab).
+        final item = n.item;
+        if (item != null) {
+          showMyFeedbackSheet(context, item);
+          return;
+        }
         screen = MyFeedbackScreen(employee: employee);
       case AppNotificationKind.pulseOpen:
       case AppNotificationKind.pulseReminder:

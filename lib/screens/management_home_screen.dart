@@ -3239,7 +3239,7 @@ class _SuggestionTabState extends State<_SuggestionTab> {
       contentPadding: EdgeInsets.zero,
       title: Text(
         label,
-        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w400),
       ),
       trailing: Icon(
         _range == r
@@ -3269,7 +3269,7 @@ class _SuggestionTabState extends State<_SuggestionTab> {
             children: [
               Text(
                 'Show suggestions from',
-                style: _h(19, weight: FontWeight.w800),
+                style: _h(18, weight: FontWeight.w500),
               ),
               const SizedBox(height: 6),
               option('Last 30 days', _Range.days30),
@@ -3287,7 +3287,7 @@ class _SuggestionTabState extends State<_SuggestionTab> {
                   style: const TextStyle(
                     color: AppColors.blue,
                     fontSize: 16,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w400,
                   ),
                 ),
                 trailing: const Icon(
@@ -3331,7 +3331,7 @@ class _SuggestionTabState extends State<_SuggestionTab> {
             shrinkWrap: true,
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
             children: [
-              Text('Pick a month', style: _h(19, weight: FontWeight.w800)),
+              Text('Pick a month', style: _h(18, weight: FontWeight.w500)),
               const SizedBox(height: 6),
               if (months.isEmpty)
                 const Padding(
@@ -3348,14 +3348,14 @@ class _SuggestionTabState extends State<_SuggestionTab> {
                     '${_longMonths[m.month - 1]} ${m.year}',
                     style: const TextStyle(
                       fontSize: 16,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w400,
                     ),
                   ),
                   trailing: Text(
                     '${widget.suggestions.where((f) => _dateOf(f).year == m.year && _dateOf(f).month == m.month).length}',
                     style: const TextStyle(
                       color: AppColors.muted,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w400,
                     ),
                   ),
                   onTap: () {
@@ -3430,7 +3430,7 @@ class _SuggestionTabState extends State<_SuggestionTab> {
       }
       list.add(
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
           child: _FeedbackCard(item: item, onTap: () => widget.onOpen(item)),
         ),
       );
@@ -3519,7 +3519,7 @@ class _SuggestionTabState extends State<_SuggestionTab> {
                             style: const TextStyle(
                               color: AppColors.blue,
                               fontSize: 13.5,
-                              fontWeight: FontWeight.w800,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
                           const Icon(
@@ -3552,22 +3552,46 @@ class _SuggestionTabState extends State<_SuggestionTab> {
         const SizedBox(height: 6),
         if (widget.loading)
           const Padding(
-            padding: EdgeInsets.all(24),
-            child: Center(child: CircularProgressIndicator()),
+            padding: EdgeInsets.only(top: 80),
+            child: Center(
+              child: SizedBox(
+                width: 28,
+                height: 28,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  color: AppColors.blue,
+                ),
+              ),
+            ),
           )
         else if (items.isEmpty)
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
-            child: Container(
-              padding: const EdgeInsets.all(18),
-              decoration: _cardDecoration(),
-              child: Text(
-                _status == null
-                    ? 'No suggestions in these dates.'
-                    : 'No ${FeedbackStatus.label(_status!)} suggestions '
-                    'in these dates.',
-                style: const TextStyle(color: AppColors.muted, fontSize: 15),
-              ),
+            padding: const EdgeInsets.fromLTRB(20, 48, 20, 0),
+            child: Column(
+              children: [
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: const BoxDecoration(
+                    color: AppColors.blueTint,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.lightbulb_outline_rounded,
+                    color: AppColors.blue,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  _status == null
+                      ? 'No suggestions in these dates'
+                      : 'No ${FeedbackStatus.label(_status!)} suggestions '
+                      'in these dates',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: AppColors.muted, fontSize: 14.5),
+                ),
+              ],
             ),
           ),
         ...list,
@@ -3579,10 +3603,10 @@ class _SuggestionTabState extends State<_SuggestionTab> {
               style: OutlinedButton.styleFrom(
                 minimumSize: const Size.fromHeight(48),
                 shape: const StadiumBorder(),
-                side: const BorderSide(color: Color(0xFFD5DCE8), width: 1.5),
+                side: const BorderSide(color: Color(0xFFD5DCE8)),
                 textStyle: const TextStyle(
                   fontSize: 14.5,
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
               child: Text('Show older ($olderMonth)'),
@@ -3593,7 +3617,7 @@ class _SuggestionTabState extends State<_SuggestionTab> {
   }
 }
 
-/// "TODAY  2 ————" above a group of cards.
+/// "TODAY · 2" above a group of cards. Small, spaced capitals.
 class _GroupHeader extends StatelessWidget {
   const _GroupHeader({required this.label, required this.count});
 
@@ -3603,39 +3627,15 @@ class _GroupHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 12, 24, 10),
-      child: Row(
-        children: [
-          Text(
-            label.toUpperCase(),
-            style: const TextStyle(
-              color: AppColors.muted,
-              fontSize: 12.5,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 0.4,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
-            decoration: BoxDecoration(
-              color: const Color(0xFFEEF1F6),
-              borderRadius: BorderRadius.circular(9),
-            ),
-            child: Text(
-              '$count',
-              style: const TextStyle(
-                color: AppColors.muted,
-                fontSize: 11.5,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          const Expanded(
-            child: Divider(height: 1, color: Color(0xFFEEF1F6)),
-          ),
-        ],
+      padding: const EdgeInsets.fromLTRB(22, 10, 22, 10),
+      child: Text(
+        '${label.toUpperCase()}  ·  $count',
+        style: const TextStyle(
+          color: Color(0xFF8E97AB),
+          fontSize: 11,
+          fontWeight: FontWeight.w500,
+          letterSpacing: 1.1,
+        ),
       ),
     );
   }
@@ -3839,207 +3839,180 @@ Color _statusInk(String status) {
   }
 }
 
-/// One card you can tap: the status tag and date on top, the text, who
-/// wrote it, and a round arrow on the right that shows it opens.
+/// One suggestion card (design "List B · Text first"):
+///
+///   [New]                    21 Oct · Ravi Kumar (HS102)
+///   Pantry wasn't cleaned last week. Can it be           ›
+///   checked every day?
+///   ─────────────────────────────────────────
+///   💬 Management replied
+///
+/// The bottom line shows only when there is something to say:
+/// "Management replied" (green) or "Waiting 9 days" (orange).
 class _FeedbackCard extends StatelessWidget {
   const _FeedbackCard({required this.item, required this.onTap});
 
   final FeedbackItem item;
   final VoidCallback onTap;
 
+  /// "7 Oct". Also used by the comment rows.
   static String _date(DateTime? d) {
     if (d == null) return '';
-    const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-    ];
-    return '${d.day} ${months[d.month - 1]}';
+    return '${d.day} ${_monthNames[d.month - 1]}';
   }
 
   @override
   Widget build(BuildContext context) {
     final status = item.status;
     final isNew = status == FeedbackStatus.newItem;
-    final rating = item.rating;
-    // Weekly Pulse comments also show the rating next to the date.
-    final when = [
-      if (!item.isFromBox && rating != null) PulseRating.label(rating),
+    final name = item.authorName ?? '';
+    final id = item.authorEmployeeId ?? '';
+    final who = item.anonymous
+        ? 'Name hidden'
+        : (id.isEmpty ? name : '$name ($id)');
+    final rating =
+    !item.isFromBox && item.rating != null ? item.rating : null;
+    final meta = [
       _cardWhen(item.createdAt),
-    ].where((t) => t.isNotEmpty).join(' · ');
-    // A New suggestion waiting 7 days or more gets a red tag.
+      if (rating != null) PulseRating.label(rating),
+      if (who.isNotEmpty) who,
+    ].join(' · ');
     final waitingDays = item.createdAt == null
         ? 0
         : DateTime.now().difference(item.createdAt!).inDays;
     final late = isNew && waitingDays >= 7;
-    final name = item.authorName ?? '';
-    final id = item.authorEmployeeId ?? '';
-    final who = item.anonymous
-        ? 'Anonymous'
-        : (id.isEmpty ? name : '$name ($id)');
-    final initial =
-    name.trim().isEmpty ? '?' : name.trim()[0].toUpperCase();
+    const metaStyle = TextStyle(fontSize: 12, color: Color(0xFF8E97AB));
+    final bodyStyle = TextStyle(
+      fontSize: 14.5,
+      height: 1.45,
+      color: AppColors.ink,
+      fontWeight: isNew ? FontWeight.w500 : FontWeight.w400,
+    );
 
-    return DecoratedBox(
-      decoration: _cardDecoration(),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(20),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Status tag and date.
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.fromLTRB(8, 4, 10, 4),
-                            decoration: BoxDecoration(
-                              color: _statusTint(status),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  width: 7,
-                                  height: 7,
-                                  decoration: BoxDecoration(
-                                    color: _statusDot(status),
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  isNew && !late
-                                      ? 'New · Needs reply'
-                                      : FeedbackStatus.label(status),
-                                  style: TextStyle(
-                                    color: _statusInk(status),
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          if (late) ...[
-                            const SizedBox(width: 6),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFFCE8E4),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Text(
-                                '$waitingDays days waiting',
-                                style: const TextStyle(
-                                  color: Color(0xFFA2321C),
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ),
-                          ],
-                          const Spacer(),
-                          const SizedBox(width: 8),
-                          Text(
-                            when,
-                            style: const TextStyle(
-                              color: AppColors.muted,
-                              fontSize: 12.5,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 9),
-                      // The text.
-                      Text(
-                        item.text,
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 15.5,
-                          height: 1.4,
-                          color: AppColors.ink,
-                          fontWeight: isNew ? FontWeight.w800 : FontWeight.w600,
-                        ),
+    Widget? footer;
+    if (item.hasReply) {
+      footer = const _CardFooter(
+        icon: Icons.chat_bubble_outline_rounded,
+        text: 'Management replied',
+        color: Color(0xFF15803D),
+      );
+    } else if (late) {
+      footer = _CardFooter(
+        icon: Icons.schedule_rounded,
+        text: 'Waiting $waitingDays days',
+        color: const Color(0xFFC2410C),
+      );
+    }
+
+    return Material(
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: const BorderSide(color: Color(0xFFE3E8F1), width: 1.5),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 10, 14),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Status chip, and date · name on the right.
+                    Row(
+                      children: [
+                        _CardChip(status),
+                        const SizedBox(width: 10),
+                        Expanded(child: Text(meta, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.right, style: metaStyle)),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(item.text, maxLines: 2, overflow: TextOverflow.ellipsis, style: bodyStyle),
+                    if (footer != null) ...[
+                      const SizedBox(height: 10),
+                      const Divider(
+                        height: 1,
+                        thickness: 1,
+                        color: Color(0xFFEDF0F5),
                       ),
                       const SizedBox(height: 10),
-                      // Who wrote it.
-                      Row(
-                        children: [
-                          Container(
-                            width: 24,
-                            height: 24,
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              color: item.anonymous
-                                  ? const Color(0xFFEEF1F6)
-                                  : AppColors.blueTint,
-                              shape: BoxShape.circle,
-                            ),
-                            child: item.anonymous
-                                ? const Icon(
-                              Icons.lock_outline,
-                              size: 13,
-                              color: AppColors.muted,
-                            )
-                                : Text(
-                              initial,
-                              style: const TextStyle(
-                                color: AppColors.blueDeep,
-                                fontSize: 11.5,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 7),
-                          Expanded(
-                            child: Text(
-                              who,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: AppColors.muted,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                      footer,
                     ],
-                  ),
+                  ],
                 ),
-                const SizedBox(width: 12),
-                // The arrow: shows the card opens.
-                Container(
-                  width: 34,
-                  height: 34,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFF2F6FF),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.chevron_right,
-                    color: AppColors.blue,
-                    size: 22,
-                  ),
-                ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 10),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: Color(0xFF8E97AB),
+                size: 22,
+              ),
+            ],
           ),
         ),
       ),
+    );
+  }
+}
+
+/// The status chip at the top left of a card.
+class _CardChip extends StatelessWidget {
+  const _CardChip(this.status);
+
+  final String status;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 22,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: _statusTint(status),
+        borderRadius: BorderRadius.circular(11),
+      ),
+      child: Text(
+        FeedbackStatus.label(status),
+        style: TextStyle(
+          color: _statusInk(status),
+          fontSize: 11.5,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+    );
+  }
+}
+
+/// The small line at the bottom of a card: an icon and a few words.
+class _CardFooter extends StatelessWidget {
+  const _CardFooter({
+    required this.icon,
+    required this.text,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String text;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 15, color: color),
+        const SizedBox(width: 6),
+        Text(
+          text,
+          style: TextStyle(
+            color: color,
+            fontSize: 12.5,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
     );
   }
 }
