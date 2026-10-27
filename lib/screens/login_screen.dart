@@ -53,7 +53,11 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _email = TextEditingController();
   final _password = TextEditingController();
+  final _name = TextEditingController();
   bool _busy = false;
+
+  /// True on the "Create account" step.
+  bool _signUpMode = false;
   bool _hidePassword = true;
   String? _error;
 
@@ -64,9 +68,26 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _resetSent = false;
 
   @override
+  void initState() {
+    super.initState();
+    // Back from "Wrong email? Start over": open Create account again,
+    // with the name and email filled in.
+    final auth = AuthService.instance;
+    if (auth.openSignUp) {
+      _signUpMode = true;
+      _name.text = auth.signUpName ?? '';
+      _email.text = auth.signUpEmail ?? '';
+      auth.openSignUp = false;
+      auth.signUpEmail = null;
+      auth.signUpName = null;
+    }
+  }
+
+  @override
   void dispose() {
     _email.dispose();
     _password.dispose();
+    _name.dispose();
     super.dispose();
   }
 
@@ -91,10 +112,66 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  /// When back was last pressed on Sign in.
+  DateTime? _lastBack;
+
+  /// First back shows "Press back again to close the app", a second back
+  /// within 2 seconds closes it.
+  void _backOnSignIn() {
+    final now = DateTime.now();
+    if (_lastBack != null &&
+        now.difference(_lastBack!) < const Duration(seconds: 2)) {
+      SystemNavigator.pop();
+      return;
+    }
+    _lastBack = now;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(
+          content: Text('Press back again to close the app'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+  }
+
+  /// Opens or closes the "Create account" step.
+  void _toggleSignUp(bool on) {
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _signUpMode = on;
+      _resetMode = false;
+      _error = null;
+    });
+  }
+
+  Future<void> _signUp() async {
+    FocusScope.of(context).unfocus();
+    if (!_formKey.currentState!.validate()) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await AuthService.instance.signUp(
+        name: _name.text,
+        email: _email.text,
+        password: _password.text,
+      );
+      // AuthGate shows "Check your email" by itself.
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _error = AuthService.messageFor(e));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   /// Opens the "Reset password" step. Only the email field shows.
   void _openReset() {
     FocusScope.of(context).unfocus();
     setState(() {
+      _signUpMode = false;
       _resetMode = true;
       _resetSent = false;
       _error = null;
@@ -242,7 +319,14 @@ class _LoginScreenState extends State<LoginScreen> {
       onFieldSubmitted: _resetMode ? (_) => _sendReset() : null,
       style: GoogleFonts.inter(fontSize: 15.5, color: AppColors.ink),
       decoration: _plain('Office email'),
-      validator: (v) => _looksLikeEmail(v) ? null : 'Enter your office email',
+      validator: (v) {
+        if (!_looksLikeEmail(v)) return 'Enter your office email';
+        if (_signUpMode &&
+            !v!.trim().toLowerCase().endsWith(AuthService.officeDomain)) {
+          return 'Use your ${AuthService.officeDomain} email';
+        }
+        return null;
+      },
     );
     final emailRow = _row(icon: Icons.mail_outline, field: emailField);
 
@@ -303,6 +387,83 @@ class _LoginScreenState extends State<LoginScreen> {
       );
     }
 
+    final passwordRow = _row(
+      icon: Icons.lock_outline,
+      field: TextFormField(
+        controller: _password,
+        obscureText: _hidePassword,
+        autofillHints: [
+          _signUpMode ? AutofillHints.newPassword : AutofillHints.password,
+        ],
+        onFieldSubmitted: (_) => _signUpMode ? _signUp() : _signIn(),
+        style: GoogleFonts.inter(fontSize: 15.5, color: AppColors.ink),
+        decoration: _plain('Password'),
+        validator: (v) {
+          if (v == null || v.isEmpty) return 'Enter your password';
+          if (_signUpMode && v.length < 8) return 'Use at least 8 characters';
+          return null;
+        },
+      ),
+      trailing: TextButton(
+        onPressed: () => setState(() => _hidePassword = !_hidePassword),
+        style: _linkButton,
+        child: Text(_hidePassword ? 'Show' : 'Hide'),
+      ),
+    );
+
+    // Create account.
+    if (_signUpMode) {
+      return Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('Create account', style: _h(24)),
+            const SizedBox(height: 2),
+            Text(
+              'Use your Haystek office email (${AuthService.officeDomain}).',
+              style: _sub,
+            ),
+            const SizedBox(height: 18),
+            _card([
+              _row(
+                icon: Icons.person_outline,
+                field: TextFormField(
+                  controller: _name,
+                  textCapitalization: TextCapitalization.words,
+                  textInputAction: TextInputAction.next,
+                  autofillHints: const [AutofillHints.name],
+                  style: GoogleFonts.inter(fontSize: 15.5, color: AppColors.ink),
+                  decoration: _plain('Full name'),
+                  validator: (v) => (v == null || v.trim().length < 2)
+                      ? 'Enter your name'
+                      : null,
+                ),
+              ),
+              emailRow,
+              passwordRow,
+            ]),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(4, 6, 4, 0),
+              child: Text('At least 8 characters', style: _sub),
+            ),
+            ...error,
+            const SizedBox(height: 20),
+            _GradientButton(
+              onPressed: _busy ? null : _signUp,
+              child: _busy ? _busyDot() : const Text('Create account'),
+            ),
+            const SizedBox(height: 8),
+            _helpLine(
+              'Already have an account?',
+              'Sign in',
+              _busy ? null : () => _toggleSignUp(false),
+            ),
+          ],
+        ),
+      );
+    }
+
     // Normal sign in.
     return Form(
       key: _formKey,
@@ -315,25 +476,7 @@ class _LoginScreenState extends State<LoginScreen> {
           const SizedBox(height: 18),
           _card([
             emailRow,
-            _row(
-              icon: Icons.lock_outline,
-              field: TextFormField(
-                controller: _password,
-                obscureText: _hidePassword,
-                autofillHints: const [AutofillHints.password],
-                onFieldSubmitted: (_) => _signIn(),
-                style: GoogleFonts.inter(fontSize: 15.5, color: AppColors.ink),
-                decoration: _plain('Password'),
-                validator: (v) =>
-                (v == null || v.isEmpty) ? 'Enter your password' : null,
-              ),
-              trailing: TextButton(
-                onPressed: () =>
-                    setState(() => _hidePassword = !_hidePassword),
-                style: _linkButton,
-                child: Text(_hidePassword ? 'Show' : 'Hide'),
-              ),
-            ),
+            passwordRow,
           ]),
           ...error,
           const SizedBox(height: 20),
@@ -347,6 +490,11 @@ class _LoginScreenState extends State<LoginScreen> {
             'Reset password',
             _busy ? null : _openReset,
           ),
+          _helpLine(
+            'New here?',
+            'Create account',
+            _busy ? null : () => _toggleSignUp(true),
+          ),
         ],
       ),
     );
@@ -356,146 +504,169 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final top = MediaQuery.of(context).padding.top;
-    // Keyboard open: make the blue top small, so the fields move up.
+    // Small top while typing or on Create account, so everything fits.
     final typing = MediaQuery.viewInsetsOf(context).bottom > 0;
+    final compact = typing || _signUpMode;
     // White clock and battery icons on the dark top.
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.light,
-      child: _withInter(context, Scaffold(
-        backgroundColor: Colors.white,
-        // Tap anywhere outside the fields to close the keyboard.
-        body: GestureDetector(
-          onTap: () => FocusScope.of(context).unfocus(),
-          behavior: HitTestBehavior.translucent,
-          // The page scrolls when the keyboard is open. It is at least as tall as the screen, so the footer can sit at the
-          // bottom. No intrinsic sizes, so nothing overflows while the
-          // top shrinks.
-          child: LayoutBuilder(
-            builder: (context, box) => SingleChildScrollView(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minHeight: box.maxHeight),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        // Night-sky top: the logo, a moving heartbeat line and
-                        // the line "Your week, heard." While typing, only the
-                        // logo stays, so the fields sit higher on the screen.
-                        AnimatedContainer(
-                          duration: const Duration(milliseconds: 220),
-                          curve: Curves.easeOutCubic,
-                          padding: EdgeInsets.fromLTRB(
-                            28,
-                            top + (typing ? 16 : 36),
-                            28,
-                            typing ? 52 : 72,
-                          ),
-                          decoration: const BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                Color(0xFF0B1B4D),
-                                Color(0xFF14328F),
-                                AppColors.blue,
-                              ],
-                              stops: [0, 0.55, 1],
-                            ),
-                          ),
-                          child: Column(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 18,
-                                  vertical: 12,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(18),
-                                ),
-                                child: Image.asset(
-                                  'assets/haystek_pulse_logo.png',
-                                  height: 32,
-                                  fit: BoxFit.contain,
-                                ),
-                              ),
-                              AnimatedSize(
-                                duration: const Duration(milliseconds: 220),
-                                curve: Curves.easeOutCubic,
-                                alignment: Alignment.topCenter,
-                                child: typing
-                                    ? const SizedBox(width: double.infinity)
-                                    : Column(
-                                  children: [
-                                    const SizedBox(height: 30),
-                                    const SizedBox(
-                                      width: 300,
-                                      height: 56,
-                                      child: _HeartbeatLine(),
-                                    ),
-                                    const SizedBox(height: 22),
-                                    Text(
-                                      'Your week, heard.',
-                                      textAlign: TextAlign.center,
-                                      style: GoogleFonts.inter(
-                                        color: const Color(0xFFC9D6FF),
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        // The white sheet with round top corners, pulled up a
-                        // little over the dark top. It is as tall as the form
-                        // needs, so the page can scroll when the keyboard is
-                        // open instead of squeezing the form.
-                        Transform.translate(
-                          offset: const Offset(0, -32),
-                          child: Container(
-                            decoration: const BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.vertical(
-                                top: Radius.circular(28),
-                              ),
-                            ),
-                            alignment: Alignment.topCenter,
-                            child: ConstrainedBox(
-                              constraints: const BoxConstraints(maxWidth: 480),
-                              child: Padding(
-                                padding: const EdgeInsets.fromLTRB(24, 28, 24, 0),
-                                child: _form(theme),
-                              ),
-                            ),
-                          ),
-                        ),
+    // Phone back button: from Create account or Reset password, go back to
+    // Sign in instead of closing the app.
+    // On Sign in: press back twice to close the app (same as the home
+    // screens).
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop || _busy) return;
+        if (_resetMode) {
+          _closeReset();
+        } else if (_signUpMode) {
+          _toggleSignUp(false);
+        } else {
+          _backOnSignIn();
+        }
+      },
+      child: AnnotatedRegion<SystemUiOverlayStyle>(
+        value: SystemUiOverlayStyle.light,
+        child: _withInter(context, Scaffold(
+          backgroundColor: Colors.white,
+          // Tap anywhere outside the fields to close the keyboard.
+          body: GestureDetector(
+            onTap: () => FocusScope.of(context).unfocus(),
+            behavior: HitTestBehavior.translucent,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Night-sky top. It stays in place: only the white part below
+                // scrolls. On Create account and while typing, only the logo
+                // shows, so the form fits on the screen.
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOutCubic,
+                  padding: EdgeInsets.fromLTRB(
+                    28,
+                    top + (compact ? 16 : 36),
+                    28,
+                    compact ? 52 : 72,
+                  ),
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Color(0xFF0B1B4D),
+                        Color(0xFF14328F),
+                        AppColors.blue,
                       ],
+                      stops: [0, 0.55, 1],
                     ),
-                    // The footer, always at the very bottom of the screen
-                    // (above the phone's home bar).
-                    // Hidden while typing, to give the fields more room.
-                    if (!typing)
-                      Padding(
-                        padding: EdgeInsets.fromLTRB(
-                          24,
-                          24,
-                          24,
-                          16 + MediaQuery.of(context).padding.bottom,
+                  ),
+                  child: Column(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 18,
+                          vertical: 12,
                         ),
-                        child: const _Footer(),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: Image.asset(
+                          'assets/haystek_pulse_logo.png',
+                          height: 32,
+                          fit: BoxFit.contain,
+                        ),
                       ),
-                  ],
+                      AnimatedSize(
+                        duration: const Duration(milliseconds: 220),
+                        curve: Curves.easeOutCubic,
+                        alignment: Alignment.topCenter,
+                        child: compact
+                            ? const SizedBox(width: double.infinity)
+                            : Column(
+                          children: [
+                            const SizedBox(height: 30),
+                            const SizedBox(
+                              width: 300,
+                              height: 56,
+                              child: _HeartbeatLine(),
+                            ),
+                            const SizedBox(height: 22),
+                            Text(
+                              'Your week, heard.',
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.inter(
+                                color: const Color(0xFFC9D6FF),
+                                fontSize: 16,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
+                // The white sheet with round top corners, pulled up a little
+                // over the dark top. Only this part scrolls.
+                Expanded(
+                  child: Transform.translate(
+                    offset: const Offset(0, -32),
+                    child: Container(
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.vertical(
+                          top: Radius.circular(28),
+                        ),
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: LayoutBuilder(
+                        builder: (context, box) => SingleChildScrollView(
+                          child: ConstrainedBox(
+                            // At least as tall as the space, so the footer
+                            // sits at the bottom when there is room.
+                            constraints: BoxConstraints(minHeight: box.maxHeight),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Align(
+                                  alignment: Alignment.topCenter,
+                                  child: ConstrainedBox(
+                                    constraints:
+                                    const BoxConstraints(maxWidth: 480),
+                                    child: Padding(
+                                      padding: const EdgeInsets.fromLTRB(
+                                          24, 28, 24, 0),
+                                      child: _form(theme),
+                                    ),
+                                  ),
+                                ),
+                                // Hidden while typing, to give the fields
+                                // more room.
+                                if (!typing)
+                                  Padding(
+                                    padding: EdgeInsets.fromLTRB(
+                                      24,
+                                      20,
+                                      24,
+                                      // The sheet is moved up 32, so add it
+                                      // back here to stay above the home bar.
+                                      48 + MediaQuery.of(context).padding.bottom,
+                                    ),
+                                    child: const _Footer(),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-        ),
-      )),
+        )),
+      ),
     );
   }
 }

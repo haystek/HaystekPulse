@@ -12,8 +12,19 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/employees/$(request.auth.uid)).data;
     }
 
+    // Accounts made by sign-up must verify their email first. Accounts made
+    // by the create-users script are marked verified when they are made.
+    function emailVerified() {
+      return request.auth.token.email_verified == true;
+    }
+
     function isActive() {
-      return signedIn() && me().active == true;
+      return signedIn() && emailVerified() && me().active == true;
+    }
+
+    // The signed-in person's email, in small letters.
+    function myEmail() {
+      return request.auth.token.email.lower();
     }
 
     function isManagement() {
@@ -33,8 +44,40 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['mustChangePassword'])
         && request.resource.data.mustChangePassword == false;
 
-      // Employees are created and removed only in the Firebase console.
-      allow create, delete: if false;
+      // Sign-up: a verified @haystek.com person creates their own record,
+      // once. They are management only if their email is in
+      // management_emails, so nobody can make themselves management.
+      allow create: if signedIn()
+        && request.auth.uid == uid
+        && emailVerified()
+        && myEmail().matches('.*@haystek[.]com$')
+        && request.resource.data.keys().hasOnly([
+             'employeeId', 'name', 'type', 'mustChangePassword', 'active',
+             'email', 'createdAt'])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 2
+        && request.resource.data.name.size() <= 80
+        && request.resource.data.employeeId is string
+        && request.resource.data.employeeId.size() <= 30
+        && request.resource.data.email == myEmail()
+        && request.resource.data.mustChangePassword == false
+        && request.resource.data.active == true
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.type ==
+             (exists(/databases/$(database)/documents/management_emails/$(myEmail())) ? 'm' : 'e');
+
+      // Removing people is done only in the Firebase console.
+      allow delete: if false;
+    }
+
+    // ---------------------------------------------------------------
+    // management_emails/{email}: the list of management emails (document
+    // ID = the email, in small letters). Added only in the Firebase
+    // console. A person can only check their own email.
+    // ---------------------------------------------------------------
+    match /management_emails/{email} {
+      allow get: if signedIn() && emailVerified() && email == myEmail();
+      allow list, write: if false;
     }
 
     // ---------------------------------------------------------------

@@ -88,6 +88,8 @@ async function main() {
           email,
           password: PASSWORD,
           displayName: name,
+          // Made by management, so no email check is needed in the app.
+          emailVerified: true,
         });
         isNew = true;
       }

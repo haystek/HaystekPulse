@@ -4,35 +4,54 @@ import 'package:flutter/material.dart';
 import '../models/employee.dart';
 import '../services/auth_service.dart';
 import '../services/notification_service.dart';
+import '../theme/app_theme.dart';
 import 'change_password_screen.dart';
 import 'employee_home_screen.dart';
 import 'login_screen.dart';
 import 'management_home_screen.dart';
+import 'verify_email_screen.dart';
 
 /// Decides which screen to show:
-/// not signed in -> Login
-/// first login   -> Change password
-/// type 'm'      -> Management home
-/// type 'e'      -> Employee home
+/// not signed in        -> Login (also Create account)
+/// email not verified   -> Check your email
+/// no employee record   -> Finish your profile (after sign-up)
+/// first login          -> Change password
+/// type 'm'             -> Management home
+/// type 'e'             -> Employee home
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
+
+  /// The login already checked, so the check runs once per sign-in.
+  static String? _checkedUid;
 
   @override
   Widget build(BuildContext context) {
     final auth = AuthService.instance;
 
     return StreamBuilder<User?>(
-      stream: auth.authChanges,
+      // userChanges also fires after a reload, so the app moves on by
+      // itself once the email is verified.
+      stream: auth.userChanges,
       builder: (context, userSnap) {
         if (userSnap.connectionState == ConnectionState.waiting) {
           return const _Loading();
         }
         final user = userSnap.data;
         if (user == null) {
+          _checkedUid = null;
           return const LoginScreen();
+        }
+        // Once per login: sign out if it was deleted in the console.
+        if (_checkedUid != user.uid) {
+          _checkedUid = user.uid;
+          auth.stillValid();
+        }
+        if (!user.emailVerified) {
+          return VerifyEmailScreen(email: user.email ?? '');
         }
 
         return StreamBuilder<Employee?>(
+          key: ValueKey(user.uid),
           stream: auth.employeeStream(user.uid),
           builder: (context, empSnap) {
             if (empSnap.hasError) {
@@ -45,15 +64,13 @@ class AuthGate extends StatelessWidget {
             }
             final employee = empSnap.data;
             if (employee == null) {
-              return const _Problem(
-                message:
-                    'Your account is not set up yet. Please contact management.',
-              );
+              // Signed up and verified, but not saved yet.
+              return const FinishProfileScreen();
             }
             if (!employee.active) {
               return const _Problem(
                 message:
-                    'This account is no longer active. Please contact management.',
+                'This account is no longer active. Please contact management.',
               );
             }
             if (employee.mustChangePassword) {
@@ -76,7 +93,19 @@ class _Loading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    return const Scaffold(
+      backgroundColor: Colors.white,
+      body: Center(
+        child: SizedBox(
+          width: 28,
+          height: 28,
+          child: CircularProgressIndicator(
+            strokeWidth: 2.5,
+            color: AppColors.blue,
+          ),
+        ),
+      ),
+    );
   }
 }
 
