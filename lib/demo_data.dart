@@ -20,10 +20,10 @@ import 'services/pulse_service.dart';
 /// Sample items can be opened, and their status and reply can be changed,
 /// but only in memory: nothing is saved and no notification is sent.
 class DemoData {
-  static const bool on = false;
+  static const bool on = true;
   static const int people = 30;
 
-  /// Great, Good, Okay, Difficult. Oldest week first, this week last.
+  /// Great, Good, Okay, Difficult. Oldest week first, this week last
   /// The weeks are different on purpose: good, mixed, a hard one, and a
   /// great one, so the week cards and headlines show every case.
   static const List<List<int>> _sample = [

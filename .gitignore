@@ -47,3 +47,11 @@ app.*.map.json
 # Secrets - never upload
 **/fcm_sender.json
 *.p8
+tools/create_users/serviceAccount.json
+tools/create_users/logins.csv
+tools/create_users/node_modules/
+
+tools/create_users/serviceAccount.json
+tools/create_users/logins.csv
+tools/create_users/node_modules/
+tools/create_users/employees.csv

@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../models/feedback_item.dart';
 import '../models/pulse_rating.dart';
 import '../services/feedback_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/ui.dart';
 
 /// Inter font for everything on this screen (same as the other screens).
 Widget _withInter(BuildContext context, Widget child) {
@@ -29,11 +29,6 @@ TextStyle _t(
       height: height,
       letterSpacing: size >= 18 ? -0.3 : -0.1,
     );
-
-/// Night-sky colours (same as the home screens).
-const _skyTop = Color(0xFF0B1B4D);
-const _skyMid = Color(0xFF14328F);
-const _soft = Color(0xFFC9D6FF);
 
 /// A short line that says what each status means.
 String _hint(String status) {
@@ -77,8 +72,8 @@ String _replyHint(String status) {
 /// is written there goes with the new status. Needed for "Implemented",
 /// optional for the others.
 ///
-/// Design B: the employee's words on the night-sky header, a small
-/// progress line, and the statuses to move to as cards.
+/// Design A: the employee's message in a grey card, the last reply,
+/// and the statuses to move to as a simple list.
 class FeedbackDetailScreen extends StatefulWidget {
   const FeedbackDetailScreen({super.key, required this.item});
 
@@ -216,555 +211,333 @@ class _FeedbackDetailScreenState extends State<FeedbackDetailScreen> {
 
     return _withInter(
       context,
-      AnnotatedRegion<SystemUiOverlayStyle>(
-        value: SystemUiOverlayStyle.light,
-        child: Scaffold(
-          backgroundColor: AppColors.background,
-          body: Column(
-            children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  controller: _scroll,
-                  padding: EdgeInsets.zero,
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        // Blue header with the employee's words.
-                        DecoratedBox(
-                          decoration: const BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [_skyTop, _skyMid, AppColors.blue],
-                              stops: [0, .55, 1],
-                            ),
-                          ),
-                          child: _Header(
-                            item: widget.item,
-                            date: _date(widget.item.createdAt),
-                          ),
+      Scaffold(
+        backgroundColor: Colors.white,
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
+          leadingWidth: 68,
+          leading: const AppBackButton(),
+          // No title on the left: the name sits on the right in a pill.
+          title: const SizedBox.shrink(),
+          actions: [
+            _TitlePill(
+              widget.item.isFromBox ? 'Suggestion' : 'Weekly Pulse',
+              icon: widget.item.isFromBox
+                  ? Icons.lightbulb_outline
+                  : Icons.monitor_heart_outlined,
+            ),
+          ],
+        ),
+        body: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                controller: _scroll,
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // The employee's message.
+                      _MessageCard(
+                        item: widget.item,
+                        date: _date(widget.item.createdAt),
+                      ),
+                      // The reply already sent, on its own.
+                      if (widget.item.hasReply) ...[
+                        const SizedBox(height: 14),
+                        _LastReply(
+                          text: widget.item.managementMessage,
+                          date: _date(widget.item.updatedAt),
                         ),
-                        // The progress card sits half on the blue.
-                        Stack(
+                      ],
+                      const SizedBox(height: 22),
+                      Text(
+                        'Change status to',
+                        style: _t(13, weight: FontWeight.w400, color: AppColors.muted),
+                      ),
+                      const SizedBox(height: 8),
+                      _StatusList(
+                        options: options,
+                        chosen: _chosen,
+                        onTap: _busy ? null : _choose,
+                      ),
+                      if (_showsReply) ...[
+                        const SizedBox(height: 22),
+                        Row(
                           children: [
-                            const Positioned(
-                              left: 0,
-                              right: 0,
-                              top: 0,
-                              height: 44,
-                              child: ColoredBox(color: AppColors.blue),
+                            Expanded(
+                              child: Text(
+                                name == null
+                                    ? 'Reply to the employee'
+                                    : 'Reply to $name',
+                                style: _t(13, weight: FontWeight.w400, color: AppColors.muted),
+                              ),
                             ),
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(18, 0, 18, 0),
-                              child: _ProgressCard(status: _current),
+                            Text(
+                              _implemented ? 'Needed' : 'Optional',
+                              style: _t(
+                                12,
+                                weight: FontWeight.w400,
+                                color: _implemented
+                                    ? AppColors.blue
+                                    : const Color(0xFF8E97AB),
+                              ),
                             ),
                           ],
                         ),
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(18, 22, 18, 24),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              // The reply already sent, on its own.
-                              if (widget.item.hasReply) ...[
-                                _LastReply(
-                                  text: widget.item.managementMessage,
-                                  date: _date(widget.item.updatedAt),
-                                ),
-                                const SizedBox(height: 22),
-                              ],
-                              Text(
-                                'Move it to',
-                                style: _t(15.5, weight: FontWeight.w700),
-                              ),
-                              const SizedBox(height: 10),
-                              _OptionGrid(
-                                options: options,
-                                chosen: _chosen,
-                                onTap: _busy ? null : _choose,
-                              ),
-                              if (_showsReply) ...[
-                                const SizedBox(height: 22),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        name == null
-                                            ? 'Reply to the employee'
-                                            : 'Reply to $name',
-                                        style: _t(
-                                          15.5,
-                                          weight: FontWeight.w700,
-                                        ),
-                                      ),
-                                    ),
-                                    Text(
-                                      _implemented ? 'Needed' : 'Optional',
-                                      style: _t(
-                                        12.5,
-                                        color: _implemented
-                                            ? AppColors.blue
-                                            : AppColors.muted,
-                                        weight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 10),
-                                TextFormField(
-                                  controller: _message,
-                                  minLines: 3,
-                                  maxLines: 8,
-                                  maxLength: 1000,
-                                  // When typing, keep the whole box and the
-                                  // line under it above the keyboard.
-                                  scrollPadding:
-                                  const EdgeInsets.only(bottom: 140),
-                                  textCapitalization:
-                                  TextCapitalization.sentences,
-                                  style: _t(15, height: 1.45),
-                                  decoration: InputDecoration(
-                                    filled: true,
-                                    fillColor: Colors.white,
-                                    hintText: _replyHint(_status),
-                                    hintStyle: _t(
-                                      15,
-                                      color: const Color(0xFF9AA3B8),
-                                    ),
-                                    contentPadding: const EdgeInsets.all(14),
-                                    border: replyBorder(AppColors.border, 1.5),
-                                    enabledBorder:
-                                    replyBorder(AppColors.border, 1.5),
-                                    focusedBorder:
-                                    replyBorder(AppColors.blue, 1.8),
-                                    errorBorder: replyBorder(
-                                      theme.colorScheme.error,
-                                      1.5,
-                                    ),
-                                    focusedErrorBorder: replyBorder(
-                                      theme.colorScheme.error,
-                                      1.8,
-                                    ),
-                                  ),
-                                  validator: (v) {
-                                    if (!_implemented) return null;
-                                    return (v == null || v.trim().isEmpty)
-                                        ? 'A reply is needed for Implemented'
-                                        : null;
-                                  },
-                                ),
-                                Text(
-                                  _implemented
-                                      ? '${name ?? 'The employee'} gets a '
-                                      'notification and sees it in My Feedback.'
-                                      : 'Leave it empty to send only the new '
-                                      'status. ${name ?? 'The employee'} sees '
-                                      'it in My Feedback.',
-                                  style: _t(
-                                    13,
-                                    color: AppColors.muted,
-                                    height: 1.4,
-                                  ),
-                                ),
-                              ],
-                              if (_error != null) ...[
-                                const SizedBox(height: 12),
-                                Text(
-                                  _error!,
-                                  style: _t(
-                                    14,
-                                    color: theme.colorScheme.error,
-                                  ),
-                                ),
-                              ],
-                            ],
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: _message,
+                          minLines: 3,
+                          maxLines: 8,
+                          maxLength: 1000,
+                          // When typing, keep the whole box and the line
+                          // under it above the keyboard.
+                          scrollPadding: const EdgeInsets.only(bottom: 140),
+                          textCapitalization: TextCapitalization.sentences,
+                          style: _t(15, weight: FontWeight.w400, height: 1.45),
+                          decoration: InputDecoration(
+                            filled: true,
+                            fillColor: Colors.white,
+                            hintText: _replyHint(_status),
+                            hintStyle: _t(
+                              15,
+                              weight: FontWeight.w400,
+                              color: const Color(0xFF9AA3B8),
+                            ),
+                            contentPadding: const EdgeInsets.all(14),
+                            border: replyBorder(const Color(0xFFE3E8F1), 1.5),
+                            enabledBorder:
+                            replyBorder(const Color(0xFFE3E8F1), 1.5),
+                            focusedBorder: replyBorder(AppColors.blue, 1.5),
+                            errorBorder:
+                            replyBorder(theme.colorScheme.error, 1.5),
+                            focusedErrorBorder:
+                            replyBorder(theme.colorScheme.error, 1.5),
+                          ),
+                          validator: (v) {
+                            if (!_implemented) return null;
+                            return (v == null || v.trim().isEmpty)
+                                ? 'A reply is needed for Implemented'
+                                : null;
+                          },
+                        ),
+                        Text(
+                          _implemented
+                              ? '${name ?? 'The employee'} gets a '
+                              'notification and sees it in My Feedback.'
+                              : 'Leave it empty to send only the new '
+                              'status. ${name ?? 'The employee'} sees '
+                              'it in My Feedback.',
+                          style: _t(
+                            12.5,
+                            weight: FontWeight.w400,
+                            color: const Color(0xFF8E97AB),
+                            height: 1.4,
                           ),
                         ),
                       ],
-                    ),
-                  ),
-                ),
-              ),
-
-              // The button stays at the bottom, above the keyboard.
-              Container(
-                decoration: const BoxDecoration(
-                  color: AppColors.background,
-                  border: Border(top: BorderSide(color: Color(0xFFEDF0F6))),
-                ),
-                child: SafeArea(
-                  top: false,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(18, 12, 18, 12),
-                    child: FilledButton(
-                      onPressed: _busy || !_canSave ? null : _save,
-                      style: FilledButton.styleFrom(
-                        minimumSize: const Size.fromHeight(54),
-                        shape: const StadiumBorder(),
-                        textStyle: _t(16, weight: FontWeight.w600),
-                      ),
-                      child: _busy
-                          ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
+                      if (_error != null) ...[
+                        const SizedBox(height: 12),
+                        Text(
+                          _error!,
+                          style: _t(
+                            14,
+                            weight: FontWeight.w400,
+                            color: theme.colorScheme.error,
+                          ),
                         ),
-                      )
-                          : Text(
-                        _chosen == null
-                            ? 'Choose a status'
-                            : 'Change to '
-                            '${FeedbackStatus.label(_chosen!)}',
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // The button stays at the bottom, above the keyboard.
+            Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                border: Border(top: BorderSide(color: Color(0xFFEEF1F6))),
+              ),
+              child: SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+                  child: FilledButton(
+                    onPressed: _busy || !_canSave ? null : _save,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.blue,
+                      disabledBackgroundColor: const Color(0xFFE3E8F1),
+                      disabledForegroundColor: const Color(0xFF8E97AB),
+                      minimumSize: const Size.fromHeight(54),
+                      shape: const StadiumBorder(),
+                      textStyle: _t(16),
+                    ),
+                    child: _busy
+                        ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
                       ),
+                    )
+                        : Text(
+                      _chosen == null
+                          ? 'Choose a status'
+                          : 'Change to '
+                          '${FeedbackStatus.label(_chosen!)}',
                     ),
                   ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-/// The reply already sent to the employee: a light green card with a
-/// small label and the date. Read only.
+/// The reply already sent to the employee: a small green note. Read only.
+///   ✓ Your last reply · 21 Oct
+///     Thanks Ravi, we are checking with the cleaning team.
 class _LastReply extends StatelessWidget {
   const _LastReply({required this.text, required this.date});
 
   final String text;
   final String date;
 
+  static const _green = Color(0xFF15803D);
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFE8F7EE),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              const Icon(
-                Icons.check_circle_outline,
-                size: 16,
-                color: Color(0xFF15803D),
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  'Your last reply',
+          const Padding(
+            padding: EdgeInsets.only(top: 1),
+            child: Icon(Icons.check_rounded, size: 16, color: _green),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  date.isEmpty ? 'Your last reply' : 'Your last reply · $date',
+                  style: _t(13, color: _green),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  text,
                   style: _t(
-                    12.5,
-                    color: const Color(0xFF15803D),
-                    weight: FontWeight.w600,
+                    13.5,
+                    weight: FontWeight.w400,
+                    color: const Color(0xFF475467),
+                    height: 1.4,
                   ),
                 ),
-              ),
-              if (date.isNotEmpty)
-                Text(
-                  date,
-                  style: _t(12, color: const Color(0xFF15803D)),
-                ),
-            ],
+              ],
+            ),
           ),
-          const SizedBox(height: 6),
-          Text(text, style: _t(14.5, weight: FontWeight.w400, height: 1.45)),
         ],
       ),
     );
   }
 }
 
-/// The blue top: back button, date, source tag, the employee's words
-/// and who wrote it.
-class _Header extends StatelessWidget {
-  const _Header({required this.item, required this.date});
+/// The employee's message in a light grey card:
+///   [R]  Ravi Kumar               [● Under review]
+///        HST1065 · 21 Oct
+///   The pantry wasn't cleaned last week…
+class _MessageCard extends StatelessWidget {
+  const _MessageCard({required this.item, required this.date});
 
   final FeedbackItem item;
   final String date;
 
   @override
   Widget build(BuildContext context) {
-    final top = MediaQuery.paddingOf(context).top;
-    final rating = item.rating;
-    final source = item.isFromBox
-        ? 'Suggestion Box'
-        : rating == null
-        ? 'Weekly Pulse'
-        : 'Weekly Pulse · ${PulseRating.label(rating)}';
     final name = (item.authorName ?? '').trim();
     final anonymous = item.anonymous || name.isEmpty;
-    final who = anonymous ? 'Anonymous' : name;
-    final initials = anonymous
-        ? '?'
-        : name
-        .split(RegExp(r'\s+'))
-        .where((w) => w.isNotEmpty)
-        .take(2)
-        .map((w) => w[0].toUpperCase())
-        .join();
     final id = (item.authorEmployeeId ?? '').trim();
-
-    return Padding(
-      padding: EdgeInsets.fromLTRB(18, top + 8, 18, 22),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              _GlassButton(
-                icon: Icons.chevron_left,
-                tooltip: 'Back',
-                onTap: () => Navigator.of(context).maybePop(),
-              ),
-              const Spacer(),
-              if (date.isNotEmpty)
-                Text(date, style: _t(13.5, color: _soft)),
-            ],
-          ),
-          const SizedBox(height: 18),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: .14),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.white.withValues(alpha: .2)),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  item.isFromBox
-                      ? Icons.lightbulb_outline
-                      : Icons.monitor_heart_outlined,
-                  size: 15,
-                  color: Colors.white,
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  source,
-                  style: _t(12.5, color: Colors.white, weight: FontWeight.w600),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 14),
-          Text(
-            item.text.trim(),
-            style: _t(
-              19.5,
-              color: Colors.white,
-              weight: FontWeight.w600,
-              height: 1.38,
-            ),
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Container(
-                width: 28,
-                height: 28,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: .18),
-                  shape: BoxShape.circle,
-                ),
-                child: anonymous
-                    ? const Icon(
-                  Icons.person_outline,
-                  size: 16,
-                  color: Colors.white,
-                )
-                    : Text(
-                  initials,
-                  style: _t(
-                    11.5,
-                    color: Colors.white,
-                    weight: FontWeight.w700,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 9),
-              Flexible(
-                child: Text(
-                  !anonymous && id.isNotEmpty ? '$who · $id' : who,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: _t(13.5, color: _soft),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _GlassButton extends StatelessWidget {
-  const _GlassButton({
-    required this.icon,
-    required this.tooltip,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String tooltip;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Tooltip(
-      message: tooltip,
-      child: Material(
-        color: Colors.white.withValues(alpha: .12),
-        shape: CircleBorder(
-          side: BorderSide(color: Colors.white.withValues(alpha: .18)),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: SizedBox(
-            width: 42,
-            height: 42,
-            child: Icon(icon, color: Colors.white, size: 24),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// White card on the edge of the blue: the status now, and a small
-/// line with the five steps. For Noted it says "Needs no work" instead.
-class _ProgressCard extends StatelessWidget {
-  const _ProgressCard({required this.status});
-
-  final String status;
-
-  static const _short = ['New', 'Review', 'Planned', 'Working', 'Done'];
-  static const _done = Color(0xFF178A47);
-  static const _grey = Color(0xFFE3E8F2);
-
-  @override
-  Widget build(BuildContext context) {
-    final color = FeedbackStatus.color(status);
-    final noted = status == FeedbackStatus.noted;
-    final at = FeedbackStatus.steps.indexOf(status);
+    final rating = item.rating;
+    final sub = [
+      if (!anonymous && id.isNotEmpty) id,
+      if (date.isNotEmpty) date,
+      if (!item.isFromBox && rating != null) PulseRating.label(rating),
+    ].join(' · ');
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x140E1A3A),
-            blurRadius: 18,
-            offset: Offset(0, 6),
-          ),
-        ],
+        color: const Color(0xFFF6F8FB),
+        borderRadius: BorderRadius.circular(18),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             children: [
-              Expanded(
-                child: Text(
-                  noted ? 'Status' : 'Progress',
-                  style: _t(15.5, weight: FontWeight.w700),
+              Container(
+                width: 36,
+                height: 36,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: anonymous ? Colors.white : AppColors.blueTint,
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: anonymous
+                    ? const Icon(
+                  Icons.lock_outline_rounded,
+                  size: 17,
+                  color: Color(0xFF8E97AB),
+                )
+                    : Text(
+                  name[0].toUpperCase(),
+                  style: _t(14, color: AppColors.blue),
                 ),
               ),
-              _Pill(status: status),
-            ],
-          ),
-          const SizedBox(height: 14),
-          if (noted)
-            Text(
-              'Noted. This needs no work.',
-              style: _t(13.5, color: AppColors.muted),
-            )
-          else ...[
-            SizedBox(
-              height: 22,
-              child: Row(
-                children: [
-                  for (var i = 0; i < 5; i++) ...[
-                    _Dot(
-                      color: i < at
-                          ? _done
-                          : i == at
-                          ? color
-                          : _grey,
-                      halo: i == at,
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      anonymous ? 'Name hidden' : name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: _t(14),
                     ),
-                    if (i < 4)
-                      Expanded(
-                        child: Container(
-                          height: 3,
-                          color: i < at ? _done : _grey,
+                    if (sub.isNotEmpty)
+                      Text(
+                        sub,
+                        style: _t(
+                          12,
+                          weight: FontWeight.w400,
+                          color: const Color(0xFF8E97AB),
                         ),
                       ),
                   ],
-                ],
+                ),
               ),
-            ),
-            const SizedBox(height: 6),
-            Row(
-              children: [
-                for (var i = 0; i < 5; i++)
-                  Expanded(
-                    child: Text(
-                      _short[i],
-                      textAlign: i == 0
-                          ? TextAlign.left
-                          : i == 4
-                          ? TextAlign.right
-                          : TextAlign.center,
-                      style: _t(
-                        11,
-                        color: i == at ? color : AppColors.muted,
-                        weight: i == at ? FontWeight.w600 : FontWeight.w500,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ],
+              const SizedBox(width: 8),
+              _Pill(status: item.status),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            item.text.trim(),
+            style: _t(16, weight: FontWeight.w400, height: 1.5),
+          ),
         ],
-      ),
-    );
-  }
-}
-
-class _Dot extends StatelessWidget {
-  const _Dot({required this.color, required this.halo});
-
-  final Color color;
-  final bool halo;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 14,
-      height: 14,
-      decoration: BoxDecoration(
-        color: color,
-        shape: BoxShape.circle,
-        boxShadow: halo
-            ? [BoxShadow(color: color.withValues(alpha: .22), spreadRadius: 4)]
-            : null,
       ),
     );
   }
@@ -780,23 +553,24 @@ class _Pill extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = FeedbackStatus.color(status);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      height: 22,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
       decoration: BoxDecoration(
         color: color.withValues(alpha: .1),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(11),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 7,
-            height: 7,
+            width: 6,
+            height: 6,
             decoration: BoxDecoration(color: color, shape: BoxShape.circle),
           ),
           const SizedBox(width: 6),
           Text(
             FeedbackStatus.label(status),
-            style: _t(12.5, color: color, weight: FontWeight.w600),
+            style: _t(11.5, color: color),
           ),
         ],
       ),
@@ -804,9 +578,10 @@ class _Pill extends StatelessWidget {
   }
 }
 
-/// The statuses to move to, two per row.
-class _OptionGrid extends StatelessWidget {
-  const _OptionGrid({
+/// The statuses to move to: one list, one per line, with a short hint and
+/// a round select button. Tap again to undo.
+class _StatusList extends StatelessWidget {
+  const _StatusList({
     required this.options,
     required this.chosen,
     required this.onTap,
@@ -818,38 +593,35 @@ class _OptionGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final rows = <Widget>[];
-    for (var i = 0; i < options.length; i += 2) {
-      if (rows.isNotEmpty) rows.add(const SizedBox(height: 9));
-      rows.add(
-        IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(child: _option(options[i])),
-              const SizedBox(width: 9),
-              Expanded(
-                child: i + 1 < options.length
-                    ? _option(options[i + 1])
-                    : const SizedBox.shrink(),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-    return Column(children: rows);
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE9EDF4)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      foregroundDecoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE9EDF4)),
+      ),
+      child: Column(
+        children: [
+          for (var i = 0; i < options.length; i++) ...[
+            if (i > 0)
+              const Divider(height: 1, thickness: 1, color: Color(0xFFF0F2F7)),
+            _StatusRow(
+              status: options[i],
+              selected: options[i] == chosen,
+              onTap: onTap == null ? null : () => onTap!(options[i]),
+            ),
+          ],
+        ],
+      ),
+    );
   }
-
-  Widget _option(String s) => _OptionCard(
-    status: s,
-    selected: s == chosen,
-    onTap: onTap == null ? null : () => onTap!(s),
-  );
 }
 
-class _OptionCard extends StatelessWidget {
-  const _OptionCard({
+class _StatusRow extends StatelessWidget {
+  const _StatusRow({
     required this.status,
     required this.selected,
     required this.onTap,
@@ -866,57 +638,107 @@ class _OptionCard extends StatelessWidget {
       button: true,
       selected: selected,
       child: Material(
-        color: selected ? AppColors.blueTint : Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-          side: BorderSide(
-            color: selected ? AppColors.blue : AppColors.border,
-            width: 1.5,
-          ),
-        ),
-        clipBehavior: Clip.antiAlias,
+        color: selected ? const Color(0xFFF5F8FF) : Colors.white,
         child: InkWell(
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 11, 10, 11),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            padding: const EdgeInsets.fromLTRB(14, 11, 14, 11),
+            child: Row(
               children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration:
-                      BoxDecoration(color: color, shape: BoxShape.circle),
-                    ),
-                    const SizedBox(width: 7),
-                    Flexible(
-                      child: Text(
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration:
+                  BoxDecoration(color: color, shape: BoxShape.circle),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
                         FeedbackStatus.label(status),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: _t(14, weight: FontWeight.w600),
+                        style: _t(14.5, weight: FontWeight.w400),
                       ),
-                    ),
-                    if (selected) ...[
-                      const SizedBox(width: 4),
-                      const Icon(
-                        Icons.check,
-                        size: 16,
-                        color: AppColors.blue,
+                      const SizedBox(height: 1),
+                      Text(
+                        _hint(status),
+                        style: _t(
+                          12,
+                          weight: FontWeight.w400,
+                          color: const Color(0xFF8E97AB),
+                        ),
                       ),
                     ],
-                  ],
+                  ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  _hint(status),
-                  style: _t(12, color: AppColors.muted, height: 1.3),
+                const SizedBox(width: 10),
+                // Round select button.
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  width: 20,
+                  height: 20,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: selected
+                          ? AppColors.blue
+                          : const Color(0xFFC9D0DC),
+                      width: selected ? 6 : 2,
+                    ),
+                  ),
                 ),
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Screen name on the right of the AppBar: a rounded pill with a blue
+/// icon circle (same as the other screens).
+class _TitlePill extends StatelessWidget {
+  const _TitlePill(this.text, {required this.icon});
+
+  final String text;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 16),
+      child: Container(
+        height: 42,
+        padding: const EdgeInsets.fromLTRB(5, 5, 16, 5),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(21),
+          border: Border.all(color: AppColors.blue.withValues(alpha: 0.35)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: const BoxDecoration(
+                color: AppColors.blue,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 17, color: Colors.white),
+            ),
+            const SizedBox(width: 9),
+            Text(
+              text,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w400,
+                color: AppColors.ink,
+                letterSpacing: -0.4,
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -304,6 +304,7 @@ class _SuggestionBoxScreenState extends State<SuggestionBoxScreen>
   }
 
   /// Big title and a short line.
+
   Widget _header() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

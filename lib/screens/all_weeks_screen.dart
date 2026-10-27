@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -20,21 +18,6 @@ Widget _withInter(BuildContext context, Widget child) {
     child: child,
   );
 }
-
-/// Titles and big numbers in Inter.
-TextStyle _h(
-    double size, {
-      FontWeight weight = FontWeight.w800,
-      Color color = AppColors.ink,
-      double? height,
-    }) =>
-    GoogleFonts.inter(
-      fontSize: size,
-      fontWeight: weight,
-      color: color,
-      height: height,
-      letterSpacing: size >= 22 ? -0.5 : -0.2,
-    );
 
 /// Management: every week from the first week the app was used up to
 /// this week, newest first, grouped by month. Tap a week to see it on
@@ -84,9 +67,11 @@ class _AllWeeksScreenState extends State<AllWeeksScreen> {
         surfaceTintColor: Colors.white,
         leadingWidth: 68,
         leading: const AppBackButton(),
-        titleSpacing: 4,
-        centerTitle: false,
-        title: Text('All weeks', style: _h(22)),
+        // No title on the left: the name sits on the right in a pill.
+        title: const SizedBox.shrink(),
+        actions: const [
+          _TitlePill('All weeks', icon: Icons.calendar_month_outlined),
+        ],
       ),
       body: SafeArea(
         child: Align(
@@ -106,7 +91,16 @@ class _AllWeeksScreenState extends State<AllWeeksScreen> {
                       );
                     }
                     if (!snap.hasData || !totalSnap.hasData) {
-                      return const Center(child: CircularProgressIndicator());
+                      return const Center(
+                        child: SizedBox(
+                          width: 28,
+                          height: 28,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            color: AppColors.blue,
+                          ),
+                        ),
+                      );
                     }
                     return _buildList(snap.data!, totalSnap.data!);
                   },
@@ -144,58 +138,101 @@ class _AllWeeksScreenState extends State<AllWeeksScreen> {
       ids.add(id);
     }
 
-    // Month title above the first week of each month.
-    final children = <Widget>[
-      const Padding(
-        padding: EdgeInsets.fromLTRB(4, 0, 4, 6),
-        child: Text(
-          'Tap a week to see it on the dashboard.',
-          style: TextStyle(color: AppColors.muted, fontSize: 12.5),
-        ),
-      ),
-    ];
+    // Month name above the first week of each month.
+    final children = <Widget>[];
     String? lastMonth;
     for (final id in ids) {
       final month = _monthTitle(id);
       if (month != lastMonth) {
         children.add(
           Padding(
-            padding: const EdgeInsets.fromLTRB(4, 18, 4, 10),
+            padding: EdgeInsets.fromLTRB(22, lastMonth == null ? 4 : 18, 22, 4),
             child: Text(
               month,
-              style: _h(15, weight: FontWeight.w700, color: AppColors.muted),
+              style: const TextStyle(color: Color(0xFF8E97AB), fontSize: 13),
             ),
           ),
         );
         lastMonth = month;
       }
       children.add(
-        Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: _WeekCard(
-            weekId: id,
-            totals: weeks[id] ?? const PulseTotals(),
-            total: total,
-            selected: id == selected,
-            onTap: () => Navigator.of(context).pop(id),
-          ),
+        _WeekRow(
+          weekId: id,
+          totals: weeks[id] ?? const PulseTotals(),
+          total: total,
+          selected: id == selected,
+          onTap: () => Navigator.of(context).pop(id),
         ),
       );
     }
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+      padding: const EdgeInsets.fromLTRB(0, 4, 0, 28),
       children: children,
     );
   }
 }
 
+class _TitlePill extends StatelessWidget {
+  const _TitlePill(this.text, {required this.icon});
+
+  final String text;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 16),
+      child: Container(
+        height: 42,
+        padding: const EdgeInsets.fromLTRB(5, 5, 16, 5),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(21),
+          border: Border.all(color: AppColors.blue.withValues(alpha: 0.35)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: const BoxDecoration(
+                color: AppColors.blue,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 17, color: Colors.white),
+            ),
+            const SizedBox(width: 9),
+            Text(
+              text,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w400,
+                color: AppColors.ink,
+                letterSpacing: -0.4,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
 // ---------------------------------------------------------------------
-// One week
+// One week (design "Date chips")
 // ---------------------------------------------------------------------
 
-class _WeekCard extends StatelessWidget {
-  const _WeekCard({
+/// One week:
+///
+///   [ 19 ]  Mostly good
+///   [ OCT]  19 – 23 Oct · 24 of 30 answered
+///
+/// The chosen week has a blue date tile. This week shows "● Open"
+/// on the right while the Weekly Pulse is open.
+class _WeekRow extends StatelessWidget {
+  const _WeekRow({
     required this.weekId,
     required this.totals,
     required this.total,
@@ -214,160 +251,89 @@ class _WeekCard extends StatelessWidget {
     final isThisWeek = weekId == PulseService.thisWeekId();
     final open = isThisWeek && PulseService.isOpen();
     final notOpenYet = isThisWeek && PulseService.notOpenYet();
-    final closedNow = isThisWeek && !open && !notOpenYet;
     final submitted = totals.submitted;
-    final percent =
-    total == 0 ? 0 : ((submitted / total) * 100).round().clamp(0, 100);
+    final monday = _mondayOf(weekId);
 
-    // Small tag next to the dates.
-    String tag = PulseService.weekName(weekId);
-    if (open) tag = 'Open now';
-    if (notOpenYet) tag = 'Starting soon';
-    if (closedNow) tag = 'Closed';
-
-    // The line under the dates.
+    final String title;
     final String detail;
     if (notOpenYet) {
-      detail = 'Opens '
-          '${PulseService.dateTimeLabel(PulseService.opensAt())}';
-    } else if (submitted == 0) {
-      detail = isThisWeek ? 'No answers yet' : 'No answers';
+      title = 'This week';
+      detail = 'Opens ${PulseService.dateTimeLabel(PulseService.opensAt())}';
     } else {
-      detail = '$submitted of $total answered';
+      title = isThisWeek && open ? 'This week' : _result(totals, total);
+      detail = '${_shortWeek(weekId)} · '
+          '${submitted == 0 ? 'No answers' : '$submitted of $total answered'}';
     }
 
-    return Material(
-      color: selected ? const Color(0xFFF2F6FF) : Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: BorderSide(
-          color: selected ? AppColors.blue : const Color(0xFFE3E8F2),
-          width: 1.5,
-        ),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(18, 16, 16, 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
+        child: Row(
+          children: [
+            // The date tile: Monday's day and the month.
+            Container(
+              width: 48,
+              height: 52,
+              decoration: BoxDecoration(
+                color: selected ? AppColors.blue : const Color(0xFFF2F5FA),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 6,
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          children: [
-                            Text(
-                              _shortWeek(weekId),
-                              style: _h(18, weight: FontWeight.w700),
-                            ),
-                            if (tag.isNotEmpty)
-                              _Tag(text: tag, strong: open),
-                          ],
-                        ),
-                        const SizedBox(height: 5),
-                        Text(
-                          detail,
-                          style: const TextStyle(
-                            color: AppColors.muted,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
+                  Text(
+                    '${monday.day}',
+                    style: TextStyle(
+                      fontSize: 18,
+                      height: 1.1,
+                      fontWeight: FontWeight.w500,
+                      color: selected ? Colors.white : AppColors.ink,
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  _MiniRing(
-                    totals: totals,
-                    whole: total,
-                    label: notOpenYet ? '–' : '$percent%',
+                  Text(
+                    _monthNames[monday.month - 1].toUpperCase(),
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      letterSpacing: 0.8,
+                      color: selected
+                          ? const Color(0xFFC9D6FF)
+                          : const Color(0xFF8E97AB),
+                    ),
                   ),
                 ],
               ),
-              const SizedBox(height: 14),
-              _MoodBar(totals: totals),
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 20,
-                runSpacing: 60,
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  for (final rating in PulseRating.all)
-                    _Legend(rating: rating, count: totals.countFor(rating)),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 15.5,
+                      color: AppColors.ink,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    detail,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF8E97AB),
+                    ),
+                  ),
                 ],
               ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// "Open now", "Starting soon", "Closed", "Last week".
-class _Tag extends StatelessWidget {
-  const _Tag({required this.text, required this.strong});
-
-  final String text;
-  final bool strong;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-      decoration: BoxDecoration(
-        color: strong ? AppColors.blue : const Color(0xFFEEF1F6),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: strong ? Colors.white : AppColors.ink,
-          fontSize: 12.5,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-    );
-  }
-}
-
-/// One line split by rating. Grey when nobody answered.
-class _MoodBar extends StatelessWidget {
-  const _MoodBar({required this.totals});
-
-  final PulseTotals totals;
-
-  @override
-  Widget build(BuildContext context) {
-    final shown = [
-      for (final r in PulseRating.all)
-        if (totals.countFor(r) > 0) r,
-    ];
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(5),
-      child: SizedBox(
-        height: 4,
-        child: shown.isEmpty
-            ? const ColoredBox(
-          color: Color(0xFFEDF0F6),
-          child: SizedBox.expand(),
-        )
-            : Row(
-          children: [
-            for (var i = 0; i < shown.length; i++) ...[
-              if (i > 0) const SizedBox(width: 3),
-              Expanded(
-                flex: totals.countFor(shown[i]),
-                child: ColoredBox(
-                  color: _moodColor(shown[i]),
-                  child: const SizedBox.expand(),
-                ),
+            ),
+            if (open) ...[
+              const SizedBox(width: 8),
+              const Text(
+                '● Open',
+                style: TextStyle(fontSize: 12, color: Color(0xFF15803D)),
               ),
             ],
           ],
@@ -377,125 +343,27 @@ class _MoodBar extends StatelessWidget {
   }
 }
 
-/// A colour dot, the count and the rating name: "● 18 Great".
-class _Legend extends StatelessWidget {
-  const _Legend({required this.rating, required this.count});
-
-  final String rating;
-  final int count;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 2,
-          height: 2,
-          decoration: BoxDecoration(
-            color: _moodColor(rating),
-            shape: BoxShape.circle,
-          ),
-        ),
-        const SizedBox(width: 6),
-        Text.rich(
-          TextSpan(
-            style: const TextStyle(color: AppColors.muted, fontSize: 13.5),
-            children: [
-              TextSpan(
-                text: '$count ',
-                style: const TextStyle(
-                  color: AppColors.ink,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              TextSpan(text: PulseRating.label(rating)),
-            ],
-          ),
-        ),
-      ],
-    );
+/// How the week went, in a few words. Same rules as the dashboard:
+/// the result shows after 25% of people answered (at least 3).
+String _result(PulseTotals t, int total) {
+  final submitted = t.submitted;
+  if (submitted == 0) return 'No answers';
+  var needed = (total * 0.25).ceil();
+  if (needed < 3) needed = 3;
+  if (needed > total) needed = total;
+  if (submitted < needed) return 'Not enough answers';
+  final good = t.countFor(PulseRating.great) + t.countFor(PulseRating.good);
+  final share = good / submitted;
+  if (share >= 0.75) {
+    return t.countFor(PulseRating.great) > t.countFor(PulseRating.good)
+        ? 'A great week'
+        : 'A good week';
   }
-}
-
-/// A small ring with the answered percent in the middle.
-class _MiniRing extends StatelessWidget {
-  const _MiniRing({
-    required this.totals,
-    required this.whole,
-    required this.label,
-  });
-
-  final PulseTotals totals;
-  final int whole;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 58,
-      height: 58,
-      child: CustomPaint(
-        painter: _MiniRingPainter(
-          parts: [
-            for (final r in PulseRating.all) (totals.countFor(r), _moodColor(r)),
-          ],
-          whole: whole,
-        ),
-        child: Center(
-          child: Text(
-            label,
-            style: _h(13.5, weight: FontWeight.w700),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _MiniRingPainter extends CustomPainter {
-  _MiniRingPainter({required this.parts, required this.whole});
-
-  final List<(int, Color)> parts;
-  final int whole;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    const stroke = 7.0;
-    final rect = (Offset.zero & size).deflate(stroke / 2);
-    canvas.drawArc(
-      rect,
-      0,
-      math.pi * 2,
-      false,
-      Paint()
-        ..color = const Color(0xFFEDF0F6)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = stroke,
-    );
-    if (whole == 0) return;
-    const gap = 0.06;
-    var start = -math.pi / 2;
-    for (final (count, colour) in parts) {
-      if (count == 0) continue;
-      final sweep = math.pi * 2 * math.min(count, whole) / whole;
-      canvas.drawArc(
-        rect,
-        start + gap / 2,
-        math.max(0.0, sweep - gap),
-        false,
-        Paint()
-          ..color = colour
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = stroke,
-      );
-      start += sweep;
-    }
-  }
-
-  @override
-  bool shouldRepaint(_MiniRingPainter old) =>
-      old.whole != whole || old.parts.toString() != parts.toString();
+  if (share > 0.5) return 'Mostly good';
+  if (share >= 0.25) return 'A mixed week';
+  return t.countFor(PulseRating.okay) > t.countFor(PulseRating.difficult)
+      ? 'An okay week'
+      : 'A hard week';
 }
 
 class _Message extends StatelessWidget {
@@ -517,20 +385,6 @@ class _Message extends StatelessWidget {
 // ---------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------
-
-/// Same rating colours as the dashboard.
-Color _moodColor(String rating) {
-  switch (rating) {
-    case PulseRating.great:
-      return AppColors.blue;
-    case PulseRating.good:
-      return const Color(0xFF6E95F2);
-    case PulseRating.okay:
-      return const Color(0xFFE9A83B);
-    default:
-      return const Color(0xFFE2583E);
-  }
-}
 
 const List<String> _monthNames = [
   'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -563,5 +417,6 @@ String _shortWeek(String weekId) {
 String _monthTitle(String weekId) {
   final monday = _mondayOf(weekId);
   final friday = DateTime(monday.year, monday.month, monday.day + 4);
-  return '${_longMonthNames[friday.month - 1]} ${friday.year}';
+  final name = _longMonthNames[friday.month - 1];
+  return friday.year == DateTime.now().year ? name : '$name ${friday.year}';
 }

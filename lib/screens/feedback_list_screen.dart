@@ -245,12 +245,14 @@ class _FeedbackListScreenState extends State<FeedbackListScreen> {
         surfaceTintColor: Colors.white,
         leadingWidth: 68,
         leading: const AppBackButton(),
-        titleSpacing: 4,
-        centerTitle: false,
-        title: Text(
-          widget.isPulse ? 'Search comments' : 'Search suggestions',
-          style: heading(22),
-        ),
+        // No title on the left: the name sits on the right in a pill.
+        title: const SizedBox.shrink(),
+        actions: [
+          _TitlePill(
+            widget.isPulse ? 'Search comments' : 'Search suggestions',
+            icon: Icons.search_rounded,
+          ),
+        ],
       ),
       body: SafeArea(
         child: Align(
@@ -516,6 +518,54 @@ class _FeedbackListScreenState extends State<FeedbackListScreen> {
         item: items[i],
         query: _query.trim(),
         onTap: () => _open(items[i]),
+      ),
+    );
+  }
+}
+
+/// Screen name on the right of the AppBar: a rounded pill with a blue
+/// icon circle (same as the Suggestion Box screen).
+class _TitlePill extends StatelessWidget {
+  const _TitlePill(this.text, {required this.icon});
+
+  final String text;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 16),
+      child: Container(
+        height: 42,
+        padding: const EdgeInsets.fromLTRB(5, 5, 16, 5),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(21),
+          border: Border.all(color: AppColors.blue.withValues(alpha: 0.35)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: const BoxDecoration(
+                color: AppColors.blue,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 17, color: Colors.white),
+            ),
+            const SizedBox(width: 9),
+            Text(
+              text,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w400,
+                color: AppColors.ink,
+                letterSpacing: -0.4,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

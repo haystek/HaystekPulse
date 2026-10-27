@@ -118,9 +118,11 @@ class ProfileScreen extends StatelessWidget {
           surfaceTintColor: Colors.white,
           leadingWidth: 68,
           leading: const AppBackButton(),
-          titleSpacing: 4,
-          centerTitle: false,
-          title: Text('Profile', style: _title(22)),
+          // No title on the left: the name sits on the right in a pill.
+          title: const SizedBox.shrink(),
+          actions: const [
+            _TitlePill('Profile', icon: Icons.person_outline),
+          ],
         ),
         body: SafeArea(
           child: Align(
@@ -337,8 +339,12 @@ class _ChangeMyPasswordScreenState extends State<ChangeMyPasswordScreen> {
   final _newPassword = TextEditingController();
   final _confirm = TextEditingController();
   bool _busy = false;
-  bool _hide = true;
   String? _error;
+
+  /// Each box has its own eye button, so one tap shows only that box.
+  bool _hideCurrent = true;
+  bool _hideNew = true;
+  bool _hideConfirm = true;
 
   @override
   void dispose() {
@@ -378,14 +384,27 @@ class _ChangeMyPasswordScreenState extends State<ChangeMyPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
-    InputDecoration field(String label, {String? helper}) => InputDecoration(
-      labelText: label,
-      helperText: helper,
-      suffixIcon: IconButton(
-        icon: Icon(_hide ? Icons.visibility : Icons.visibility_off),
-        onPressed: () => setState(() => _hide = !_hide),
-      ),
-    );
+    InputDecoration field(
+        String label, {
+          String? helper,
+          required bool hidden,
+          required VoidCallback onEye,
+        }) =>
+        InputDecoration(
+          labelText: label,
+          helperText: helper,
+          suffixIcon: IconButton(
+            tooltip: hidden ? 'Show password' : 'Hide password',
+            icon: Icon(
+              hidden
+                  ? Icons.visibility_outlined
+                  : Icons.visibility_off_outlined,
+              size: 20,
+              color: const Color(0xFF8E97AB),
+            ),
+            onPressed: onEye,
+          ),
+        );
 
     return _inter(
       context,
@@ -396,9 +415,11 @@ class _ChangeMyPasswordScreenState extends State<ChangeMyPasswordScreen> {
           surfaceTintColor: Colors.white,
           leadingWidth: 68,
           leading: const AppBackButton(),
-          titleSpacing: 4,
-          centerTitle: false,
-          title: Text('Change password', style: _title(22)),
+          // No title on the left: the name sits on the right in a pill.
+          title: const SizedBox.shrink(),
+          actions: const [
+            _TitlePill('Change password', icon: Icons.lock_outline),
+          ],
         ),
         body: SafeArea(
           child: Align(
@@ -412,9 +433,14 @@ class _ChangeMyPasswordScreenState extends State<ChangeMyPasswordScreen> {
                   children: [
                     TextFormField(
                       controller: _current,
-                      obscureText: _hide,
+                      obscureText: _hideCurrent,
                       textInputAction: TextInputAction.next,
-                      decoration: field('Current password'),
+                      decoration: field(
+                        'Current password',
+                        hidden: _hideCurrent,
+                        onEye: () =>
+                            setState(() => _hideCurrent = !_hideCurrent),
+                      ),
                       validator: (v) => (v == null || v.isEmpty)
                           ? 'Enter your current password'
                           : null,
@@ -422,10 +448,14 @@ class _ChangeMyPasswordScreenState extends State<ChangeMyPasswordScreen> {
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _newPassword,
-                      obscureText: _hide,
+                      obscureText: _hideNew,
                       textInputAction: TextInputAction.next,
-                      decoration:
-                      field('New password', helper: 'At least 8 characters'),
+                      decoration: field(
+                        'New password',
+                        helper: 'At least 8 characters',
+                        hidden: _hideNew,
+                        onEye: () => setState(() => _hideNew = !_hideNew),
+                      ),
                       validator: (v) => (v == null || v.length < 8)
                           ? 'Use at least 8 characters'
                           : null,
@@ -433,9 +463,14 @@ class _ChangeMyPasswordScreenState extends State<ChangeMyPasswordScreen> {
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _confirm,
-                      obscureText: _hide,
+                      obscureText: _hideConfirm,
                       onFieldSubmitted: (_) => _save(),
-                      decoration: field('Confirm new password'),
+                      decoration: field(
+                        'Confirm new password',
+                        hidden: _hideConfirm,
+                        onEye: () =>
+                            setState(() => _hideConfirm = !_hideConfirm),
+                      ),
                       validator: (v) => v != _newPassword.text
                           ? 'The two passwords do not match'
                           : null,
@@ -471,6 +506,53 @@ class _ChangeMyPasswordScreenState extends State<ChangeMyPasswordScreen> {
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+/// Screen name on the right of the AppBar: a rounded pill with a blue
+/// icon circle (same as the other screens).
+class _TitlePill extends StatelessWidget {
+  const _TitlePill(this.text, {required this.icon});
+
+  final String text;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 16),
+      child: Container(
+        height: 42,
+        padding: const EdgeInsets.fromLTRB(5, 5, 16, 5),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(21),
+          border: Border.all(color: AppColors.blue.withValues(alpha: 0.35)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: const BoxDecoration(
+                color: AppColors.blue,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 17, color: Colors.white),
+            ),
+            const SizedBox(width: 9),
+            Text(
+              text,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w400,
+                color: AppColors.ink,
+                letterSpacing: -0.4,
+              ),
+            ),
+          ],
         ),
       ),
     );

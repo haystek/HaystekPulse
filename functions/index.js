@@ -13,7 +13,7 @@ admin.initializeApp();
 exports.pulseHeadsUp = onSchedule(
   {
     // minute hour day-of-month month day-of-week (5 = Friday)
-    schedule: "45 17 * * 5",
+    schedule: "45 19 * * 1",
     timeZone: "Asia/Kolkata",
     region: "asia-south1",
   },

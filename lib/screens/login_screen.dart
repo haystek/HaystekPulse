@@ -4,7 +4,6 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
-import '../widgets/pulse_line.dart';
 
 /// Inter font for everything on these screens, sheets and dialogs
 /// (same as the employee screens).
@@ -357,6 +356,8 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final top = MediaQuery.of(context).padding.top;
+    // Keyboard open: make the blue top small, so the fields move up.
+    final typing = MediaQuery.viewInsetsOf(context).bottom > 0;
     // White clock and battery icons on the dark top.
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
@@ -366,113 +367,261 @@ class _LoginScreenState extends State<LoginScreen> {
         body: GestureDetector(
           onTap: () => FocusScope.of(context).unfocus(),
           behavior: HitTestBehavior.translucent,
-          // The page scrolls when the keyboard is open or the phone is
-          // small. When there is room, the footer sits at the very bottom.
-          child: CustomScrollView(
-            slivers: [
-              SliverFillRemaining(
-                hasScrollBody: false,
+          // The page scrolls when the keyboard is open. It is at least as tall as the screen, so the footer can sit at the
+          // bottom. No intrinsic sizes, so nothing overflows while the
+          // top shrinks.
+          child: LayoutBuilder(
+            builder: (context, box) => SingleChildScrollView(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: box.maxHeight),
                 child: Column(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Night-sky top: the logo, the heartbeat that reaches
-                    // the pink heart, and the line "Your week, heard."
-                    Container(
-                      padding: EdgeInsets.fromLTRB(28, top + 36, 28, 72),
-                      decoration: const BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            Color(0xFF0B1B4D),
-                            Color(0xFF14328F),
-                            AppColors.blue,
-                          ],
-                          stops: [0, 0.55, 1],
-                        ),
-                      ),
-                      child: Column(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 18,
-                              vertical: 12,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(18),
-                            ),
-                            child: Image.asset(
-                              'assets/haystek_pulse_logo.png',
-                              height: 32,
-                              fit: BoxFit.contain,
-                            ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Night-sky top: the logo, a moving heartbeat line and
+                        // the line "Your week, heard." While typing, only the
+                        // logo stays, so the fields sit higher on the screen.
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 220),
+                          curve: Curves.easeOutCubic,
+                          padding: EdgeInsets.fromLTRB(
+                            28,
+                            top + (typing ? 16 : 36),
+                            28,
+                            typing ? 52 : 72,
                           ),
-                          const SizedBox(height: 30),
-                          const SizedBox(
-                            width: 300,
-                            child: PulseLine(
-                              progress: 1,
-                              heartColor: Color(0xFFFF6B8A),
-                              showDot: false,
-                              moving: true,
-                            ),
-                          ),
-                          const SizedBox(height: 22),
-                          Text(
-                            'Your week, heard.',
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.inter(
-                              color: const Color(0xFFC9D6FF),
-                              fontSize: 16,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    // The white sheet with round top corners, pulled up a
-                    // little over the dark top. It takes the free space.
-                    Expanded(
-                      child: Transform.translate(
-                        offset: const Offset(0, -32),
-                        child: Container(
                           decoration: const BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.vertical(
-                              top: Radius.circular(28),
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                Color(0xFF0B1B4D),
+                                Color(0xFF14328F),
+                                AppColors.blue,
+                              ],
+                              stops: [0, 0.55, 1],
                             ),
                           ),
-                          alignment: Alignment.topCenter,
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 480),
-                            child: Padding(
-                              padding: const EdgeInsets.fromLTRB(24, 28, 24, 0),
-                              child: _form(theme),
+                          child: Column(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 18,
+                                  vertical: 12,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(18),
+                                ),
+                                child: Image.asset(
+                                  'assets/haystek_pulse_logo.png',
+                                  height: 32,
+                                  fit: BoxFit.contain,
+                                ),
+                              ),
+                              AnimatedSize(
+                                duration: const Duration(milliseconds: 220),
+                                curve: Curves.easeOutCubic,
+                                alignment: Alignment.topCenter,
+                                child: typing
+                                    ? const SizedBox(width: double.infinity)
+                                    : Column(
+                                  children: [
+                                    const SizedBox(height: 30),
+                                    const SizedBox(
+                                      width: 300,
+                                      height: 56,
+                                      child: _HeartbeatLine(),
+                                    ),
+                                    const SizedBox(height: 22),
+                                    Text(
+                                      'Your week, heard.',
+                                      textAlign: TextAlign.center,
+                                      style: GoogleFonts.inter(
+                                        color: const Color(0xFFC9D6FF),
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        // The white sheet with round top corners, pulled up a
+                        // little over the dark top. It is as tall as the form
+                        // needs, so the page can scroll when the keyboard is
+                        // open instead of squeezing the form.
+                        Transform.translate(
+                          offset: const Offset(0, -32),
+                          child: Container(
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.vertical(
+                                top: Radius.circular(28),
+                              ),
+                            ),
+                            alignment: Alignment.topCenter,
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 480),
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(24, 28, 24, 0),
+                                child: _form(theme),
+                              ),
                             ),
                           ),
                         ),
-                      ),
+                      ],
                     ),
                     // The footer, always at the very bottom of the screen
                     // (above the phone's home bar).
-                    Padding(
-                      padding: EdgeInsets.fromLTRB(
-                        24,
-                        24,
-                        24,
-                        16 + MediaQuery.of(context).padding.bottom,
+                    // Hidden while typing, to give the fields more room.
+                    if (!typing)
+                      Padding(
+                        padding: EdgeInsets.fromLTRB(
+                          24,
+                          24,
+                          24,
+                          16 + MediaQuery.of(context).padding.bottom,
+                        ),
+                        child: const _Footer(),
                       ),
-                      child: const _Footer(),
-                    ),
                   ],
                 ),
               ),
-            ],
+            ),
           ),
         ),
       )),
     );
   }
+}
+
+/// A heartbeat line like on a hospital monitor: a faint line with two
+/// beats, and a bright trail with a glowing dot that runs along it again
+/// and again. No heart at the end.
+class _HeartbeatLine extends StatefulWidget {
+  const _HeartbeatLine();
+
+  @override
+  State<_HeartbeatLine> createState() => _HeartbeatLineState();
+}
+
+class _HeartbeatLineState extends State<_HeartbeatLine>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _run = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 2600),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _run.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return RepaintBoundary(
+      child: AnimatedBuilder(
+        animation: _run,
+        builder: (context, _) => CustomPaint(
+          painter: _HeartbeatPainter(_run.value),
+        ),
+      ),
+    );
+  }
+}
+
+class _HeartbeatPainter extends CustomPainter {
+  _HeartbeatPainter(this.t);
+
+  /// 0.0 to 1.0: where the bright dot is along the line.
+  final double t;
+
+  /// One beat, as (x, y) from 0 to 1: flat, a small bump, the tall spike,
+  /// a small wave, flat again.
+  static const List<Offset> _beat = [
+    Offset(0.00, 0.55),
+    Offset(0.28, 0.55),
+    Offset(0.34, 0.45),
+    Offset(0.40, 0.55),
+    Offset(0.46, 0.55),
+    Offset(0.50, 0.68),
+    Offset(0.55, 0.04),
+    Offset(0.60, 0.96),
+    Offset(0.64, 0.55),
+    Offset(0.74, 0.55),
+    Offset(0.81, 0.38),
+    Offset(0.88, 0.55),
+    Offset(1.00, 0.55),
+  ];
+
+  Path _path(Size size) {
+    const beats = 2;
+    final w = size.width / beats;
+    final path = Path();
+    for (var b = 0; b < beats; b++) {
+      for (var i = 0; i < _beat.length; i++) {
+        final p = Offset(b * w + _beat[i].dx * w, _beat[i].dy * size.height);
+        if (b == 0 && i == 0) {
+          path.moveTo(p.dx, p.dy);
+        } else {
+          path.lineTo(p.dx, p.dy);
+        }
+      }
+    }
+    return path;
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final path = _path(size);
+    final line = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    // The whole line, faint.
+    canvas.drawPath(path, line..color = Colors.white.withValues(alpha: 0.18));
+
+    final metric = path.computeMetrics().first;
+    final length = metric.length;
+    final head = length * t;
+    final trail = length * 0.35;
+
+    // The bright trail behind the dot, fading out at its end.
+    const pieces = 10;
+    for (var i = 0; i < pieces; i++) {
+      final from = head - trail * (1 - i / pieces);
+      final to = head - trail * (1 - (i + 1) / pieces);
+      if (to <= 0) continue;
+      canvas.drawPath(
+        metric.extractPath(from.clamp(0.0, length), to.clamp(0.0, length)),
+        line
+          ..strokeWidth = 2.4
+          ..color = Colors.white.withValues(alpha: 0.15 + 0.85 * (i + 1) / pieces),
+      );
+    }
+
+    // The dot, with a soft glow.
+    final dot = metric.getTangentForOffset(head.clamp(0.0, length))?.position;
+    if (dot != null) {
+      canvas.drawCircle(
+        dot,
+        9,
+        Paint()..color = const Color(0xFF7FA2FF).withValues(alpha: 0.35),
+      );
+      canvas.drawCircle(dot, 4, Paint()..color = Colors.white);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_HeartbeatPainter old) => old.t != t;
 }
 
 /// The big Sign in button, in the same navy-to-blue as the top.

@@ -324,10 +324,17 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return Scaffold(
           backgroundColor: Colors.white,
           appBar: AppBar(
+            backgroundColor: Colors.white,
+            surfaceTintColor: Colors.white,
             leadingWidth: 68,
             leading: const AppBackButton(),
-            title: const Text('Notifications'),
+            // No title on the left: the name sits on the right in a pill.
+            title: const SizedBox.shrink(),
             actions: [
+              const _TitlePill(
+                'Notifications',
+                icon: Icons.notifications_none_rounded,
+              ),
               if (rows.isNotEmpty)
                 PopupMenuButton<String>(
                   tooltip: 'More',
@@ -377,6 +384,53 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 }
+
+class _TitlePill extends StatelessWidget {
+  const _TitlePill(this.text, {required this.icon});
+
+  final String text;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 16),
+      child: Container(
+        height: 42,
+        padding: const EdgeInsets.fromLTRB(5, 5, 16, 5),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(21),
+          border: Border.all(color: AppColors.blue.withValues(alpha: 0.35)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: const BoxDecoration(
+                color: AppColors.blue,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 17, color: Colors.white),
+            ),
+            const SizedBox(width: 9),
+            Text(
+              text,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w400,
+                color: AppColors.ink,
+                letterSpacing: -0.4,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 
 /// A small blue tip at the top that explains the swipes.
 class _Tip extends StatelessWidget {
