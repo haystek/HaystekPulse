@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -6,6 +8,7 @@ import '../models/pulse_rating.dart';
 import '../services/feedback_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/ui.dart';
+import 'feedback_thread_screen.dart';
 
 /// Inter font for everything on this screen (same as the other screens).
 Widget _withInter(BuildContext context, Widget child) {
@@ -48,32 +51,14 @@ String _hint(String status) {
   }
 }
 
-/// Example text inside the reply box, for each status.
-String _replyHint(String status) {
-  switch (status) {
-    case FeedbackStatus.underReview:
-      return 'For example: We are discussing this with the team leads.';
-    case FeedbackStatus.planned:
-      return 'For example: We will do this next month.';
-    case FeedbackStatus.inProgress:
-      return 'For example: Work has started. It should be done by Friday.';
-    case FeedbackStatus.implemented:
-      return 'Tell them what has been done';
-    case FeedbackStatus.noted:
-      return 'For example: Thanks for letting us know. Take care.';
-    default:
-      return 'Write a short message';
-  }
-}
-
-/// Management: open one entry, move it to a new status, and reply.
-/// The last reply sent shows on its own (not inside the box). The reply
-/// box opens only after a new status is chosen, and starts empty: what
-/// is written there goes with the new status. Needed for "Implemented",
-/// optional for the others.
+/// Management: open one entry, see the whole conversation, and reply.
 ///
-/// Design A: the employee's message in a grey card, the last reply,
-/// and the statuses to move to as a simple list.
+/// Design C:
+///   the employee's message in a grey card
+///   the conversation as a timeline
+///   at the bottom: [status button] [reply box] [send]
+/// The status button opens a sheet: choose a new status, add an
+/// optional message (needed for "Implemented"), "Change to …".
 class FeedbackDetailScreen extends StatefulWidget {
   const FeedbackDetailScreen({super.key, required this.item});
 
@@ -84,33 +69,19 @@ class FeedbackDetailScreen extends StatefulWidget {
 }
 
 class _FeedbackDetailScreenState extends State<FeedbackDetailScreen> {
-  final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _message;
+  final _reply = TextEditingController();
   final _scroll = ScrollController();
 
-  /// The status management tapped. Null until they choose one.
-  String? _chosen;
-  bool _busy = false;
-  String? _error;
-
-  String get _current => widget.item.status;
-
-  /// What will be saved: the chosen status, or the current one.
-  String get _status => _chosen ?? _current;
-
-  bool get _implemented => _status == FeedbackStatus.implemented;
-
-  /// The reply box shows once a new status is chosen (not for New).
-  /// Needed for Implemented, optional for the others.
-  bool get _showsReply =>
-      _chosen != null && _chosen != FeedbackStatus.newItem;
-
-  /// Something to save: only a new status (with its reply).
-  bool get _canSave => _chosen != null;
+  /// Live copy of the entry (status changes show at once).
+  late FeedbackItem _item;
+  StreamSubscription<FeedbackItem?>? _itemSub;
+  late final Stream<List<ThreadEntry>> _thread;
+  int _lastCount = -1;
+  double _lastInset = 0;
 
   /// First name of the author, or null when anonymous or unknown.
   String? get _firstName {
-    final item = widget.item;
+    final item = _item;
     if (item.anonymous) return null;
     final name = (item.authorName ?? '').trim();
     if (name.isEmpty) return null;
@@ -120,68 +91,80 @@ class _FeedbackDetailScreenState extends State<FeedbackDetailScreen> {
   @override
   void initState() {
     super.initState();
-    // Starts empty: the last reply shows on its own above.
-    _message = TextEditingController();
+    _item = widget.item;
+    _reply.addListener(() => setState(() {}));
+    _thread = FeedbackService.instance.watchThread(widget.item.id);
+    _itemSub = FeedbackService.instance.watchOne(widget.item.id).listen((i) {
+      if (i != null && mounted) setState(() => _item = i);
+    });
   }
 
   @override
   void dispose() {
-    _message.dispose();
+    _itemSub?.cancel();
+    _reply.dispose();
     _scroll.dispose();
     super.dispose();
   }
 
-  /// Tap a status card. Tap again to undo the choice.
-  /// Text you typed is kept when you switch between statuses.
-  /// When the reply box opens, scroll down so the box is in view.
-  void _choose(String s) {
-    setState(() {
-      _chosen = s == _chosen ? null : s;
-      _error = null;
-    });
-    // A status was chosen: always bring the reply box into view.
-    if (_chosen != null && _showsReply) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!_scroll.hasClients) return;
+  /// New line in the conversation: scroll down to it.
+  void _scrollDownIfNew(int count) {
+    if (count == _lastCount) return;
+    final first = _lastCount < 0;
+    _lastCount = count;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scroll.hasClients) return;
+      final end = _scroll.position.maxScrollExtent;
+      if (first) {
+        _scroll.jumpTo(end);
+      } else {
         _scroll.animateTo(
-          _scroll.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 400),
+          end,
+          duration: const Duration(milliseconds: 300),
           curve: Curves.easeOutCubic,
         );
-      });
-    }
+      }
+    });
   }
 
-  Future<void> _save() async {
-    if (!_formKey.currentState!.validate()) return;
-    FocusScope.of(context).unfocus();
-    setState(() {
-      _busy = true;
-      _error = null;
-    });
+  /// Reply only: shows at once, goes to the server when there is internet.
+  void _sendReply() {
+    final text = _reply.text.trim();
+    if (text.isEmpty) return;
     final messenger = ScaffoldMessenger.of(context);
-    final navigator = Navigator.of(context);
-    try {
-      await FeedbackService.instance.updateStatus(
-        id: widget.item.id,
-        status: _status,
-        message: _message.text,
-      );
-      messenger.showSnackBar(
+    _reply.clear();
+    unawaited(
+      FeedbackService.instance
+          .sendMessage(item: _item, fromManagement: true, text: text)
+          .catchError((Object e) {
+        messenger.showSnackBar(SnackBar(content: Text('$e')));
+        if (mounted && _reply.text.isEmpty) _reply.text = text;
+      }),
+    );
+  }
+
+  /// The "Change status" sheet.
+  Future<void> _openStatusSheet() async {
+    FocusScope.of(context).unfocus();
+    final changed = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+      ),
+      builder: (_) => _withInter(
+        context,
+        _StatusSheet(item: _item, employeeName: _firstName),
+      ),
+    );
+    if (changed != null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            'Status updated to ${FeedbackStatus.label(_status)}.',
-          ),
+          content: Text('Status changed to ${FeedbackStatus.label(changed)}.'),
         ),
       );
-      navigator.pop();
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _busy = false;
-        _error = 'Could not update. Please check your internet '
-            'connection and try again.';
-      });
     }
   }
 
@@ -196,34 +179,24 @@ class _FeedbackDetailScreenState extends State<FeedbackDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final name = _firstName;
-    final options = [
-      for (final s in FeedbackStatus.all)
-        if (s != _current) s,
-    ];
-
-    OutlineInputBorder replyBorder(Color color, double width) =>
-        OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: color, width: width),
-        );
-
+    // Keyboard opening: keep the newest message in view.
+    _lastInset = keepLastInView(context, _scroll, _lastInset);
     return _withInter(
       context,
       Scaffold(
         backgroundColor: Colors.white,
+        resizeToAvoidBottomInset: true,
         appBar: AppBar(
           backgroundColor: Colors.white,
           surfaceTintColor: Colors.white,
           leadingWidth: 68,
           leading: const AppBackButton(),
-          // No title on the left: the name sits on the right in a pill.
           title: const SizedBox.shrink(),
           actions: [
             _TitlePill(
-              widget.item.isFromBox ? 'Suggestion' : 'Weekly Pulse',
-              icon: widget.item.isFromBox
+              _item.isFromBox ? 'Suggestion' : 'Weekly Pulse',
+              icon: _item.isFromBox
                   ? Icons.lightbulb_outline
                   : Icons.monitor_heart_outlined,
             ),
@@ -231,166 +204,63 @@ class _FeedbackDetailScreenState extends State<FeedbackDetailScreen> {
         ),
         body: Column(
           children: [
+            // Sticky: the employee's message stays on top.
+            _MessageCard(item: _item, date: _date(_item.createdAt)),
             Expanded(
-              child: SingleChildScrollView(
-                controller: _scroll,
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+              child: StreamBuilder<List<ThreadEntry>>(
+                stream: _thread,
+                builder: (context, snap) {
+                  final entries = snap.data ?? const <ThreadEntry>[];
+                  if (snap.hasData) _scrollDownIfNew(entries.length);
+                  final rows = buildThreadRows(_item, entries);
+                  return ListView(
+                    controller: _scroll,
+                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
                     children: [
-                      // The employee's message.
-                      _MessageCard(
-                        item: widget.item,
-                        date: _date(widget.item.createdAt),
-                      ),
-                      // The reply already sent, on its own.
-                      if (widget.item.hasReply) ...[
-                        const SizedBox(height: 14),
-                        _LastReply(
-                          text: widget.item.managementMessage,
-                          date: _date(widget.item.updatedAt),
-                        ),
-                      ],
-                      const SizedBox(height: 22),
-                      Text(
-                        'Change status to',
-                        style: _t(13, weight: FontWeight.w400, color: AppColors.muted),
-                      ),
-                      const SizedBox(height: 8),
-                      _StatusList(
-                        options: options,
-                        chosen: _chosen,
-                        onTap: _busy ? null : _choose,
-                      ),
-                      if (_showsReply) ...[
-                        const SizedBox(height: 22),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                name == null
-                                    ? 'Reply to the employee'
-                                    : 'Reply to $name',
-                                style: _t(13, weight: FontWeight.w400, color: AppColors.muted),
-                              ),
-                            ),
-                            Text(
-                              _implemented ? 'Needed' : 'Optional',
-                              style: _t(
-                                12,
-                                weight: FontWeight.w400,
-                                color: _implemented
-                                    ? AppColors.blue
-                                    : const Color(0xFF8E97AB),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        TextFormField(
-                          controller: _message,
-                          minLines: 3,
-                          maxLines: 8,
-                          maxLength: 1000,
-                          // When typing, keep the whole box and the line
-                          // under it above the keyboard.
-                          scrollPadding: const EdgeInsets.only(bottom: 140),
-                          textCapitalization: TextCapitalization.sentences,
-                          style: _t(15, weight: FontWeight.w400, height: 1.45),
-                          decoration: InputDecoration(
-                            filled: true,
-                            fillColor: Colors.white,
-                            hintText: _replyHint(_status),
-                            hintStyle: _t(
-                              15,
-                              weight: FontWeight.w400,
-                              color: const Color(0xFF9AA3B8),
-                            ),
-                            contentPadding: const EdgeInsets.all(14),
-                            border: replyBorder(const Color(0xFFE3E8F1), 1.5),
-                            enabledBorder:
-                            replyBorder(const Color(0xFFE3E8F1), 1.5),
-                            focusedBorder: replyBorder(AppColors.blue, 1.5),
-                            errorBorder:
-                            replyBorder(theme.colorScheme.error, 1.5),
-                            focusedErrorBorder:
-                            replyBorder(theme.colorScheme.error, 1.5),
-                          ),
-                          validator: (v) {
-                            if (!_implemented) return null;
-                            return (v == null || v.trim().isEmpty)
-                                ? 'A reply is needed for Implemented'
-                                : null;
-                          },
-                        ),
+                      if (rows.isEmpty)
                         Text(
-                          _implemented
-                              ? '${name ?? 'The employee'} gets a '
-                              'notification and sees it in My Feedback.'
-                              : 'Leave it empty to send only the new '
-                              'status. ${name ?? 'The employee'} sees '
-                              'it in My Feedback.',
+                          'No replies yet. Write below to reply, or tap the '
+                              'list button to change the status.',
                           style: _t(
-                            12.5,
+                            13.5,
                             weight: FontWeight.w400,
-                            color: const Color(0xFF8E97AB),
-                            height: 1.4,
+                            color: AppColors.muted,
+                            height: 1.45,
                           ),
+                        )
+                      else
+                        FeedbackTimeline(
+                          rows: rows,
+                          managementView: true,
+                          employeeName: name,
                         ),
-                      ],
-                      if (_error != null) ...[
-                        const SizedBox(height: 12),
-                        Text(
-                          _error!,
-                          style: _t(
-                            14,
-                            weight: FontWeight.w400,
-                            color: theme.colorScheme.error,
-                          ),
-                        ),
-                      ],
                     ],
-                  ),
-                ),
+                  );
+                },
               ),
             ),
-
-            // The button stays at the bottom, above the keyboard.
-            Container(
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                border: Border(top: BorderSide(color: Color(0xFFEEF1F6))),
-              ),
-              child: SafeArea(
-                top: false,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
-                  child: FilledButton(
-                    onPressed: _busy || !_canSave ? null : _save,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.blue,
-                      disabledBackgroundColor: const Color(0xFFE3E8F1),
-                      disabledForegroundColor: const Color(0xFF8E97AB),
-                      minimumSize: const Size.fromHeight(54),
-                      shape: const StadiumBorder(),
-                      textStyle: _t(16),
-                    ),
-                    child: _busy
-                        ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
+            ThreadComposer(
+              controller: _reply,
+              hint: name == null ? 'Reply to the employee…' : 'Reply to $name…',
+              onSend: _sendReply,
+              leading: Tooltip(
+                message: 'Change status',
+                child: Material(
+                  color: Colors.white,
+                  shape: const CircleBorder(
+                    side: BorderSide(color: Color(0xFFE3E8F1)),
+                  ),
+                  child: InkWell(
+                    customBorder: const CircleBorder(),
+                    onTap: _openStatusSheet,
+                    child: const SizedBox(
+                      width: 44,
+                      height: 44,
+                      child: Icon(
+                        Icons.tune_rounded,
+                        size: 19,
+                        color: AppColors.blue,
                       ),
-                    )
-                        : Text(
-                      _chosen == null
-                          ? 'Choose a status'
-                          : 'Change to '
-                          '${FeedbackStatus.label(_chosen!)}',
                     ),
                   ),
                 ),
@@ -403,57 +273,170 @@ class _FeedbackDetailScreenState extends State<FeedbackDetailScreen> {
   }
 }
 
-/// The reply already sent to the employee: a small green note. Read only.
-///   ✓ Your last reply · 21 Oct
-///     Thanks Ravi, we are checking with the cleaning team.
-class _LastReply extends StatelessWidget {
-  const _LastReply({required this.text, required this.date});
+/// The "Change status" sheet: the other statuses as a list, an optional
+/// message (needed for "Implemented"), and "Change to …".
+/// Closes with the new status when saved.
+class _StatusSheet extends StatefulWidget {
+  const _StatusSheet({required this.item, this.employeeName});
 
-  final String text;
-  final String date;
+  final FeedbackItem item;
+  final String? employeeName;
 
-  static const _green = Color(0xFF15803D);
+  @override
+  State<_StatusSheet> createState() => _StatusSheetState();
+}
+
+class _StatusSheetState extends State<_StatusSheet> {
+  final _message = TextEditingController();
+  String? _chosen;
+  bool _busy = false;
+  String? _error;
+
+  bool get _implemented => _chosen == FeedbackStatus.implemented;
+
+  @override
+  void dispose() {
+    _message.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final status = _chosen;
+    if (status == null) return;
+    final text = _message.text.trim();
+    if (_implemented && text.isEmpty) {
+      setState(() => _error = 'A message is needed for Implemented.');
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    final navigator = Navigator.of(context);
+    try {
+      await FeedbackService.instance.updateStatus(
+        id: widget.item.id,
+        status: status,
+        message: text,
+      );
+      navigator.pop(status);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _error = 'Could not update. Please check your internet '
+            'connection and try again.';
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final options = [
+      for (final s in FeedbackStatus.all)
+        if (s != widget.item.status) s,
+    ];
+    OutlineInputBorder border(Color color) => OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: BorderSide(color: color, width: 1.5),
+    );
+
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Padding(
-            padding: EdgeInsets.only(top: 1),
-            child: Icon(Icons.check_rounded, size: 16, color: _green),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  date.isEmpty ? 'Your last reply' : 'Your last reply · $date',
-                  style: _t(13, color: _green),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  text,
-                  style: _t(
-                    13.5,
-                    weight: FontWeight.w400,
-                    color: const Color(0xFF475467),
-                    height: 1.4,
+      // Stay above the keyboard.
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: SafeArea(
+        top: false,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text('Change status', style: _t(17, weight: FontWeight.w400)),
                   ),
+                  Text(
+                    'Now: ',
+                    style: _t(12.5, weight: FontWeight.w400, color: const Color(0xFF8E97AB)),
+                  ),
+                  _Pill(status: widget.item.status),
+                ],
+              ),
+              const SizedBox(height: 12),
+              _StatusList(
+                options: options,
+                chosen: _chosen,
+                onTap: _busy
+                    ? null
+                    : (s) => setState(() {
+                  _chosen = s == _chosen ? null : s;
+                  _error = null;
+                }),
+              ),
+              const SizedBox(height: 14),
+              TextField(
+                controller: _message,
+                minLines: 2,
+                maxLines: 5,
+                maxLength: 1000,
+                textCapitalization: TextCapitalization.sentences,
+                style: _t(15, weight: FontWeight.w400, height: 1.4),
+                decoration: InputDecoration(
+                  hintText: _implemented
+                      ? 'Tell ${widget.employeeName ?? 'them'} what has been done (needed)'
+                      : 'Add a message (optional)',
+                  hintStyle: _t(14.5, weight: FontWeight.w400, color: const Color(0xFF9AA3B8)),
+                  contentPadding: const EdgeInsets.all(14),
+                  border: border(const Color(0xFFE3E8F1)),
+                  enabledBorder: border(const Color(0xFFE3E8F1)),
+                  focusedBorder: border(AppColors.blue),
+                ),
+              ),
+              if (_error != null) ...[
+                const SizedBox(height: 4),
+                Text(
+                  _error!,
+                  style: _t(13.5, weight: FontWeight.w400, color: theme.colorScheme.error),
                 ),
               ],
-            ),
+              const SizedBox(height: 10),
+              FilledButton(
+                onPressed: _busy || _chosen == null ? null : _save,
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.blue,
+                  disabledBackgroundColor: const Color(0xFFE3E8F1),
+                  disabledForegroundColor: const Color(0xFF8E97AB),
+                  minimumSize: const Size.fromHeight(52),
+                  shape: const StadiumBorder(),
+                  textStyle: _t(15.5),
+                ),
+                child: _busy
+                    ? const SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+                    : Text(
+                  _chosen == null
+                      ? 'Choose a status'
+                      : 'Change to ${FeedbackStatus.label(_chosen!)}',
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 }
 
-/// The employee's message in a light grey card:
+/// The employee's message, sticky on top (grey card):
 ///   [R]  Ravi Kumar               [● Under review]
 ///        HST1065 · 21 Oct
 ///   The pantry wasn't cleaned last week…
@@ -475,68 +458,54 @@ class _MessageCard extends StatelessWidget {
       if (!item.isFromBox && rating != null) PulseRating.label(rating),
     ].join(' · ');
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF6F8FB),
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+    return ThreadHeaderCard(
+      text: item.text,
+      top: Row(
         children: [
-          Row(
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: anonymous ? Colors.white : AppColors.blueTint,
-                  borderRadius: BorderRadius.circular(11),
+          Container(
+            width: 32,
+            height: 32,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: anonymous ? Colors.white : AppColors.blueTint,
+              borderRadius: BorderRadius.circular(11),
+            ),
+            child: anonymous
+                ? const Icon(
+              Icons.lock_outline_rounded,
+              size: 17,
+              color: Color(0xFF8E97AB),
+            )
+                : Text(
+              name[0].toUpperCase(),
+              style: _t(14, color: AppColors.blue),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  anonymous ? 'Name hidden' : name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: _t(14),
                 ),
-                child: anonymous
-                    ? const Icon(
-                  Icons.lock_outline_rounded,
-                  size: 17,
-                  color: Color(0xFF8E97AB),
-                )
-                    : Text(
-                  name[0].toUpperCase(),
-                  style: _t(14, color: AppColors.blue),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      anonymous ? 'Name hidden' : name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: _t(14),
+                if (sub.isNotEmpty)
+                  Text(
+                    sub,
+                    style: _t(
+                      12,
+                      weight: FontWeight.w400,
+                      color: const Color(0xFF8E97AB),
                     ),
-                    if (sub.isNotEmpty)
-                      Text(
-                        sub,
-                        style: _t(
-                          12,
-                          weight: FontWeight.w400,
-                          color: const Color(0xFF8E97AB),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              _Pill(status: item.status),
-            ],
+                  ),
+              ],
+            ),
           ),
-          const SizedBox(height: 12),
-          Text(
-            item.text.trim(),
-            style: _t(16, weight: FontWeight.w400, height: 1.5),
-          ),
+          const SizedBox(width: 8),
+          _Pill(status: item.status),
         ],
       ),
     );

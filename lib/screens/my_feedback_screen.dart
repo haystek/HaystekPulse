@@ -10,6 +10,7 @@ import '../services/feedback_service.dart';
 import '../services/pulse_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/ui.dart';
+import 'feedback_thread_screen.dart';
 
 /// Everything this employee has sent, in two tabs that never mix.
 /// Look: a blue switch for the two tabs, blue filter chips, and each
@@ -576,8 +577,7 @@ const Color _line = Color(0xFFE3E8F1);
 /// Light grey for the tab switch.
 const Color _panel = Color(0xFFF6F8FB);
 
-/// Management's reply: light green box, green label.
-const Color _replyBg = Color(0xFFE8F7EE);
+/// "Management replied" in green.
 const Color _replyFg = Color(0xFF15803D);
 
 /// Inter with a chosen size, weight and colour.
@@ -844,7 +844,7 @@ class _Card extends StatelessWidget {
   final String? status;
   final bool replied;
 
-  /// Opens the bottom sheet. Null: nothing more to show (Great / Good),
+  /// Opens the conversation. Null: nothing more to show (Great / Good),
   /// so the card can't be tapped and has no arrow.
   final VoidCallback? onTap;
 
@@ -938,7 +938,7 @@ class _Card extends StatelessWidget {
   }
 }
 
-/// One suggestion. Tap for the full text and the reply.
+/// One suggestion. Tap for the full text and the conversation.
 class _SuggestionRow extends StatelessWidget {
   const _SuggestionRow({required this.item});
 
@@ -1001,218 +1001,15 @@ class _WeekRow extends StatelessWidget {
   }
 }
 
-/// "21 Oct 2026, 7:45 PM".
-String _fullDate(DateTime? d) {
-  if (d == null) return '';
-  final h = d.hour % 12 == 0 ? 12 : d.hour % 12;
-  final m = d.minute.toString().padLeft(2, '0');
-  return '${d.day} ${_shortMonths[d.month - 1]} ${d.year}, '
-      '$h:$m ${d.hour < 12 ? 'AM' : 'PM'}';
-}
-
-/// Opens one suggestion or Weekly Pulse comment in the bottom sheet.
+/// Opens one suggestion or Weekly Pulse comment with its conversation.
 /// Used by the Notifications screen too.
 void showMyFeedbackSheet(BuildContext context, FeedbackItem f) =>
     _showFeedbackSheet(context, f);
 
-/// One suggestion or Weekly Pulse comment in a sheet from the bottom.
-/// Calm layout, three text sizes only:
-///   header  – type + status, then date · name hidden   (13)
-///   body    – the full text                              (16)
-///   reply   – highlighted green card, or "No reply yet"  (15 / 13)
-///   footer  – a quiet Close button
-/// Same as the one on the home screen.
+/// Opens the conversation screen (full text, replies, reply box).
 void _showFeedbackSheet(BuildContext context, FeedbackItem f) {
-  showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
-    showDragHandle: true,
-    backgroundColor: Colors.white,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-    ),
-    builder: (context) {
-      final rating = f.rating;
-      final typeColor = f.isFromBox || rating == null
-          ? AppColors.blue
-          : PulseRating.color(rating);
-      final meta = [
-        _fullDate(f.createdAt),
-        f.anonymous ? 'Name hidden' : 'Sent with your name',
-      ].where((x) => x.isNotEmpty).join('  ·  ');
-
-      return ConstrainedBox(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.85,
-        ),
-        child: SafeArea(
-          top: false,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Flexible(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // Header: what it is, and its status.
-                      Row(
-                        children: [
-                          Icon(
-                            f.isFromBox
-                                ? Icons.lightbulb_outline
-                                : (rating != null
-                                ? PulseRating.icon(rating)
-                                : Icons.favorite_border),
-                            size: 18,
-                            color: typeColor,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              f.isFromBox
-                                  ? 'Suggestion'
-                                  : rating == null
-                                  ? 'Weekly Pulse'
-                                  : 'Weekly Pulse · ${PulseRating.label(rating)}',
-                              style: _t(
-                                13,
-                                weight: FontWeight.w500,
-                                color: typeColor,
-                              ),
-                            ),
-                          ),
-                          _StatusChip(status: f.status),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          Icon(
-                            f.anonymous
-                                ? Icons.lock_outline
-                                : Icons.person_outline,
-                            size: 14,
-                            color: _soft,
-                          ),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(meta, style: _t(13, color: _soft)),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 18),
-
-                      // Body: the person's own words, plain and readable.
-                      SelectableText(f.text, style: _t(16, height: 1.55)),
-                      const SizedBox(height: 22),
-                      const Divider(height: 1, color: _line),
-                      const SizedBox(height: 18),
-
-                      // Reply: the highlight of the sheet.
-                      if (f.hasReply)
-                        Container(
-                          padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-                          decoration: const BoxDecoration(
-                            color: _replyBg,
-                            borderRadius: BorderRadius.all(Radius.circular(16)),
-                            border: Border(
-                              left: BorderSide(color: _replyFg, width: 3),
-                            ),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.chat_bubble_outline,
-                                    size: 15,
-                                    color: _replyFg,
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Expanded(
-                                    child: Text(
-                                      'Reply from management',
-                                      style: _t(
-                                        13,
-                                        weight: FontWeight.w500,
-                                        color: _replyFg,
-                                      ),
-                                    ),
-                                  ),
-                                  if (f.updatedAt != null)
-                                    Text(
-                                      _fullDate(f.updatedAt),
-                                      style: _t(12, color: _replyFg),
-                                    ),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-                              SelectableText(
-                                f.managementMessage,
-                                style: _t(15, height: 1.5),
-                              ),
-                            ],
-                          ),
-                        )
-                      else
-                        Row(
-                          children: [
-                            Container(
-                              width: 34,
-                              height: 34,
-                              decoration: const BoxDecoration(
-                                color: _panel,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.schedule,
-                                size: 17,
-                                color: _soft,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                'No reply yet. You’ll get a notification '
-                                    'when management replies.',
-                                style: _t(
-                                  13,
-                                  color: AppColors.muted,
-                                  height: 1.45,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-
-              // Footer: a quiet Close button.
-              Padding(
-                padding: const EdgeInsets.fromLTRB(24, 8, 24, 12),
-                child: OutlinedButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.ink,
-                    minimumSize: const Size.fromHeight(50),
-                    side: const BorderSide(color: _line, width: 1.5),
-                    shape: const StadiumBorder(),
-                    textStyle: _t(15, weight: FontWeight.w500),
-                  ),
-                  child: const Text('Close'),
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    },
+  Navigator.of(context).push(
+    MaterialPageRoute<void>(builder: (_) => FeedbackThreadScreen(item: f)),
   );
 }
 

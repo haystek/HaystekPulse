@@ -225,33 +225,45 @@ class FeedbackService {
     return controller.stream;
   }
 
-  /// Management sets the status. The reply is kept for "Implemented"
-  /// (required) and "Noted" (optional).
+  /// Management sets a new status, with an optional reply.
+  /// It is also added to the conversation as "Moved to …", so the
+  /// employee sees every step. The latest reply is kept in
+  /// `managementMessage` too (lists show "Management replied").
   Future<void> updateStatus({
     required String id,
     required String status,
     required String message,
   }) async {
-    final implemented = status == FeedbackStatus.implemented;
+    final text = message.trim();
     final keepReply = FeedbackStatus.keepsReply(status);
     // Sample items (DemoData) are not in Firestore: keep the change in
     // memory only, and send no notification.
     if (id.startsWith(DemoData.idPrefix)) {
-      DemoData.update(id, status, keepReply ? message.trim() : '');
+      DemoData.update(id, status, keepReply || text.isNotEmpty ? text : '');
       return;
     }
-    await _feedback.doc(id).update(<String, dynamic>{
+    final ref = _feedback.doc(id);
+    final batch = _db.batch();
+    batch.update(ref, <String, dynamic>{
       'status': status,
-      'managementMessage': keepReply && message.trim().isNotEmpty
-          ? TextCrypto.encrypt(message.trim())
-          : '',
+      if (text.isNotEmpty) 'managementMessage': TextCrypto.encrypt(text),
       'updatedAt': FieldValue.serverTimestamp(),
+      'lastFrom': 'm',
+      'lastMessageAt': FieldValue.serverTimestamp(),
     });
+    batch.set(ref.collection('messages').doc(), <String, dynamic>{
+      'from': 'm',
+      'status': status,
+      'text': text.isEmpty ? '' : TextCrypto.encrypt(text),
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+    await batch.commit();
 
-    if (implemented ||
+    if (status == FeedbackStatus.implemented ||
         status == FeedbackStatus.noted ||
+        text.isNotEmpty ||
         AppConfig.notifyEmployeeOnEveryStatus) {
-      unawaited(_notifyAuthor(id, status, message));
+      unawaited(_notifyAuthor(id, status, text));
     }
   }
 
@@ -270,7 +282,7 @@ class FeedbackService {
             : noted
             ? 'Management has noted your feedback'
             : 'Your feedback is now ${FeedbackStatus.label(status)}',
-        body: (implemented || noted) && hasMessage
+        body: hasMessage
             ? PushSender.shorten(message)
             : noted
             ? 'Thank you for sharing. Tap to see it in My Feedback.'
@@ -279,6 +291,112 @@ class FeedbackService {
       );
     } catch (_) {
       // The status is already saved. A failed notification is not an error.
+    }
+  }
+
+  // -------------------------------------------------------------------
+  // Conversation: feedback/{id}/messages
+  // -------------------------------------------------------------------
+
+  /// One entry, updating live (status changes show at once).
+  /// Null for sample items, or when it can't be read.
+  Stream<FeedbackItem?> watchOne(String id) {
+    if (id.startsWith(DemoData.idPrefix)) return Stream.value(null);
+    return _feedback
+        .doc(id)
+        .snapshots()
+        .map((doc) => doc.exists ? FeedbackItem.fromDoc(doc) : null);
+  }
+
+  /// The conversation of one entry, oldest first, updating live.
+  /// A message still on its way shows as [ThreadEntry.pending].
+  Stream<List<ThreadEntry>> watchThread(String id) {
+    if (id.startsWith(DemoData.idPrefix)) {
+      return Stream.value(const <ThreadEntry>[]);
+    }
+    return _feedback
+        .doc(id)
+        .collection('messages')
+        .orderBy('createdAt')
+        .snapshots(includeMetadataChanges: true)
+        .map((snap) => snap.docs.map(ThreadEntry.fromDoc).toList());
+  }
+
+  /// Sends one reply in the conversation.
+  /// - Employee: no name is added, so a hidden name stays hidden.
+  ///   Management gets a notification.
+  /// - Management: the employee gets a notification.
+  ///
+  /// The message shows on screen at once (as "Sending…") and goes to the
+  /// server as soon as there is internet. The Future ends when the server
+  /// has it; it throws a [SendError] if the server refuses it.
+  Future<void> sendMessage({
+    required FeedbackItem item,
+    required bool fromManagement,
+    required String text,
+  }) async {
+    final t = text.trim();
+    if (t.isEmpty) return;
+    if (item.id.startsWith(DemoData.idPrefix)) {
+      throw const SendError('This is a sample item. Replies work on real '
+          'feedback only.');
+    }
+    final ref = _feedback.doc(item.id);
+    final batch = _db.batch();
+    batch.set(ref.collection('messages').doc(), <String, dynamic>{
+      'from': fromManagement ? 'm' : 'e',
+      'text': TextCrypto.encrypt(t),
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+    batch.update(ref, <String, dynamic>{
+      if (fromManagement) 'managementMessage': TextCrypto.encrypt(t),
+      if (fromManagement) 'updatedAt': FieldValue.serverTimestamp(),
+      'lastFrom': fromManagement ? 'm' : 'e',
+      'lastMessageAt': FieldValue.serverTimestamp(),
+    });
+    try {
+      await batch.commit();
+    } catch (error) {
+      throw SendError.from(
+        error,
+        notAllowed: 'This reply could not be sent. Please sign in again '
+            'and try once more.',
+      );
+    }
+
+    if (fromManagement) {
+      unawaited(_notifyReply(item.id, t));
+    } else {
+      // Tell management. They never learn who sent it.
+      unawaited(
+        PushSender.toTopic(
+          NotificationService.topicManagement,
+          title: item.isFromBox
+              ? 'New reply · Suggestion'
+              : 'New reply · Weekly Pulse',
+          body: PushSender.shorten(t),
+          data: {
+            'type': PushSender.typeFeedbackNew,
+            'feedbackId': item.id,
+            'source': item.isFromBox ? 'box' : 'pulse',
+          },
+        ),
+      );
+    }
+  }
+
+  /// Management replied without changing the status.
+  Future<void> _notifyReply(String id, String message) async {
+    if (!PushSender.available) return;
+    try {
+      await PushSender.toTopic(
+        NotificationService.feedbackTopic(id),
+        title: 'Management replied 💬',
+        body: PushSender.shorten(message),
+        data: {'type': PushSender.typeFeedbackReply, 'feedbackId': id},
+      );
+    } catch (_) {
+      // The reply is already saved. A failed notification is not an error.
     }
   }
 
@@ -382,5 +500,42 @@ class FeedbackService {
     );
 
     return controller.stream;
+  }
+}
+
+/// One step in a conversation: a message, or a status change (with an
+/// optional message from management).
+class ThreadEntry {
+  const ThreadEntry({
+    required this.id,
+    required this.fromManagement,
+    required this.text,
+    this.status,
+    this.at,
+    this.pending = false,
+  });
+
+  final String id;
+  final bool fromManagement;
+  final String text;
+
+  /// Set when management moved the entry to this status.
+  final String? status;
+  final DateTime? at;
+
+  /// Still on its way to the server (no internet yet).
+  final bool pending;
+
+  factory ThreadEntry.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
+    final d = doc.data() ?? const <String, dynamic>{};
+    final raw = (d['text'] as String?) ?? '';
+    return ThreadEntry(
+      id: doc.id,
+      fromManagement: d['from'] == 'm',
+      text: raw.isEmpty ? '' : TextCrypto.decrypt(raw),
+      status: d['status'] as String?,
+      at: (d['createdAt'] as Timestamp?)?.toDate(),
+      pending: doc.metadata.hasPendingWrites,
+    );
   }
 }

@@ -12,6 +12,7 @@ import '../models/employee.dart';
 import '../models/feedback_item.dart';
 import '../screens/feedback_detail_screen.dart';
 import '../screens/feedback_list_screen.dart';
+import '../screens/feedback_thread_screen.dart';
 import '../screens/my_feedback_screen.dart';
 import '../screens/weekly_pulse_screen.dart';
 import '../theme/app_theme.dart';
@@ -458,8 +459,8 @@ class NotificationService {
   }
 
   /// Opens the screen a notification is about:
-  /// - new feedback   -> that entry's details (management)
-  /// - reply          -> My Feedback (employee)
+  /// - new feedback or a new reply -> that entry's details (management)
+  /// - reply          -> that entry's conversation (employee)
   /// - pulse open / reminder -> Weekly Pulse (employee)
   Future<void> _open(RemoteMessage message) async {
     final employee = _employee;
@@ -493,19 +494,22 @@ class NotificationService {
       );
     } else if (type == PushSender.typeFeedbackReply) {
       if (employee.isManagement) return;
-      // Open the right tab: 0 = Suggestions, 1 = Weekly Pulse.
-      var tab = 0;
+      // Open that entry's conversation. If it can't be read, open
+      // My Feedback instead.
+      FeedbackItem? found;
       if (feedbackId != null && feedbackId.isNotEmpty) {
         try {
-          final item = await FeedbackService.instance.fetchById(feedbackId);
-          if (item != null && !item.isFromBox) tab = 1;
+          found = await FeedbackService.instance.fetchById(feedbackId);
         } catch (_) {
-          // Could not check. Open Suggestions.
+          found = null;
         }
       }
+      final item = found;
       navigator.push(
         MaterialPageRoute<void>(
-          builder: (_) => MyFeedbackScreen(employee: employee, initialTab: tab),
+          builder: (_) => item != null
+              ? FeedbackThreadScreen(item: item)
+              : MyFeedbackScreen(employee: employee),
         ),
       );
     } else if (type == PushSender.typePulseOpen ||

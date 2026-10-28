@@ -31,6 +31,12 @@ service cloud.firestore {
       return isActive() && me().type == 'm';
     }
 
+    // The signed-in person wrote this feedback entry.
+    function isFeedbackOwner(id) {
+      return signedIn()
+        && get(/databases/$(database)/documents/feedback_owners/$(id)).data.uid == request.auth.uid;
+    }
+
     // ---------------------------------------------------------------
     // employees/{uid}: the document ID is the Firebase Authentication UID.
     // ---------------------------------------------------------------
@@ -120,16 +126,51 @@ service cloud.firestore {
       // Only management can list all feedback.
       allow list: if isManagement();
 
-      // Management changes only the status and the reply.
+      // Management changes the status and the reply.
       // "Implemented" requires a reply. "Noted" may have one.
       allow update: if isManagement()
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'managementMessage', 'updatedAt'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+             'status', 'managementMessage', 'updatedAt', 'lastFrom', 'lastMessageAt'])
         && request.resource.data.status in ['new', 'under_review', 'planned', 'in_progress', 'implemented', 'noted']
         && request.resource.data.managementMessage is string
         && (request.resource.data.status != 'implemented'
-            || request.resource.data.managementMessage.size() > 0);
+            || request.resource.data.managementMessage.size() > 0)
+        && request.resource.data.get('lastFrom', 'm') == 'm';
+
+      // The author replied: only "who wrote last" and "when" change.
+      allow update: if isActive()
+        && isFeedbackOwner(id)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastFrom', 'lastMessageAt'])
+        && request.resource.data.lastFrom == 'e'
+        && request.resource.data.lastMessageAt == request.time;
 
       allow delete: if false;
+    }
+
+    // ---------------------------------------------------------------
+    // feedback/{id}/messages/{msgId}: the conversation of one entry.
+    // from 'e' = the author (never with a name), 'm' = management.
+    // Management messages may carry a new status ("Moved to …").
+    // ---------------------------------------------------------------
+    match /feedback/{id}/messages/{msgId} {
+      allow read: if isManagement() || isFeedbackOwner(id);
+
+      allow create: if request.resource.data.keys().hasOnly(['from', 'text', 'status', 'createdAt'])
+        && request.resource.data.text is string
+        && request.resource.data.text.size() <= 12000
+        && request.resource.data.createdAt == request.time
+        && ((request.resource.data.from == 'm'
+              && isManagement()
+              && (('status' in request.resource.data)
+                    ? request.resource.data.status in ['new', 'under_review', 'planned', 'in_progress', 'implemented', 'noted']
+                    : request.resource.data.text.size() > 0))
+            || (request.resource.data.from == 'e'
+              && isActive()
+              && isFeedbackOwner(id)
+              && !('status' in request.resource.data)
+              && request.resource.data.text.size() > 0));
+
+      allow update, delete: if false;
     }
 
     // ---------------------------------------------------------------
