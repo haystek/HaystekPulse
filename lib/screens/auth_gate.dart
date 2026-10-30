@@ -6,9 +6,10 @@ import '../services/auth_service.dart';
 import '../services/notification_service.dart';
 import '../theme/app_theme.dart';
 import 'change_password_screen.dart';
-import 'employee_home_screen.dart';
+import 'intro_screen.dart';
 import 'login_screen.dart';
 import 'management_home_screen.dart';
+import 'vault_screens.dart';
 import 'verify_email_screen.dart';
 
 /// Decides which screen to show:
@@ -16,8 +17,8 @@ import 'verify_email_screen.dart';
 /// email not verified   -> Check your email
 /// no employee record   -> Finish your profile (after sign-up)
 /// first login          -> Change password
-/// type 'm'             -> Management home
-/// type 'e'             -> Employee home
+/// type 'm'             -> Admin home
+/// type 'e'             -> open the locked history, then Employee home
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
 
@@ -39,7 +40,8 @@ class AuthGate extends StatelessWidget {
         final user = userSnap.data;
         if (user == null) {
           _checkedUid = null;
-          return const LoginScreen();
+          // First time on this phone: the short intro, then sign in.
+          return const IntroGate(child: LoginScreen());
         }
         // Once per login: sign out if it was deleted in the console.
         if (_checkedUid != user.uid) {
@@ -70,17 +72,23 @@ class AuthGate extends StatelessWidget {
             if (!employee.active) {
               return const _Problem(
                 message:
-                'This account is no longer active. Please contact management.',
+                    'This account is no longer active. Please contact your admin.',
               );
             }
             if (employee.mustChangePassword) {
               return ChangePasswordScreen(employee: employee);
             }
-            // Ask for permission and join the right notification groups.
-            NotificationService.instance.start(employee);
-            return employee.isManagement
-                ? ManagementHomeScreen(employee: employee)
-                : EmployeeHomeScreen(employee: employee);
+            if (employee.isManagement) {
+              // Ask for permission and join the admin notification group.
+              NotificationService.instance.start(employee);
+              return ManagementHomeScreen(employee: employee);
+            }
+            // Employees: open the locked history first. It starts the
+            // notifications once the history is open.
+            return VaultGate(
+              key: ValueKey('vault-${employee.uid}'),
+              employee: employee,
+            );
           },
         );
       },

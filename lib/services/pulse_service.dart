@@ -12,6 +12,7 @@ import 'feedback_service.dart' show SendError, sendLimit;
 import 'notification_service.dart';
 import 'push_sender.dart';
 import 'text_crypto.dart';
+import 'vault_service.dart';
 
 class PulseService {
   PulseService._();
@@ -20,7 +21,8 @@ class PulseService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
   /// One document per employee per week: `{weekId}_{uid}`.
-  /// Only that employee can read it. Management cannot.
+  /// It only says "answered this week" (no rating, no time), so nobody
+  /// can see what a person chose. Only that employee can read it.
   CollectionReference<Map<String, dynamic>> get _responses =>
       _db.collection('pulse_responses');
 
@@ -220,16 +222,22 @@ class PulseService {
     return result.count ?? 0;
   }
 
-  /// The rating this employee already gave this week, or null.
+  /// The rating this employee already gave this week, or null if not
+  /// answered yet. The rating itself is in the locked history; if it is
+  /// not there (for example a new history), '' means "answered".
   Future<String?> myRatingThisWeek(String uid) async {
-    final doc = await _responses.doc('${currentWeekId()}_$uid').get();
-    return doc.data()?['rating'] as String?;
+    final weekId = currentWeekId();
+    final doc = await _responses.doc('${weekId}_$uid').get();
+    if (!doc.exists) return null;
+    return VaultService.instance.pulseRating(weekId) ?? '';
   }
 
   /// Saves this week's answer straight on the server, in one go:
-  /// - the employee's private response (one per week),
-  /// - +1 on the week's totals,
-  /// - for Okay or Difficult, the written feedback and its private owner link.
+  /// - "answered this week" for the employee (no rating),
+  /// - +1 on the week's totals (no name),
+  /// - for Okay or Difficult, the written feedback (no user ID).
+  /// The rating and the comment's ID go into the employee's locked
+  /// history, so only they can see what they chose.
   ///
   /// It first checks on the server that this week is not answered yet
   /// (from any phone), so the totals are never counted twice, also when
@@ -249,6 +257,8 @@ class PulseService {
     final feedbackRef =
     PulseRating.needsText(rating) ? _db.collection('feedback').doc() : null;
     final String? feedbackId = feedbackRef?.id;
+    // Into the locked history first, so a retry can't lose it.
+    if (feedbackId != null) await VaultService.instance.addPost(feedbackId);
 
     try {
       await _db.runTransaction<void>(
@@ -264,8 +274,6 @@ class PulseService {
           tx.set(responseRef, <String, dynamic>{
             'uid': employee.uid,
             'weekId': weekId,
-            'rating': rating,
-            'createdAt': FieldValue.serverTimestamp(),
           });
 
           tx.set(
@@ -291,13 +299,6 @@ class PulseService {
               'createdAt': FieldValue.serverTimestamp(),
               'updatedAt': FieldValue.serverTimestamp(),
             });
-            tx.set(
-              _db.collection('feedback_owners').doc(feedbackRef.id),
-              <String, dynamic>{
-                'uid': employee.uid,
-                'createdAt': FieldValue.serverTimestamp(),
-              },
-            );
           }
         },
         timeout: sendLimit,
@@ -311,8 +312,11 @@ class PulseService {
       );
     }
 
+    // Only the employee can see what they chose (locked history).
+    unawaited(VaultService.instance.setPulse(weekId, rating));
+
     // The author's phone joins the group for this comment, so only they
-    // hear about status changes. Management never learns which phone.
+    // hear about replies. Admin never learns which phone.
     if (feedbackId != null) {
       unawaited(NotificationService.instance.followFeedback(feedbackId));
     }

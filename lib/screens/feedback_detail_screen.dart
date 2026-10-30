@@ -8,6 +8,7 @@ import '../models/pulse_rating.dart';
 import '../services/feedback_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/ui.dart';
+import 'broadcast_screens.dart';
 import 'feedback_thread_screen.dart';
 
 /// Inter font for everything on this screen (same as the other screens).
@@ -194,6 +195,16 @@ class _FeedbackDetailScreenState extends State<FeedbackDetailScreen> {
           leading: const AppBackButton(),
           title: const SizedBox.shrink(),
           actions: [
+            // Share an update about this with everyone (no name).
+            IconButton(
+              tooltip: 'Broadcast to everyone',
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => NewBroadcastScreen(quote: _item.text),
+                ),
+              ),
+              icon: const Icon(Icons.campaign_outlined, color: AppColors.blue),
+            ),
             _TitlePill(
               _item.isFromBox ? 'Suggestion' : 'Weekly Pulse',
               icon: _item.isFromBox
@@ -220,7 +231,7 @@ class _FeedbackDetailScreenState extends State<FeedbackDetailScreen> {
                       if (rows.isEmpty)
                         Text(
                           'No replies yet. Write below to reply, or tap the '
-                              'list button to change the status.',
+                          'list button to change the status.',
                           style: _t(
                             13.5,
                             weight: FontWeight.w400,
@@ -338,9 +349,9 @@ class _StatusSheetState extends State<_StatusSheet> {
         if (s != widget.item.status) s,
     ];
     OutlineInputBorder border(Color color) => OutlineInputBorder(
-      borderRadius: BorderRadius.circular(14),
-      borderSide: BorderSide(color: color, width: 1.5),
-    );
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: color, width: 1.5),
+        );
 
     return Padding(
       // Stay above the keyboard.
@@ -372,9 +383,9 @@ class _StatusSheetState extends State<_StatusSheet> {
                 onTap: _busy
                     ? null
                     : (s) => setState(() {
-                  _chosen = s == _chosen ? null : s;
-                  _error = null;
-                }),
+                          _chosen = s == _chosen ? null : s;
+                          _error = null;
+                        }),
               ),
               const SizedBox(height: 14),
               TextField(
@@ -415,18 +426,18 @@ class _StatusSheetState extends State<_StatusSheet> {
                 ),
                 child: _busy
                     ? const SizedBox(
-                  height: 20,
-                  width: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white,
-                  ),
-                )
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
                     : Text(
-                  _chosen == null
-                      ? 'Choose a status'
-                      : 'Change to ${FeedbackStatus.label(_chosen!)}',
-                ),
+                        _chosen == null
+                            ? 'Choose a status'
+                            : 'Change to ${FeedbackStatus.label(_chosen!)}',
+                      ),
               ),
             ],
           ),
@@ -461,53 +472,53 @@ class _MessageCard extends StatelessWidget {
     return ThreadHeaderCard(
       text: item.text,
       top: Row(
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: anonymous ? Colors.white : AppColors.blueTint,
-              borderRadius: BorderRadius.circular(11),
-            ),
-            child: anonymous
-                ? const Icon(
-              Icons.lock_outline_rounded,
-              size: 17,
-              color: Color(0xFF8E97AB),
-            )
-                : Text(
-              name[0].toUpperCase(),
-              style: _t(14, color: AppColors.blue),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  anonymous ? 'Name hidden' : name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: _t(14),
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: anonymous ? Colors.white : AppColors.blueTint,
+                  borderRadius: BorderRadius.circular(11),
                 ),
-                if (sub.isNotEmpty)
-                  Text(
-                    sub,
-                    style: _t(
-                      12,
-                      weight: FontWeight.w400,
-                      color: const Color(0xFF8E97AB),
+                child: anonymous
+                    ? const Icon(
+                  Icons.lock_outline_rounded,
+                  size: 17,
+                  color: Color(0xFF8E97AB),
+                )
+                    : Text(
+                  name[0].toUpperCase(),
+                  style: _t(14, color: AppColors.blue),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      anonymous ? 'Name hidden' : name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: _t(14),
                     ),
-                  ),
-              ],
-            ),
+                    if (sub.isNotEmpty)
+                      Text(
+                        sub,
+                        style: _t(
+                          12,
+                          weight: FontWeight.w400,
+                          color: const Color(0xFF8E97AB),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              _Pill(status: item.status),
+            ],
           ),
-          const SizedBox(width: 8),
-          _Pill(status: item.status),
-        ],
-      ),
     );
   }
 }
@@ -712,4 +723,4 @@ class _TitlePill extends StatelessWidget {
       ),
     );
   }
-}
+} 

@@ -148,8 +148,8 @@ class _FeedbackThreadScreenState extends State<FeedbackThreadScreen> {
                           else if (rows.isEmpty)
                             Text(
                               'No reply yet. You’ll get a notification when '
-                                  'management replies. You can add more here '
-                                  'any time.',
+                              'admin replies. You can add more here '
+                              'any time.',
                               style: threadText(
                                 13.5,
                                 color: AppColors.muted,
@@ -165,7 +165,7 @@ class _FeedbackThreadScreenState extends State<FeedbackThreadScreen> {
                 ),
                 ThreadComposer(
                   controller: _text,
-                  hint: 'Reply to management…',
+                  hint: 'Reply to admin…',
                   onSend: () => _send(item),
                   footnote: item.anonymous
                       ? 'Your name stays hidden in replies too.'
@@ -228,11 +228,11 @@ const Color threadSoft = Color(0xFF8E97AB);
 const Color threadLine = Color(0xFFE9EDF4);
 
 TextStyle threadText(
-    double size, {
-      FontWeight weight = FontWeight.w400,
-      Color color = AppColors.ink,
-      double? height,
-    }) =>
+  double size, {
+  FontWeight weight = FontWeight.w400,
+  Color color = AppColors.ink,
+  double? height,
+}) =>
     GoogleFonts.inter(
       fontSize: size,
       fontWeight: weight,
@@ -256,10 +256,10 @@ String threadDate(DateTime d) {
 /// it stays just above the reply box. Call from build; returns the
 /// keyboard height to keep for next time.
 double keepLastInView(
-    BuildContext context,
-    ScrollController scroll,
-    double lastInset,
-    ) {
+  BuildContext context,
+  ScrollController scroll,
+  double lastInset,
+) {
   final inset = MediaQuery.viewInsetsOf(context).bottom;
   if (inset > lastInset) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -473,8 +473,8 @@ class FeedbackTimeline extends StatelessWidget {
             name: mine
                 ? null
                 : (row.fromManagement
-                ? 'Management'
-                : (employeeName ?? 'Employee')),
+                    ? 'Admin'
+                    : (employeeName ?? 'Employee')),
           ),
         );
       }
@@ -543,7 +543,7 @@ class _StatusNote extends StatelessWidget {
               Flexible(
                 child: Text(
                   'Status changed to ${FeedbackStatus.label(row.status!)}'
-                      '${time.isEmpty ? '' : ' · $time'}',
+                  '${time.isEmpty ? '' : ' · $time'}',
                   style: threadText(12, color: const Color(0xFF5F6A84)),
                 ),
               ),
@@ -590,7 +590,7 @@ class _Bubble extends StatelessWidget {
             ),
             child: Column(
               crossAxisAlignment:
-              mine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                  mine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
               children: [
                 if (name != null) ...[
                   Text(
@@ -598,7 +598,7 @@ class _Bubble extends StatelessWidget {
                     style: threadText(
                       12,
                       weight: FontWeight.w500,
-                      color: name == 'Management'
+                      color: name == 'Admin'
                           ? AppColors.blue
                           : const Color(0xFF475467),
                     ),
@@ -684,7 +684,7 @@ class ThreadComposer extends StatelessWidget {
                       decoration: InputDecoration(
                         hintText: hint,
                         hintStyle:
-                        threadText(15, color: const Color(0xFF9AA3B8)),
+                            threadText(15, color: const Color(0xFF9AA3B8)),
                         filled: true,
                         fillColor: const Color(0xFFF6F8FB),
                         isDense: true,

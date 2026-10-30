@@ -665,7 +665,7 @@ class _NotificationRow extends StatelessWidget {
       case AppNotificationKind.feedbackNew:
         return 'New feedback';
       case AppNotificationKind.feedbackReply:
-        return 'Reply from management';
+        return 'Reply from admin';
       case AppNotificationKind.pulseOpen:
         return 'Weekly Pulse is open';
       case AppNotificationKind.pulseReminder:

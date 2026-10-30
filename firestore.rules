@@ -31,12 +31,6 @@ service cloud.firestore {
       return isActive() && me().type == 'm';
     }
 
-    // The signed-in person wrote this feedback entry.
-    function isFeedbackOwner(id) {
-      return signedIn()
-        && get(/databases/$(database)/documents/feedback_owners/$(id)).data.uid == request.auth.uid;
-    }
-
     // ---------------------------------------------------------------
     // employees/{uid}: the document ID is the Firebase Authentication UID.
     // ---------------------------------------------------------------
@@ -51,15 +45,16 @@ service cloud.firestore {
         && request.resource.data.mustChangePassword == false;
 
       // Sign-up: a verified @haystek.com person creates their own record,
-      // once. They are management only if their email is in
-      // management_emails, so nobody can make themselves management.
+      // once. Admin ('m') only with the right admin code: the app sends
+      // a SHA-256 of the code (adminProof), and admin_codes/{adminProof}
+      // must exist.
       allow create: if signedIn()
         && request.auth.uid == uid
         && emailVerified()
         && myEmail().matches('.*@haystek[.]com$')
         && request.resource.data.keys().hasOnly([
              'employeeId', 'name', 'type', 'mustChangePassword', 'active',
-             'email', 'createdAt'])
+             'email', 'createdAt', 'adminProof'])
         && request.resource.data.name is string
         && request.resource.data.name.size() >= 2
         && request.resource.data.name.size() <= 80
@@ -69,31 +64,52 @@ service cloud.firestore {
         && request.resource.data.mustChangePassword == false
         && request.resource.data.active == true
         && request.resource.data.createdAt == request.time
-        && request.resource.data.type ==
-             (exists(/databases/$(database)/documents/management_emails/$(myEmail())) ? 'm' : 'e');
+        && (request.resource.data.type == 'e'
+              ? !('adminProof' in request.resource.data)
+              : (request.resource.data.type == 'm'
+                 && request.resource.data.adminProof is string
+                 && exists(/databases/$(database)/documents/admin_codes/$(request.resource.data.adminProof))));
 
       // Removing people is done only in the Firebase console.
       allow delete: if false;
     }
 
     // ---------------------------------------------------------------
-    // management_emails/{email}: the list of management emails (document
-    // ID = the email, in small letters). Added only in the Firebase
-    // console. A person can only check their own email.
+    // admin_codes/{SHA-256 of the code}: one document per valid admin
+    // code, added only in the Firebase console. The sign-up screen checks
+    // a typed code by looking up its SHA-256 (get only). Nobody can list
+    // them, and the code itself is never stored.
     // ---------------------------------------------------------------
-    match /management_emails/{email} {
-      allow get: if signedIn() && emailVerified() && email == myEmail();
+    match /admin_codes/{hash} {
+      allow get: if true;
       allow list, write: if false;
     }
 
     // ---------------------------------------------------------------
-    // feedback/{id}: what management sees.
-    // An anonymous entry carries no name and no employee ID.
+    // vaults/{uid}: each employee's locked history (the IDs of their
+    // posts and their Weekly Pulse answers), encrypted on the phone with
+    // a key from their password. Only that person can read or write it,
+    // and even then it is unreadable without the password.
+    // ---------------------------------------------------------------
+    match /vaults/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow create, update: if isActive()
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly([
+             'v', 'salt', 'byPassword', 'backupSalt', 'byBackup', 'list'])
+        && request.resource.data.list is string
+        && request.resource.data.list.size() < 200000;
+      allow delete: if false;
+    }
+
+    // ---------------------------------------------------------------
+    // feedback/{id}: what admins see.
+    // No entry stores who wrote it (no user ID). A hidden-name entry has
+    // no name either. Only the author's locked vault knows the ID.
     // ---------------------------------------------------------------
     match /feedback/{id} {
       // Any active employee can submit a Suggestion Box entry, or the
       // written part of a Weekly Pulse answer (Okay or Difficult).
-      // The matching private owner document must be written together with it.
       allow create: if isActive()
         && request.resource.data.keys().hasOnly([
              'source', 'text', 'anonymous', 'authorName', 'authorEmployeeId',
@@ -115,15 +131,14 @@ service cloud.firestore {
         && (request.resource.data.anonymous
               ? !request.resource.data.keys().hasAny(['authorName', 'authorEmployeeId'])
               : (request.resource.data.authorName == me().name
-                 && request.resource.data.authorEmployeeId == me().employeeId))
-        && getAfter(/databases/$(database)/documents/feedback_owners/$(id)).data.uid == request.auth.uid;
+                 && request.resource.data.authorEmployeeId == me().employeeId));
 
-      // Management opens any entry. An employee opens only their own.
-      allow get: if isManagement()
-        || (signedIn()
-            && get(/databases/$(database)/documents/feedback_owners/$(id)).data.uid == request.auth.uid);
+      // Admins open any entry. An employee opens an entry only by its ID,
+      // and only the author has the ID (in their locked vault). Employees
+      // can't list or search feedback, so they can't find others' posts.
+      allow get: if isManagement() || isActive();
 
-      // Only management can list all feedback.
+      // Only admins can list all feedback.
       allow list: if isManagement();
 
       // Management changes the status and the reply.
@@ -139,7 +154,6 @@ service cloud.firestore {
 
       // The author replied: only "who wrote last" and "when" change.
       allow update: if isActive()
-        && isFeedbackOwner(id)
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastFrom', 'lastMessageAt'])
         && request.resource.data.lastFrom == 'e'
         && request.resource.data.lastMessageAt == request.time;
@@ -153,7 +167,7 @@ service cloud.firestore {
     // Management messages may carry a new status ("Moved to …").
     // ---------------------------------------------------------------
     match /feedback/{id}/messages/{msgId} {
-      allow read: if isManagement() || isFeedbackOwner(id);
+      allow read: if isManagement() || isActive();
 
       allow create: if request.resource.data.keys().hasOnly(['from', 'text', 'status', 'createdAt'])
         && request.resource.data.text is string
@@ -166,7 +180,6 @@ service cloud.firestore {
                     : request.resource.data.text.size() > 0))
             || (request.resource.data.from == 'e'
               && isActive()
-              && isFeedbackOwner(id)
               && !('status' in request.resource.data)
               && request.resource.data.text.size() > 0));
 
@@ -174,41 +187,21 @@ service cloud.firestore {
     }
 
     // ---------------------------------------------------------------
-    // feedback_owners/{id}: the private link from a feedback entry to
-    // the employee who wrote it. Management has no access here.
-    // ---------------------------------------------------------------
-    match /feedback_owners/{id} {
-      // Written once, by the author, together with the feedback itself.
-      allow create: if isActive()
-        && request.resource.data.keys().hasOnly(['uid', 'createdAt'])
-        && request.resource.data.uid == request.auth.uid
-        && !exists(/databases/$(database)/documents/feedback/$(id))
-        && existsAfter(/databases/$(database)/documents/feedback/$(id));
-
-      // An employee can read only their own links.
-      allow read: if signedIn() && resource.data.uid == request.auth.uid;
-
-      allow update, delete: if false;
-    }
-
-    // ---------------------------------------------------------------
-    // pulse_responses/{weekId_uid}: one Weekly Pulse answer per employee
-    // per week. Only that employee can read it. Management has no access,
-    // so a rating can never be matched to a person.
+    // pulse_responses/{weekId_uid}: only "this person answered this week",
+    // so nobody answers twice. No rating and no time: what someone chose
+    // is only in their locked vault.
     // ---------------------------------------------------------------
     match /pulse_responses/{id} {
       // The fixed document ID means a second answer in the same week
       // would be an update, which is not allowed.
       allow create: if isActive()
-        && request.resource.data.keys().hasOnly(['uid', 'weekId', 'rating', 'createdAt'])
+        && request.resource.data.keys().hasOnly(['uid', 'weekId'])
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.weekId is string
         && request.resource.data.weekId.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
-        && id == request.resource.data.weekId + '_' + request.auth.uid
-        && request.resource.data.rating in ['great', 'good', 'okay', 'difficult']
-        && request.resource.data.createdAt == request.time;
+        && id == request.resource.data.weekId + '_' + request.auth.uid;
 
-      // An employee can check only their own answer.
+      // An employee can check only their own.
       allow get: if signedIn()
         && id.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}_' + request.auth.uid + '$');
 
@@ -216,17 +209,24 @@ service cloud.firestore {
     }
 
     // ---------------------------------------------------------------
-    // pulse_weeks/{weekId}: totals only, for the management dashboard.
-    // An employee can add exactly +1 for their own rating, and only in
-    // the same write that creates their answer for that week.
+    // pulse_weeks/{weekId}: totals only, for the admin dashboard.
+    // An employee can add exactly +1 to one rating (and +1 to submitted),
+    // and only in the same write that creates their "answered" entry.
     // ---------------------------------------------------------------
     function addsMyPulse(weekId) {
       return !exists(/databases/$(database)/documents/pulse_responses/$(weekId + '_' + request.auth.uid))
         && existsAfter(/databases/$(database)/documents/pulse_responses/$(weekId + '_' + request.auth.uid));
     }
 
-    function myNewRating(weekId) {
-      return getAfter(/databases/$(database)/documents/pulse_responses/$(weekId + '_' + request.auth.uid)).data.rating;
+    function ratingSum(d) {
+      return d.get('great', 0) + d.get('good', 0) + d.get('okay', 0) + d.get('difficult', 0);
+    }
+
+    function noneLower(after, before) {
+      return after.get('great', 0) >= before.get('great', 0)
+        && after.get('good', 0) >= before.get('good', 0)
+        && after.get('okay', 0) >= before.get('okay', 0)
+        && after.get('difficult', 0) >= before.get('difficult', 0);
     }
 
     match /pulse_weeks/{weekId} {
@@ -234,15 +234,17 @@ service cloud.firestore {
 
       allow create: if isActive()
         && addsMyPulse(weekId)
-        && request.resource.data.keys().hasOnly([myNewRating(weekId), 'submitted'])
-        && request.resource.data[myNewRating(weekId)] == 1
-        && request.resource.data.submitted == 1;
+        && request.resource.data.keys().hasOnly(['great', 'good', 'okay', 'difficult', 'submitted'])
+        && request.resource.data.keys().size() == 2
+        && request.resource.data.submitted == 1
+        && ratingSum(request.resource.data) == 1;
 
       allow update: if isActive()
         && addsMyPulse(weekId)
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([myNewRating(weekId), 'submitted'])
-        && request.resource.data[myNewRating(weekId)] == resource.data.get(myNewRating(weekId), 0) + 1
-        && request.resource.data.submitted == resource.data.get('submitted', 0) + 1;
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['great', 'good', 'okay', 'difficult', 'submitted'])
+        && request.resource.data.submitted == resource.data.get('submitted', 0) + 1
+        && ratingSum(request.resource.data) == ratingSum(resource.data) + 1
+        && noneLower(request.resource.data, resource.data);
 
       allow delete: if false;
     }
@@ -266,10 +268,56 @@ service cloud.firestore {
     }
 
     // ---------------------------------------------------------------
+    // updates/{id}: Broadcast. Admin sends one message to everyone;
+    // everyone can read it and discuss in the comments. A comment has a
+    // name only if the person chose "Show my name"; never a user ID.
+    // ---------------------------------------------------------------
+    match /updates/{id} {
+      allow read: if isActive();
+
+      allow create: if isManagement()
+        && request.resource.data.keys().hasOnly(['title', 'body', 'quote', 'commentCount', 'createdAt'])
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 2000
+        && request.resource.data.body is string
+        && request.resource.data.body.size() <= 12000
+        && request.resource.data.commentCount == 0
+        && request.resource.data.createdAt == request.time;
+
+      // Adding a comment counts it (+1 only).
+      allow update: if isActive()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['commentCount'])
+        && request.resource.data.commentCount == resource.data.commentCount + 1;
+
+      allow delete: if isManagement();
+
+      match /comments/{cid} {
+        allow read: if isActive();
+
+        allow create: if isActive()
+          && request.resource.data.keys().hasOnly(['text', 'admin', 'name', 'createdAt'])
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 8000
+          && request.resource.data.createdAt == request.time
+          && (request.resource.data.admin == true
+                ? (isManagement() && !('name' in request.resource.data))
+                : (request.resource.data.admin == false
+                   && (!('name' in request.resource.data)
+                       || request.resource.data.name == me().name)));
+
+        allow update: if false;
+        allow delete: if isManagement();
+      }
+    }
+
+    // ---------------------------------------------------------------
     // user_state/{uid}: private to each person.
     // - notificationsSeenAt: when they last opened Notifications (bell count),
     // - hiddenNotifications: ids of notifications they deleted,
-    // - notificationsTipSeen: they closed the "Quick tip".
+    // - notificationsTipSeen: they closed the "Quick tip",
+    // - broadcastsSeenAt: when they last opened Broadcast (new count).
     // Deleting a notification only adds an id here. Feedback and
     // broadcasts are never deleted.
     // ---------------------------------------------------------------
@@ -279,14 +327,17 @@ service cloud.firestore {
       allow create, update: if signedIn()
         && request.auth.uid == uid
         && request.resource.data.keys().hasOnly([
-             'notificationsSeenAt', 'hiddenNotifications', 'notificationsTipSeen'])
+             'notificationsSeenAt', 'hiddenNotifications', 'notificationsTipSeen',
+             'broadcastsSeenAt'])
         && (!('notificationsSeenAt' in request.resource.data)
             || request.resource.data.notificationsSeenAt is timestamp)
         && (!('hiddenNotifications' in request.resource.data)
             || (request.resource.data.hiddenNotifications is list
                 && request.resource.data.hiddenNotifications.size() <= 500))
         && (!('notificationsTipSeen' in request.resource.data)
-            || request.resource.data.notificationsTipSeen is bool);
+            || request.resource.data.notificationsTipSeen is bool)
+        && (!('broadcastsSeenAt' in request.resource.data)
+            || request.resource.data.broadcastsSeenAt is timestamp);
 
       allow delete: if false;
     }

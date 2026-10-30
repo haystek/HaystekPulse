@@ -5,8 +5,9 @@ import 'package:google_fonts/google_fonts.dart';
 import '../models/employee.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
-import '../widgets/heartbeat_monitor.dart';
 import '../widgets/ui.dart';
+import 'help_screen.dart';
+import 'vault_screens.dart';
 
 /// Inter font for everything on these screens and dialogs
 /// (same as the home screen).
@@ -96,7 +97,7 @@ Future<void> confirmSignOut(BuildContext context) async {
   await AuthService.instance.signOut();
 }
 /// The signed-in person's details, change password and sign out.
-/// Works for management and employees.
+/// Works for admins and employees.
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key, required this.employee});
 
@@ -107,7 +108,7 @@ class ProfileScreen extends StatelessWidget {
     final name = employee.name.trim();
     final initial = name.isEmpty ? '?' : name[0].toUpperCase();
     final email = FirebaseAuth.instance.currentUser?.email ?? '';
-    final role = employee.isManagement ? 'Management' : 'Employee';
+    final role = employee.isManagement ? 'Admin' : 'Employee';
 
     return _inter(
       context,
@@ -228,6 +229,70 @@ class ProfileScreen extends StatelessWidget {
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute<void>(
                           builder: (_) => const ChangeMyPasswordScreen(),
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Backup code (employees: their history is locked).
+                  if (!employee.isManagement) ...[
+                    const SizedBox(height: 12),
+                    Material(
+                      color: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                        side: const BorderSide(color: Color(0xFFE6EBF4)),
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.fromLTRB(18, 6, 12, 6),
+                        leading: const Icon(Icons.key_outlined,
+                            color: AppColors.blue),
+                        title: const Text(
+                          'Backup code',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        subtitle: const Text(
+                          'Make a new code if you lost yours',
+                          style: TextStyle(fontSize: 13, color: AppColors.muted),
+                        ),
+                        trailing: const Icon(Icons.chevron_right,
+                            color: AppColors.muted),
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const NewBackupCodeScreen(),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 12),
+                  // Help & Privacy: questions and answers, who sees what.
+                  Material(
+                    color: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      side: const BorderSide(color: Color(0xFFE6EBF4)),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: ListTile(
+                      contentPadding: const EdgeInsets.fromLTRB(18, 6, 12, 6),
+                      leading: const Icon(Icons.shield_outlined,
+                          color: AppColors.blue),
+                      title: const Text(
+                        'Help & Privacy',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      trailing: const Icon(Icons.chevron_right,
+                          color: AppColors.muted),
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const HelpScreen(),
                         ),
                       ),
                     ),
@@ -456,9 +521,12 @@ class _ChangeMyPasswordScreenState extends State<ChangeMyPasswordScreen> {
                         hidden: _hideNew,
                         onEye: () => setState(() => _hideNew = !_hideNew),
                       ),
-                      validator: (v) => (v == null || v.length < 8)
-                          ? 'Use at least 8 characters'
-                          : null,
+                      validator: (v) {
+                        if (v == null || v.length < 8) {
+                          return 'Use at least 8 characters';
+                        }
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 16),
                     TextFormField(

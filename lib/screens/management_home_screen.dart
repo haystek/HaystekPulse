@@ -20,6 +20,7 @@ import '../widgets/notification_bell.dart';
 import '../widgets/pulse_line.dart';
 import '../widgets/ui.dart' hide PulseLine;
 import 'all_weeks_screen.dart';
+import 'broadcast_screens.dart';
 import 'feedback_detail_screen.dart';
 import 'feedback_list_screen.dart';
 import 'profile_screen.dart';
@@ -361,6 +362,8 @@ class _ManagementHomeScreenState extends State<ManagementHomeScreen>
                                 onSearch: () =>
                                     _push(const FeedbackListScreen(source: 'box')),
                               ),
+                              // Broadcast: send to everyone, read the comments.
+                              BroadcastList(employee: widget.employee),
                             ],
                           ),
                           // Refresh: a light white cover with a spinner in
@@ -4106,6 +4109,12 @@ class _BottomTabs extends StatelessWidget {
                 activeIcon: Icons.lightbulb,
                 label: 'Suggestion Box',
                 badge: newCount,
+              ),
+              _tab(
+                i: 2,
+                icon: Icons.campaign_outlined,
+                activeIcon: Icons.campaign,
+                label: 'Broadcast',
               ),
             ],
           ),

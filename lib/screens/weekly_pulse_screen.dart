@@ -10,6 +10,7 @@ import '../services/feedback_service.dart';
 import '../services/pulse_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/ui.dart';
+import 'help_screen.dart';
 
 enum _Stage { loading, loadError, closed, alreadyDone, pick, done }
 
@@ -527,7 +528,27 @@ class _WeeklyPulseScreenState extends State<WeeklyPulseScreen>
           ),
           const SizedBox(height: 8),
           _hideNameRow(),
+          _privacyLink(),
         ],
+      ),
+    );
+  }
+
+  /// "How is my name hidden?" under the hide-name row. Opens Help & Privacy.
+  Widget _privacyLink() {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: TextButton.icon(
+        onPressed: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const HelpScreen()),
+        ),
+        icon: const Icon(Icons.help_outline_rounded, size: 16),
+        label: const Text('How is my name hidden?'),
+        style: TextButton.styleFrom(
+          foregroundColor: AppColors.blue,
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          textStyle: GoogleFonts.inter(fontSize: 13.5),
+        ),
       ),
     );
   }
@@ -575,8 +596,8 @@ class _WeeklyPulseScreenState extends State<WeeklyPulseScreen>
                       const SizedBox(height: 1),
                       Text(
                         _anonymous
-                            ? 'Management won’t know it’s you'
-                            : 'Management will see: ${widget.employee.name}',
+                            ? 'Admin won’t know it’s you'
+                            : 'Admin will see: ${widget.employee.name}',
                         maxLines: 2,
                         style: _inter(12.5, color: AppColors.muted),
                       ),

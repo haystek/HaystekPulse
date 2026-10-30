@@ -19,6 +19,9 @@ dependencies:
   google_fonts: ^8.2.1
   flutter_local_notifications: ^19.4.2
   pointycastle: ^4.0.0
+  # Keeps the history key on the phone while signed in (Android Keystore /
+  # iPhone Keychain). Deleted on sign out.
+  flutter_secure_storage: ^9.2.4
 
 dev_dependencies:
   flutter_test:

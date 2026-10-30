@@ -5,6 +5,7 @@ import '../models/employee.dart';
 import '../services/feedback_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/ui.dart';
+import 'help_screen.dart';
 
 /// Soft greys used on this screen.
 const _panel = Color(0xFFF6F8FB);
@@ -208,6 +209,7 @@ class _SuggestionBoxScreenState extends State<SuggestionBoxScreen>
                       _writingBox(),
                       const SizedBox(height: 14),
                       _hideNameRow(),
+                      _privacyLink(),
                       if (_error != null) ...[
                         const SizedBox(height: 12),
                         Text(
@@ -382,6 +384,25 @@ class _SuggestionBoxScreenState extends State<SuggestionBoxScreen>
     );
   }
 
+  /// "How is my name hidden?" under the hide-name row. Opens Help & Privacy.
+  Widget _privacyLink() {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: TextButton.icon(
+        onPressed: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const HelpScreen()),
+        ),
+        icon: const Icon(Icons.help_outline_rounded, size: 16),
+        label: const Text('How is my name hidden?'),
+        style: TextButton.styleFrom(
+          foregroundColor: AppColors.blue,
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          textStyle: GoogleFonts.inter(fontSize: 13.5),
+        ),
+      ),
+    );
+  }
+
   /// "Keep my name hidden": checkbox on the left, white row with a border.
   /// When ticked the row turns light blue. Tap anywhere on the row.
   Widget _hideNameRow() {
@@ -432,8 +453,8 @@ class _SuggestionBoxScreenState extends State<SuggestionBoxScreen>
                       const SizedBox(height: 2),
                       Text(
                         _anonymous
-                            ? 'Management won’t know it’s you'
-                            : 'Management will see: ${widget.employee.name}',
+                            ? 'Admin won’t know it’s you'
+                            : 'Admin will see: ${widget.employee.name}',
                         maxLines: 2,
                         style: _t(13, color: AppColors.muted, height: 1.35),
                       ),

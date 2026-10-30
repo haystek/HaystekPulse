@@ -10,6 +10,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../config.dart';
 import '../models/employee.dart';
 import '../models/feedback_item.dart';
+import '../screens/broadcast_screens.dart';
 import '../screens/feedback_detail_screen.dart';
 import '../screens/feedback_list_screen.dart';
 import '../screens/feedback_thread_screen.dart';
@@ -17,6 +18,7 @@ import '../screens/my_feedback_screen.dart';
 import '../screens/weekly_pulse_screen.dart';
 import '../theme/app_theme.dart';
 import '../widgets/top_banner.dart';
+import 'broadcast_service.dart';
 import 'feedback_service.dart';
 import 'pulse_service.dart';
 import 'push_sender.dart';
@@ -398,6 +400,9 @@ class NotificationService {
         action = 'Answer now';
       case PushSender.typePulseResponse:
         icon = Icons.monitor_heart_outlined;
+      case typeBroadcast:
+        icon = Icons.campaign_outlined;
+        action = 'View';
     }
 
     TopBanner.show(
@@ -510,6 +515,15 @@ class NotificationService {
           builder: (_) => item != null
               ? FeedbackThreadScreen(item: item)
               : MyFeedbackScreen(employee: employee),
+        ),
+      );
+    } else if (type == typeBroadcast) {
+      final id = message.data['broadcastId'] as String?;
+      navigator.push(
+        MaterialPageRoute<void>(
+          builder: (_) => id == null || id.isEmpty
+              ? BroadcastListScreen(employee: employee)
+              : BroadcastDetailScreen(employee: employee, broadcastId: id),
         ),
       );
     } else if (type == PushSender.typePulseOpen ||

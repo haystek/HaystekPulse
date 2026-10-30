@@ -10,6 +10,7 @@ import '../models/feedback_item.dart';
 import 'notification_service.dart';
 import 'push_sender.dart';
 import 'text_crypto.dart';
+import 'vault_service.dart';
 
 /// How long Send may take before the person is told to try again.
 const Duration sendLimit = Duration(seconds: 15);
@@ -64,18 +65,13 @@ class FeedbackService {
   CollectionReference<Map<String, dynamic>> get _feedback =>
       _db.collection('feedback');
 
-  /// Who wrote each feedback. Only the author can read their own entries
-  /// here. Management cannot read this collection at all.
-  CollectionReference<Map<String, dynamic>> get _owners =>
-      _db.collection('feedback_owners');
-
-  /// The private link from each entry to the author, for this employee only.
+  /// The IDs of everything this employee wrote. They are kept only in
+  /// the employee's locked history (VaultService), never next to the
+  /// posts, so nobody can link a post to a person.
   /// Used after sign-in to join the notification group of every entry
   /// this employee wrote (see NotificationService).
-  Future<List<String>> myFeedbackIds(String uid) async {
-    final snap = await _owners.where('uid', isEqualTo: uid).get();
-    return snap.docs.map((d) => d.id).toList();
-  }
+  Future<List<String>> myFeedbackIds(String uid) async =>
+      List<String>.from(VaultService.instance.postIds);
 
   /// A new, unused id for a suggestion. The Suggestion Box takes one when
   /// it opens and uses it for every Send, so tapping Send again after an
@@ -84,14 +80,12 @@ class FeedbackService {
 
   /// Saves a Suggestion Box entry, straight on the server.
   ///
-  /// Two documents are written together, with the same ID:
-  /// - `feedback/{id}`: what management sees. The name is left out
-  ///   when [anonymous] is true.
-  /// - `feedback_owners/{id}`: the private link to the author.
+  /// The post is saved with no user ID. When [anonymous] is true it has
+  /// no name either. Its ID goes into the employee's locked history
+  /// first, so the employee can find it later (and a retry can't lose it).
   ///
   /// It is either saved on the server, or it throws a [SendError] with a
   /// clear message (no internet, not allowed, …) within [sendLimit].
-  /// Nothing is kept on the phone to be sent later.
   Future<void> submitSuggestion({
     required Employee employee,
     required String text,
@@ -99,34 +93,24 @@ class FeedbackService {
     String? id,
   }) async {
     final ref = _feedback.doc(id);
-    final owner = _owners.doc(ref.id);
+    await VaultService.instance.addPost(ref.id);
 
     try {
-      await _db.runTransaction<void>(
-            (tx) async {
-          tx.set(ref, <String, dynamic>{
-            'source': 'box',
-            'text': TextCrypto.encrypt(text.trim()),
-            'anonymous': anonymous,
-            if (!anonymous) 'authorName': employee.name,
-            if (!anonymous) 'authorEmployeeId': employee.employeeId,
-            'status': FeedbackStatus.newItem,
-            'managementMessage': '',
-            'createdAt': FieldValue.serverTimestamp(),
-            'updatedAt': FieldValue.serverTimestamp(),
-          });
-          tx.set(owner, <String, dynamic>{
-            'uid': employee.uid,
-            'createdAt': FieldValue.serverTimestamp(),
-          });
-        },
-        timeout: sendLimit,
-        maxAttempts: 3,
-      ).timeout(sendLimit + const Duration(seconds: 2));
+      await ref.set(<String, dynamic>{
+        'source': 'box',
+        'text': TextCrypto.encrypt(text.trim()),
+        'anonymous': anonymous,
+        if (!anonymous) 'authorName': employee.name,
+        if (!anonymous) 'authorEmployeeId': employee.employeeId,
+        'status': FeedbackStatus.newItem,
+        'managementMessage': '',
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      }).timeout(sendLimit);
     } catch (error) {
       // Send tapped again after a try that reached the server late: it
       // is already saved, so that is a success, not an error.
-      if (id != null && await _alreadySaved(owner, employee.uid)) {
+      if (id != null && await _alreadySaved(ref)) {
         // Saved before: carry on as a success.
       } else {
         throw SendError.from(
@@ -138,11 +122,11 @@ class FeedbackService {
     }
 
     // This phone joins the group for this entry, so the author hears
-    // about status changes. Management sends to the group and never
-    // learns which phone is in it.
+    // about replies. Admin sends to the group and never learns which
+    // phone is in it.
     unawaited(NotificationService.instance.followFeedback(ref.id));
 
-    // Tell management. Not awaited: the employee does not wait for it.
+    // Tell admins. Not awaited: the employee does not wait for it.
     unawaited(
       PushSender.toTopic(
         NotificationService.topicManagement,
@@ -157,17 +141,13 @@ class FeedbackService {
     );
   }
 
-  /// True if this suggestion is already on the server (its private owner
-  /// link exists and is this person's).
-  Future<bool> _alreadySaved(
-      DocumentReference<Map<String, dynamic>> owner,
-      String uid,
-      ) async {
+  /// True if this suggestion is already on the server.
+  Future<bool> _alreadySaved(DocumentReference<Map<String, dynamic>> ref) async {
     try {
-      final doc = await owner
+      final doc = await ref
           .get(const GetOptions(source: Source.server))
           .timeout(const Duration(seconds: 5));
-      return doc.exists && doc.data()?['uid'] == uid;
+      return doc.exists;
     } catch (_) {
       return false;
     }
@@ -280,7 +260,7 @@ class FeedbackService {
         title: implemented
             ? 'Your feedback is Implemented ✅'
             : noted
-            ? 'Management has noted your feedback'
+            ? 'Admin has noted your feedback'
             : 'Your feedback is now ${FeedbackStatus.label(status)}',
         body: hasMessage
             ? PushSender.shorten(message)
@@ -391,7 +371,7 @@ class FeedbackService {
     try {
       await PushSender.toTopic(
         NotificationService.feedbackTopic(id),
-        title: 'Management replied 💬',
+        title: 'Admin replied 💬',
         body: PushSender.shorten(message),
         data: {'type': PushSender.typeFeedbackReply, 'feedbackId': id},
       );
@@ -403,12 +383,12 @@ class FeedbackService {
   /// Everything this employee has submitted, newest first, updating live.
   /// While DemoData is on, the employee's sample items are added too.
   ///
-  /// It first listens to the employee's private owner links, then listens
-  /// to each of those feedback entries, so a status change or a reply from
-  /// management appears on screen straight away.
+  /// The IDs come from the employee's locked history (VaultService). It
+  /// listens to each of those entries, so a status change or a reply
+  /// from admin appears on screen straight away.
   Stream<List<FeedbackItem>> watchMyFeedback(String uid) {
     late final StreamController<List<FeedbackItem>> controller;
-    StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? ownersSub;
+    VoidCallback? vaultListener;
     final docSubs =
     <String, StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>>{};
     final items = <String, FeedbackItem>{};
@@ -431,7 +411,9 @@ class FeedbackService {
     }
 
     Future<void> stopAll() async {
-      await ownersSub?.cancel();
+      final l = vaultListener;
+      if (l != null) VaultService.instance.data.removeListener(l);
+      vaultListener = null;
       for (final sub in docSubs.values) {
         await sub.cancel();
       }
@@ -439,10 +421,9 @@ class FeedbackService {
     }
 
     // Listens to one feedback entry, live.
-    // A brand-new entry can be refused for a moment (the server checks
-    // its private owner link, which may not be saved yet). Firestore then
-    // stops that listener for good, and later status changes and replies
-    // would never show. So on an error, try again a few times.
+    // A brand-new entry may not be on the server yet. If the listener
+    // fails, Firestore stops it for good, and later status changes and
+    // replies would never show. So on an error, try again a few times.
     void listenDoc(String id, [int attempt = 0]) {
       docSubs[id] = _feedback.doc(id).snapshots().listen(
             (doc) {
@@ -471,30 +452,29 @@ class FeedbackService {
 
     controller = StreamController<List<FeedbackItem>>(
       onListen: () {
-        ownersSub = _owners.where('uid', isEqualTo: uid).snapshots().listen(
-              (snap) {
-            final current = snap.docs.map((d) => d.id).toSet();
+        void sync() {
+          final current = VaultService.instance.postIds.toSet();
 
-            for (final id in docSubs.keys.toList()) {
-              if (!current.contains(id)) {
-                docSubs.remove(id)?.cancel();
-                items.remove(id);
-                waiting.remove(id);
-              }
+          for (final id in docSubs.keys.toList()) {
+            if (!current.contains(id)) {
+              docSubs.remove(id)?.cancel();
+              items.remove(id);
+              waiting.remove(id);
             }
+          }
 
-            for (final id in current) {
-              if (docSubs.containsKey(id)) continue;
-              waiting.add(id);
-              listenDoc(id);
-            }
+          for (final id in current) {
+            if (docSubs.containsKey(id)) continue;
+            waiting.add(id);
+            listenDoc(id);
+          }
 
-            emit();
-          },
-          onError: (Object error) {
-            if (!controller.isClosed) controller.addError(error);
-          },
-        );
+          emit();
+        }
+
+        vaultListener = sync;
+        VaultService.instance.data.addListener(sync);
+        sync();
       },
       onCancel: stopAll,
     );

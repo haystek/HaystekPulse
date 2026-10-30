@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -8,6 +7,7 @@ import '../models/feedback_item.dart';
 import '../models/pulse_rating.dart';
 import '../services/feedback_service.dart';
 import '../services/pulse_service.dart';
+import '../services/vault_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/ui.dart';
 import 'feedback_thread_screen.dart';
@@ -58,7 +58,7 @@ TextStyle _title(double size) => GoogleFonts.inter(
 /// The date choices.
 enum _Dates { all, today, thisWeek, days30, months3, thisYear, month }
 
-/// Weekly Pulse chip for "has a reply from management".
+/// Weekly Pulse chip for "has a reply from admin".
 const String _replied = '_replied';
 
 class _MyFeedbackScreenState extends State<MyFeedbackScreen> {
@@ -85,44 +85,32 @@ class _MyFeedbackScreenState extends State<MyFeedbackScreen> {
     _tab = widget.initialTab;
     // Live: a status change or a reply shows up without leaving the screen.
     _stream = FeedbackService.instance.watchMyFeedback(widget.employee.uid);
-    _loadAnswers();
+    _answers = _readAnswers();
+    VaultService.instance.data.addListener(_onVault);
+  }
+
+  void _onVault() {
+    if (mounted) setState(() => _answers = _readAnswers());
+  }
+
+  @override
+  void dispose() {
+    VaultService.instance.data.removeListener(_onVault);
+    super.dispose();
   }
 
   /// Every Weekly Pulse answer of this person, also Great and Good with
   /// no comment. Null while loading.
   List<_Answer>? _answers;
 
-  /// How many weeks back to look.
-  static const int _weeksBack = 52;
-
-  /// Reads this person's answer for each week. Each answer has a fixed
-  /// name (week_person), and a person may read only their own.
-  Future<void> _loadAnswers() async {
-    final db = FirebaseFirestore.instance.collection('pulse_responses');
-    final uid = widget.employee.uid;
-    final thisWeek = PulseService.currentWeekId();
-    final weekIds = [
-      for (var i = 0; i < _weeksBack; i++) PulseService.shiftWeek(thisWeek, -i),
+  /// Every Weekly Pulse answer of this person. They are only in the
+  /// person's locked history: the server never stores what someone chose.
+  List<_Answer> _readAnswers() {
+    final vault = VaultService.instance.data.value;
+    final answers = <_Answer>[
+      for (final e in (vault?.pulse ?? const <String, String>{}).entries)
+        _Answer(weekId: e.key, rating: e.value),
     ];
-    final found = await Future.wait(
-      weekIds.map((w) async {
-        try {
-          final doc = await db.doc('${w}_$uid').get();
-          final data = doc.data();
-          final rating = data?['rating'] as String?;
-          if (rating == null) return null;
-          return _Answer(
-            weekId: w,
-            rating: rating,
-            at: (data?['createdAt'] as Timestamp?)?.toDate(),
-          );
-        } catch (_) {
-          return null;
-        }
-      }),
-    );
-    if (!mounted) return;
-    final answers = found.whereType<_Answer>().toList();
     // Sample answers (DemoData), for weeks without a real answer.
     if (DemoData.on) {
       final have = {for (final a in answers) a.weekId};
@@ -131,7 +119,7 @@ class _MyFeedbackScreenState extends State<MyFeedbackScreen> {
         answers.add(_Answer(weekId: weekId, rating: a.$1, at: a.$2));
       });
     }
-    setState(() => _answers = answers);
+    return answers;
   }
 
   /// One row per week: the answer, and the comment if one was written.
@@ -577,7 +565,7 @@ const Color _line = Color(0xFFE3E8F1);
 /// Light grey for the tab switch.
 const Color _panel = Color(0xFFF6F8FB);
 
-/// "Management replied" in green.
+/// "Admin replied" in green.
 const Color _replyFg = Color(0xFF15803D);
 
 /// Inter with a chosen size, weight and colour.
@@ -818,7 +806,7 @@ class _MonthHeader extends StatelessWidget {
 /// card with a thin border, an icon tile on the left, then
 ///   type (blue) + status chip
 ///   the text, one line
-///   date / week, and "Management replied" in green
+///   date / week, and "Admin replied" in green
 /// and the arrow on the right, in the middle.
 class _Card extends StatelessWidget {
   const _Card({
@@ -909,7 +897,7 @@ class _Card extends StatelessWidget {
                             TextSpan(text: sub),
                             if (replied)
                               TextSpan(
-                                text: '  ·  Management replied',
+                                text: '  ·  Admin replied',
                                 style: _t(
                                   12.5,
                                   weight: FontWeight.w500,

@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
+import 'verify_email_screen.dart' show RoleChoice;
 
 /// Inter font for everything on these screens, sheets and dialogs
 /// (same as the employee screens).
@@ -54,7 +55,17 @@ class _LoginScreenState extends State<LoginScreen> {
   final _email = TextEditingController();
   final _password = TextEditingController();
   final _name = TextEditingController();
+  final _adminCode = TextEditingController();
   bool _busy = false;
+
+  /// Create account: Employee (false) or Admin (true).
+  bool _admin = false;
+  bool _hideCode = true;
+
+  /// True after Sign in / Create account was tapped once. From then on
+  /// each field checks itself while typing, so an error goes away as
+  /// soon as it is fixed.
+  bool _tried = false;
 
   /// True on the "Create account" step.
   bool _signUpMode = false;
@@ -88,6 +99,7 @@ class _LoginScreenState extends State<LoginScreen> {
     _email.dispose();
     _password.dispose();
     _name.dispose();
+    _adminCode.dispose();
     super.dispose();
   }
 
@@ -96,6 +108,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _signIn() async {
     FocusScope.of(context).unfocus(); // closes the keyboard
+    setState(() => _tried = true);
     if (!_formKey.currentState!.validate()) return;
     setState(() {
       _busy = true;
@@ -142,11 +155,13 @@ class _LoginScreenState extends State<LoginScreen> {
       _signUpMode = on;
       _resetMode = false;
       _error = null;
+      _tried = false;
     });
   }
 
   Future<void> _signUp() async {
     FocusScope.of(context).unfocus();
+    setState(() => _tried = true);
     if (!_formKey.currentState!.validate()) return;
     setState(() {
       _busy = true;
@@ -157,6 +172,8 @@ class _LoginScreenState extends State<LoginScreen> {
         name: _name.text,
         email: _email.text,
         password: _password.text,
+        admin: _admin,
+        adminCode: _adminCode.text,
       );
       // AuthGate shows "Check your email" by itself.
     } catch (e) {
@@ -165,6 +182,11 @@ class _LoginScreenState extends State<LoginScreen> {
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  /// Typing again: hide the red message from the last try.
+  void _clearError() {
+    if (_error != null) setState(() => _error = null);
   }
 
   /// Opens the "Reset password" step. Only the email field shows.
@@ -276,6 +298,9 @@ class _LoginScreenState extends State<LoginScreen> {
     filled: false,
     isDense: true,
     contentPadding: const EdgeInsets.symmetric(vertical: 12),
+    // Long errors wrap instead of being cut off.
+    errorMaxLines: 3,
+    errorStyle: GoogleFonts.inter(fontSize: 12.5, height: 1.3),
   );
 
   /// The small grey line with a blue link: "Trouble signing in? Reset".
@@ -303,9 +328,21 @@ class _LoginScreenState extends State<LoginScreen> {
         ? const <Widget>[]
         : [
       const SizedBox(height: 12),
-      Text(
-        _error!,
-        style: TextStyle(color: theme.colorScheme.error, fontSize: 14),
+      _ErrorBox(
+        message: _error!,
+        // Wrong email or password on Sign in: offer the two ways out.
+        actions: _signUpMode || _resetMode
+            ? const []
+            : _error == AuthService.noAccount
+            ? [('Create account', () => _toggleSignUp(true))]
+            : _error == AuthService.wrongPassword
+            ? [('Reset password', _openReset)]
+            : _error == AuthService.wrongLogin
+            ? [
+          ('Create account', () => _toggleSignUp(true)),
+          ('Reset password', _openReset),
+        ]
+            : const [],
       ),
     ];
 
@@ -317,6 +354,7 @@ class _LoginScreenState extends State<LoginScreen> {
       autocorrect: false,
       autofillHints: const [AutofillHints.email],
       onFieldSubmitted: _resetMode ? (_) => _sendReset() : null,
+      onChanged: _resetMode ? (_) => _clearError() : null,
       style: GoogleFonts.inter(fontSize: 15.5, color: AppColors.ink),
       decoration: _plain('Office email'),
       validator: (v) {
@@ -415,6 +453,10 @@ class _LoginScreenState extends State<LoginScreen> {
     if (_signUpMode) {
       return Form(
         key: _formKey,
+        autovalidateMode: _tried
+            ? AutovalidateMode.onUserInteraction
+            : AutovalidateMode.disabled,
+        onChanged: _clearError,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -445,8 +487,47 @@ class _LoginScreenState extends State<LoginScreen> {
             ]),
             const Padding(
               padding: EdgeInsets.fromLTRB(4, 6, 4, 0),
-              child: Text('At least 8 characters', style: _sub),
+              child: Text(
+                'At least 8 characters. It also locks your history, '
+                    'so pick one only you know.',
+                style: _sub,
+              ),
             ),
+            const SizedBox(height: 16),
+            RoleChoice(
+              admin: _admin,
+              onChanged: _busy ? (_) {} : (v) => setState(() => _admin = v),
+            ),
+            if (_admin) ...[
+              const SizedBox(height: 12),
+              _card([
+                _row(
+                  icon: Icons.key_outlined,
+                  field: TextFormField(
+                    controller: _adminCode,
+                    obscureText: _hideCode,
+                    autocorrect: false,
+                    style: GoogleFonts.inter(fontSize: 15.5, color: AppColors.ink),
+                    decoration: _plain('Admin code'),
+                    validator: (v) => (_admin && (v == null || v.trim().isEmpty))
+                        ? 'Enter the admin code'
+                        : null,
+                  ),
+                  trailing: TextButton(
+                    onPressed: () => setState(() => _hideCode = !_hideCode),
+                    style: _linkButton,
+                    child: Text(_hideCode ? 'Show' : 'Hide'),
+                  ),
+                ),
+              ]),
+              const Padding(
+                padding: EdgeInsets.fromLTRB(4, 6, 4, 0),
+                child: Text(
+                  'Only for admins. Ask your manager for the code.',
+                  style: _sub,
+                ),
+              ),
+            ],
             ...error,
             const SizedBox(height: 20),
             _GradientButton(
@@ -467,6 +548,10 @@ class _LoginScreenState extends State<LoginScreen> {
     // Normal sign in.
     return Form(
       key: _formKey,
+      autovalidateMode: _tried
+          ? AutovalidateMode.onUserInteraction
+          : AutovalidateMode.disabled,
+      onChanged: _clearError,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -878,6 +963,75 @@ class _Footer extends StatelessWidget {
           style: small.copyWith(fontSize: 11.5),
         ),
       ],
+    );
+  }
+}
+
+/// A calm error: light red box, small icon, short text, and optional
+/// buttons under it.
+class _ErrorBox extends StatelessWidget {
+  const _ErrorBox({required this.message, this.actions = const []});
+
+  final String message;
+  final List<(String, VoidCallback)> actions;
+
+  @override
+  Widget build(BuildContext context) {
+    const red = Color(0xFFC0392B);
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFDEFEC),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Padding(
+                padding: EdgeInsets.only(top: 1),
+                child: Icon(Icons.error_outline_rounded, size: 18, color: red),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  message,
+                  style: GoogleFonts.inter(fontSize: 13.5, color: red, height: 1.4),
+                ),
+              ),
+            ],
+          ),
+          if (actions.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 6,
+              children: [
+                for (final a in actions)
+                  Material(
+                    color: Colors.white,
+                    shape: const StadiumBorder(
+                      side: BorderSide(color: Color(0xFFF1C9C2)),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: InkWell(
+                      onTap: a.$2,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        child: Text(
+                          a.$1,
+                          style: GoogleFonts.inter(fontSize: 13, color: AppColors.blue),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ],
+      ),
     );
   }
 }

@@ -94,9 +94,12 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                           onTap: () => setState(() => _hideNew = !_hideNew),
                         ),
                       ),
-                      validator: (v) => (v == null || v.length < 8)
-                          ? 'Use at least 8 characters'
-                          : null,
+                      validator: (v) {
+                        if (v == null || v.length < 8) {
+                          return 'Use at least 8 characters';
+                        }
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
