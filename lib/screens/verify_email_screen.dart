@@ -8,11 +8,11 @@ import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
 
 TextStyle _t(
-    double size, {
-      FontWeight weight = FontWeight.w400,
-      Color color = AppColors.ink,
-      double? height,
-    }) =>
+  double size, {
+  FontWeight weight = FontWeight.w400,
+  Color color = AppColors.ink,
+  double? height,
+}) =>
     GoogleFonts.inter(
       fontSize: size,
       fontWeight: weight,
@@ -89,8 +89,8 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen>
   /// First name for "Almost there, Shiva."
   String get _firstName {
     final name = (AuthService.instance.pendingName ??
-        FirebaseAuth.instance.currentUser?.displayName ??
-        '')
+            FirebaseAuth.instance.currentUser?.displayName ??
+            '')
         .trim();
     return name.isEmpty ? '' : name.split(RegExp(r'\s+')).first;
   }
@@ -175,7 +175,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen>
                               Expanded(
                                 child: Text(
                                   'The app moves on by itself once you tap '
-                                      'the link.',
+                                  'the link.',
                                   style: _t(13, color: const Color(0xFF8A5A00), height: 1.45),
                                 ),
                               ),
@@ -199,28 +199,28 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen>
                         child: _note == null
                             ? const SizedBox.shrink()
                             : Container(
-                          key: ValueKey(_note),
-                          margin: const EdgeInsets.only(bottom: 12),
-                          padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF6F8FB),
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Icon(Icons.info_outline_rounded,
-                                  size: 17, color: AppColors.blue),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  _note!,
-                                  style: _t(13, color: const Color(0xFF344054), height: 1.4),
+                                key: ValueKey(_note),
+                                margin: const EdgeInsets.only(bottom: 12),
+                                padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF6F8FB),
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Icon(Icons.info_outline_rounded,
+                                        size: 17, color: AppColors.blue),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        _note!,
+                                        style: _t(13, color: const Color(0xFF344054), height: 1.4),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                            ],
-                          ),
-                        ),
                       ),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -236,15 +236,15 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen>
                         onTap: _busy ? null : () => _check(),
                         child: _busy
                             ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
                             : Text("I've verified",
-                            style: _t(16, weight: FontWeight.w500, color: Colors.white)),
+                                style: _t(16, weight: FontWeight.w500, color: Colors.white)),
                       ),
                       const SizedBox(height: 6),
                       Row(
@@ -377,8 +377,8 @@ class _Step extends StatelessWidget {
                   color: done
                       ? const Color(0xFF16A34A)
                       : now
-                      ? AppColors.blue
-                      : const Color(0xFFEDF0F6),
+                          ? AppColors.blue
+                          : const Color(0xFFEDF0F6),
                   shape: BoxShape.circle,
                   boxShadow: now
                       ? const [BoxShadow(color: AppColors.blueTint, spreadRadius: 5)]
@@ -387,9 +387,9 @@ class _Step extends StatelessWidget {
                 child: done
                     ? const Icon(Icons.check_rounded, size: 16, color: Colors.white)
                     : Text(
-                  '$n',
-                  style: _t(13, color: now ? Colors.white : const Color(0xFF8E97AB)),
-                ),
+                        '$n',
+                        style: _t(13, color: now ? Colors.white : const Color(0xFF8E97AB)),
+                      ),
               ),
               if (!last)
                 Expanded(
@@ -493,11 +493,13 @@ class _FinishProfileScreenState extends State<FinishProfileScreen> {
     // The name from the sign-up form, or the one saved with the login
     // (still there after the app was closed).
     final known = (auth.pendingName ??
-        FirebaseAuth.instance.currentUser?.displayName ??
-        '')
+            FirebaseAuth.instance.currentUser?.displayName ??
+            '')
         .trim();
     _name = TextEditingController(text: known);
-    _admin = auth.pendingAdmin ?? false;
+    // Email sign-up is only for admins now (employees join with an entry
+    // code), so this is always an admin account.
+    _admin = true;
     _code.text = auth.pendingAdminCode ?? '';
     // Saves by itself only right after sign-up, when the choice
     // (Employee / Admin) is still known. Otherwise the person picks again.
@@ -580,7 +582,7 @@ class _FinishProfileScreenState extends State<FinishProfileScreen> {
                     const SizedBox(height: 6),
                     Text(
                       'Your email is verified. Check your details and '
-                          'continue.',
+                      'continue.',
                       style: _t(14, color: AppColors.muted, height: 1.45),
                     ),
                     const SizedBox(height: 20),
@@ -593,19 +595,14 @@ class _FinishProfileScreenState extends State<FinishProfileScreen> {
                           : null,
                     ),
                     const SizedBox(height: 16),
-                    RoleChoice(
-                      admin: _admin,
-                      onChanged: (v) => setState(() => _admin = v),
-                    ),
                     if (_admin) ...[
-                      const SizedBox(height: 12),
                       TextFormField(
                         controller: _code,
                         obscureText: _hideCode,
                         autocorrect: false,
                         decoration: InputDecoration(
-                          labelText: 'Admin code',
-                          helperText: 'Ask your manager for the admin code',
+                          labelText: 'Admin entry code',
+                          helperText: 'From the HR mail (only for admins)',
                           suffixIcon: IconButton(
                             icon: Icon(
                               _hideCode
@@ -618,7 +615,7 @@ class _FinishProfileScreenState extends State<FinishProfileScreen> {
                           ),
                         ),
                         validator: (v) => (_admin && (v == null || v.trim().isEmpty))
-                            ? 'Enter the admin code'
+                            ? 'Enter the admin entry code'
                             : null,
                       ),
                     ],
@@ -641,13 +638,13 @@ class _FinishProfileScreenState extends State<FinishProfileScreen> {
                       ),
                       child: _busy
                           ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
                           : const Text('Continue'),
                     ),
                     const SizedBox(height: 8),

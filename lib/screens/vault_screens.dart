@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart' show FirebaseException;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -6,6 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../models/employee.dart';
 import '../services/auth_service.dart';
 import '../services/notification_service.dart';
+import '../services/personal_code.dart';
 import '../services/vault_service.dart';
 import '../theme/app_theme.dart';
 import 'employee_home_screen.dart';
@@ -28,10 +30,25 @@ TextStyle _t(
 const Color _soft = Color(0xFF8E97AB);
 const Color _line = Color(0xFFE3E8F1);
 
-enum _Step { checking, askPassword, working, showCode, needBackup, error, ready }
+enum _Step {
+  checking,
+  askPassword,
+  askCode,
+  working,
+  showCode,
+  showPersonal,
+  needBackup,
+  error,
+  ready,
+}
 
 /// Employees only: opens the locked history before the home screen.
 ///
+/// Personal-code accounts (no email): the history opens with the personal
+/// code (just typed, or kept on this phone). Right after joining, the new
+/// personal code is shown once.
+///
+/// Older email accounts:
 /// 1. Key saved on this phone       -> home at once.
 /// 2. Password just typed (sign in)  -> open with it. First time: make
 ///    the vault and show the backup code once.
@@ -53,17 +70,31 @@ class _VaultGateState extends State<VaultGate> {
   String? _code;
   String? _error;
 
+  /// The personal code being used (personal-code accounts), for "Try again".
+  String? _personal;
+
   String get _uid => widget.employee.uid;
 
   @override
   void initState() {
     super.initState();
-    _start();
+    // After initState, so setState in _start is always allowed.
+    Future.microtask(_start);
   }
 
   Future<void> _start() async {
     if (_vault.isReady || await _vault.openSaved(_uid)) {
-      _ready();
+      _afterOpen();
+      return;
+    }
+    final auth = AuthService.instance;
+    if (auth.isCodeAccount) {
+      final code = auth.pendingCode ?? await auth.savedCode();
+      if (code != null) {
+        await _openWithCode(code);
+      } else if (mounted) {
+        setState(() => _step = _Step.askCode);
+      }
       return;
     }
     final pending = AuthService.instance.pendingPassword;
@@ -103,7 +134,60 @@ class _VaultGateState extends State<VaultGate> {
     }
   }
 
+  /// Personal-code accounts: open the history with the code.
+  Future<void> _openWithCode(String code) async {
+    setState(() {
+      _step = _Step.working;
+      _error = null;
+      _personal = code;
+    });
+    try {
+      await _vault.openWithCode(_uid, code);
+      if (!mounted) return;
+      _afterOpen();
+    } on FirebaseException catch (e) {
+      debugPrint('[VaultGate] $e');
+      if (mounted) setState(() => _step = _Step.error);
+    } catch (e) {
+      // The code doesn't open this history.
+      debugPrint('[VaultGate] $e');
+      if (!mounted) return;
+      setState(() {
+        _step = _Step.askCode;
+        _error = 'This personal code is not correct.';
+      });
+    }
+  }
+
+  /// Typed personal code: it must belong to this account.
+  Future<void> _submitCode(String code) async {
+    final email = FirebaseAuth.instance.currentUser?.email?.toLowerCase();
+    if (email != await AuthService.codeEmail(code)) {
+      if (mounted) {
+        setState(() => _error = 'This personal code is not correct.');
+      }
+      return;
+    }
+    await _openWithCode(code);
+  }
+
+  /// Opened. Right after joining, show the new personal code once.
+  void _afterOpen() {
+    final fresh = AuthService.instance.newPersonalCode;
+    if (fresh != null && mounted) {
+      setState(() {
+        _code = fresh;
+        _step = _Step.showPersonal;
+      });
+      return;
+    }
+    _ready();
+  }
+
   void _ready() {
+    AuthService.instance.newPersonalCode = null;
+    AuthService.instance.pendingCode = null;
+    _personal = null;
     AuthService.instance.pendingPassword = null;
     _password = null;
     NotificationService.instance.start(widget.employee);
@@ -210,6 +294,26 @@ class _VaultGateState extends State<VaultGate> {
       case _Step.checking:
       case _Step.working:
         return const _Busy();
+      case _Step.showPersonal:
+        return BackupCodeScreen(
+          code: _code ?? '',
+          personal: true,
+          onDone: _ready,
+        );
+      case _Step.askCode:
+        return _AskScreen(
+          key: const ValueKey('ask-code'),
+          icon: Icons.key_outlined,
+          title: 'Enter your personal code',
+          text: 'Your history is locked with your personal code. Enter it '
+              'to open it on this phone.',
+          label: 'Personal code',
+          hint: 'river-tiger-mango-42',
+          obscure: false,
+          button: 'Unlock',
+          error: _error,
+          onSubmit: _submitCode,
+        );
       case _Step.showCode:
         return BackupCodeScreen(
           code: _code ?? '',
@@ -253,6 +357,15 @@ class _VaultGateState extends State<VaultGate> {
           text: 'Please check your internet connection and try again.',
           button: 'Try again',
           onSubmit: (_) {
+            if (AuthService.instance.isCodeAccount) {
+              final c = _personal;
+              if (c != null) {
+                _openWithCode(c);
+              } else {
+                setState(() => _step = _Step.askCode);
+              }
+              return;
+            }
             final p = _password ?? AuthService.instance.pendingPassword;
             if (p != null) {
               _openWith(p);
@@ -463,10 +576,14 @@ class BackupCodeScreen extends StatefulWidget {
     required this.code,
     required this.onDone,
     this.firstTime = false,
+    this.personal = false,
   });
 
   final String code;
   final VoidCallback onDone;
+
+  /// True right after joining with an entry code: the personal code.
+  final bool personal;
 
   /// True right after sign-up (also explains what it is for).
   final bool firstTime;
@@ -488,11 +605,23 @@ class _BackupCodeScreenState extends State<BackupCodeScreen> {
   void _copy() {
     Clipboard.setData(ClipboardData(text: widget.code));
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Backup code copied')),
+      SnackBar(
+        content: Text(widget.personal ? 'Personal code copied' : 'Backup code copied'),
+      ),
     );
   }
 
   void _done() {
+    // Personal code: type the whole code once (helps to remember it).
+    if (widget.personal) {
+      if (PersonalCode.normalize(_last4.text) !=
+          PersonalCode.normalize(widget.code)) {
+        setState(() => _error = 'That doesn’t match. Please check the code.');
+        return;
+      }
+      widget.onDone();
+      return;
+    }
     final want = VaultService.normalizeCode(widget.code);
     final typed = VaultService.normalizeCode(_last4.text);
     if (typed != want.substring(want.length - 4)) {
@@ -534,13 +663,17 @@ class _BackupCodeScreenState extends State<BackupCodeScreen> {
                     ),
                     const SizedBox(height: 18),
                     Text(
-                      'Your backup code',
+                      widget.personal ? 'Your personal code' : 'Your backup code',
                       textAlign: TextAlign.center,
                       style: _t(22, weight: FontWeight.w500),
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      widget.firstTime
+                      widget.personal
+                          ? 'This code is your key. You need it on a new '
+                              'phone, or after reinstalling the app. Only you '
+                              'have it: we can’t see it or send it again.'
+                          : widget.firstTime
                           ? 'Your history is locked with your password. If you '
                               'ever forget your password, this code is the only '
                               'way to get your history back.'
@@ -560,8 +693,8 @@ class _BackupCodeScreenState extends State<BackupCodeScreen> {
                         widget.code,
                         textAlign: TextAlign.center,
                         style: GoogleFonts.robotoMono(
-                          fontSize: 20,
-                          letterSpacing: 1.5,
+                          fontSize: widget.personal ? 18 : 20,
+                          letterSpacing: widget.personal ? 0.5 : 1.5,
                           color: AppColors.ink,
                         ),
                       ),
@@ -586,22 +719,35 @@ class _BackupCodeScreenState extends State<BackupCodeScreen> {
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: Text(
-                        'Save it somewhere safe: a screenshot, your notes, or '
-                        'paper. We can’t recover your history without it — '
-                        'not admin, not the developer.',
+                        widget.personal
+                            ? 'Save it now: take a screenshot, write it down, '
+                                'or save it in your notes. Without it, your '
+                                'account can’t be opened on another phone. Not '
+                                'by admin, not by the developer.'
+                            : 'Save it somewhere safe: a screenshot, your notes, or '
+                                'paper. We can’t recover your history without it — '
+                                'not admin, not the developer.',
                         style: _t(13, color: const Color(0xFF8A5A00), height: 1.45),
                       ),
                     ),
                     const SizedBox(height: 18),
                     TextField(
                       controller: _last4,
-                      maxLength: 4,
-                      textCapitalization: TextCapitalization.characters,
+                      maxLength: widget.personal ? 60 : 4,
+                      textCapitalization: widget.personal
+                          ? TextCapitalization.none
+                          : TextCapitalization.characters,
                       autocorrect: false,
+                      enableSuggestions: false,
+                      keyboardType: widget.personal
+                          ? TextInputType.visiblePassword
+                          : TextInputType.text,
                       onSubmitted: (_) => _done(),
-                      style: _t(16, letterSpacing: 2),
-                      decoration: const InputDecoration(
-                        labelText: 'Type the last 4 letters to confirm',
+                      style: _t(16, letterSpacing: widget.personal ? 0.5 : 2),
+                      decoration: InputDecoration(
+                        labelText: widget.personal
+                            ? 'Type your code once to confirm'
+                            : 'Type the last 4 letters to confirm',
                         counterText: '',
                       ),
                     ),
@@ -689,6 +835,85 @@ class _NewBackupCodeScreenState extends State<NewBackupCodeScreen> {
       error: _error,
       onSubmit: _make,
       onCancel: () => Navigator.of(context).pop(),
+    );
+  }
+}
+
+/// Personal-code accounts: saves the account record right after joining
+/// (by itself). If the app was closed in between, or something failed, it
+/// asks for the entry code again.
+class CodeFinishScreen extends StatefulWidget {
+  const CodeFinishScreen({super.key});
+
+  @override
+  State<CodeFinishScreen> createState() => _CodeFinishScreenState();
+}
+
+class _CodeFinishScreenState extends State<CodeFinishScreen> {
+  bool _busy = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    if (AuthService.instance.pendingEntryCode != null) {
+      _busy = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _finish(null));
+    }
+  }
+
+  Future<void> _finish(String? entryCode) async {
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await AuthService.instance.finishCodeAccount(entryCode);
+      // AuthGate moves on by itself once the record exists.
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _error = AuthService.messageFor(e);
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_busy) {
+      return Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(
+                width: 28,
+                height: 28,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  color: AppColors.blue,
+                ),
+              ),
+              const SizedBox(height: 14),
+              Text('Setting up your account…', style: _t(14, color: _soft)),
+            ],
+          ),
+        ),
+      );
+    }
+    return _AskScreen(
+      key: const ValueKey('finish-entry'),
+      icon: Icons.mark_email_read_outlined,
+      title: 'Enter your entry code',
+      text: 'To finish setting up your account, enter the entry code from '
+          'the HR mail.',
+      label: 'Entry code',
+      obscure: false,
+      button: 'Continue',
+      error: _error,
+      onSubmit: _finish,
     );
   }
 }

@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../models/employee.dart';
@@ -50,7 +51,10 @@ Future<void> confirmSignOut(BuildContext context) async {
         ),
       ),
       content: Text(
-        'You’ll need your email and password to sign in again.',
+        AuthService.instance.isCodeAccount
+            ? 'You’ll need your personal code to sign in again. Make sure '
+                'you saved it.'
+            : 'You’ll need your email and password to sign in again.',
         style: GoogleFonts.inter(
           fontSize: 15,
           height: 1.45,
@@ -109,6 +113,8 @@ class ProfileScreen extends StatelessWidget {
     final initial = name.isEmpty ? '?' : name[0].toUpperCase();
     final email = FirebaseAuth.instance.currentUser?.email ?? '';
     final role = employee.isManagement ? 'Admin' : 'Employee';
+    // Joined with an entry code: no email, no name, no password.
+    final codeAccount = AuthService.isCodeEmail(email);
 
     return _inter(
       context,
@@ -154,7 +160,9 @@ class ProfileScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 14),
                         Text(
-                          name.isEmpty ? 'No name' : name,
+                          name.isEmpty
+                              ? (codeAccount ? 'Anonymous' : 'No name')
+                              : name,
                           textAlign: TextAlign.center,
                           style: _title(22),
                         ),
@@ -186,7 +194,15 @@ class ProfileScreen extends StatelessWidget {
                   Container(
                     decoration: _card(),
                     child: Column(
-                      children: [
+                      children: codeAccount
+                          ? const [
+                              _InfoRow(
+                                icon: Icons.visibility_off_outlined,
+                                label: 'Account',
+                                value: 'Anonymous · no email, no name',
+                              ),
+                            ]
+                          : [
                         _InfoRow(
                           icon: Icons.badge_outlined,
                           label: 'Employee ID',
@@ -205,7 +221,16 @@ class ProfileScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
 
-                  // Change password.
+                  // Personal-code accounts: see the code again.
+                  if (codeAccount)
+                    _Tile(
+                      icon: Icons.key_outlined,
+                      title: 'My personal code',
+                      subtitle: 'You need it on a new phone',
+                      onTap: () => _showPersonalCode(context),
+                    ),
+                  // Change password (email accounts only).
+                  if (!codeAccount)
                   Material(
                     color: Colors.white,
                     shape: RoundedRectangleBorder(
@@ -233,8 +258,8 @@ class ProfileScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                  // Backup code (employees: their history is locked).
-                  if (!employee.isManagement) ...[
+                  // Backup code (older email employee accounts).
+                  if (!employee.isManagement && !codeAccount) ...[
                     const SizedBox(height: 12),
                     Material(
                       color: Colors.white,
@@ -622,6 +647,136 @@ class _TitlePill extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Profile -> My personal code: shows the code kept on this phone.
+Future<void> _showPersonalCode(BuildContext context) async {
+  final code = await AuthService.instance.savedCode();
+  if (!context.mounted) return;
+  await showDialog<void>(
+    context: context,
+    builder: (c) => AlertDialog(
+      backgroundColor: Colors.white,
+      surfaceTintColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      title: Text(
+        'My personal code',
+        style: GoogleFonts.inter(
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
+          color: AppColors.ink,
+        ),
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (code == null)
+            Text(
+              'Your code is not saved on this phone. Use the code you saved '
+              'when you joined.',
+              style: GoogleFonts.inter(
+                fontSize: 15,
+                height: 1.45,
+                color: AppColors.muted,
+              ),
+            )
+          else ...[
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF6F8FB),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFE3E8F1), width: 1.5),
+              ),
+              child: SelectableText(
+                code,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.robotoMono(
+                  fontSize: 18,
+                  letterSpacing: 1.2,
+                  color: AppColors.ink,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Keep it safe and don’t share it. Anyone with this code can '
+              'open your account.',
+              style: GoogleFonts.inter(
+                fontSize: 13.5,
+                height: 1.45,
+                color: AppColors.muted,
+              ),
+            ),
+          ],
+        ],
+      ),
+      actions: [
+        if (code != null)
+          TextButton(
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: code));
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Personal code copied')),
+              );
+            },
+            child: const Text('Copy'),
+          ),
+        FilledButton(
+          onPressed: () => Navigator.of(c).pop(),
+          style: FilledButton.styleFrom(
+            backgroundColor: AppColors.blue,
+            shape: const StadiumBorder(),
+          ),
+          child: const Text('Done'),
+        ),
+      ],
+    ),
+  );
+}
+
+/// One row button on the Profile screen.
+class _Tile extends StatelessWidget {
+  const _Tile({
+    required this.icon,
+    required this.title,
+    required this.onTap,
+    this.subtitle,
+  });
+
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: const BorderSide(color: Color(0xFFE6EBF4)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: ListTile(
+        contentPadding: const EdgeInsets.fromLTRB(18, 6, 12, 6),
+        leading: Icon(icon, color: AppColors.blue),
+        title: Text(
+          title,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+        ),
+        subtitle: subtitle == null
+            ? null
+            : Text(
+                subtitle!,
+                style: const TextStyle(fontSize: 13, color: AppColors.muted),
+              ),
+        trailing: const Icon(Icons.chevron_right, color: AppColors.muted),
+        onTap: onTap,
       ),
     );
   }

@@ -12,10 +12,20 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/employees/$(request.auth.uid)).data;
     }
 
-    // Accounts made by sign-up must verify their email first. Accounts made
+    // Employees who joined with an entry code: a hidden login made from
+    // their personal code (64 hex letters @code.haystekpulse.app). No mail
+    // is ever sent to it. It says nothing about who the person is.
+    function codeAccount() {
+      return signedIn()
+        && request.auth.token.email.matches('^[0-9a-f]{64}@code[.]haystekpulse[.]app$');
+    }
+
+    // Admins (email sign-up) must verify their email first. Accounts made
     // by the create-users script are marked verified when they are made.
+    // Personal-code accounts have no real email, so they count as checked
+    // (the entry code was checked when the account record was made).
     function emailVerified() {
-      return request.auth.token.email_verified == true;
+      return request.auth.token.email_verified == true || codeAccount();
     }
 
     function isActive() {
@@ -44,13 +54,33 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['mustChangePassword'])
         && request.resource.data.mustChangePassword == false;
 
-      // Sign-up: a verified @haystek.com person creates their own record,
-      // once. Admin ('m') only with the right admin code: the app sends
-      // a SHA-256 of the code (adminProof), and admin_codes/{adminProof}
-      // must exist.
-      allow create: if signedIn()
+      // Employees (join with entry code): a personal-code account creates
+      // its own record, once. Always an employee ('e'), no name, no email.
+      // The app sends a SHA-256 of the entry code (entryProof), and
+      // entry_codes/{entryProof} must exist.
+      allow create: if codeAccount()
         && request.auth.uid == uid
-        && emailVerified()
+        && request.resource.data.keys().hasOnly([
+             'employeeId', 'name', 'type', 'entryProof', 'mustChangePassword',
+             'active', 'createdAt'])
+        && request.resource.data.type == 'e'
+        && request.resource.data.name == ''
+        && request.resource.data.employeeId == ''
+        && request.resource.data.mustChangePassword == false
+        && request.resource.data.active == true
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.entryProof is string
+        && exists(/databases/$(database)/documents/entry_codes/$(request.resource.data.entryProof));
+
+      // Admins (email sign-up): a verified @haystek.com person creates their
+      // own record, once, only with the right admin entry code: the app
+      // sends a SHA-256 of the code (adminProof), and
+      // admin_codes/{adminProof} must exist. Employees can't use email
+      // sign-up any more (they join with the entry code).
+      allow create: if signedIn()
+        && !codeAccount()
+        && request.auth.uid == uid
+        && request.auth.token.email_verified == true
         && myEmail().matches('.*@haystek[.]com$')
         && request.resource.data.keys().hasOnly([
              'employeeId', 'name', 'type', 'mustChangePassword', 'active',
@@ -64,11 +94,9 @@ service cloud.firestore {
         && request.resource.data.mustChangePassword == false
         && request.resource.data.active == true
         && request.resource.data.createdAt == request.time
-        && (request.resource.data.type == 'e'
-              ? !('adminProof' in request.resource.data)
-              : (request.resource.data.type == 'm'
-                 && request.resource.data.adminProof is string
-                 && exists(/databases/$(database)/documents/admin_codes/$(request.resource.data.adminProof))));
+        && request.resource.data.type == 'm'
+        && request.resource.data.adminProof is string
+        && exists(/databases/$(database)/documents/admin_codes/$(request.resource.data.adminProof));
 
       // Removing people is done only in the Firebase console.
       allow delete: if false;
@@ -83,6 +111,32 @@ service cloud.firestore {
     match /admin_codes/{hash} {
       allow get: if true;
       allow list, write: if false;
+    }
+
+    // ---------------------------------------------------------------
+    // entry_codes/{SHA-256 of the code}: the employee entry code(s) HR
+    // mails to everyone. Added only in the Firebase console. The Join
+    // screen checks a typed code by looking up its SHA-256 (get only).
+    // To change the code: add the new one, delete the old one.
+    // ---------------------------------------------------------------
+    match /entry_codes/{hash} {
+      allow get: if true;
+      allow list, write: if false;
+    }
+
+    // ---------------------------------------------------------------
+    // devices/{SHA-256 of the phone ID}: "this phone already made an
+    // account", so each phone makes only one. Only a time is saved: no
+    // user ID, nothing that says who. Can't be changed. A personal-code
+    // account can remove one (Delete my account frees the phone).
+    // ---------------------------------------------------------------
+    match /devices/{hash} {
+      allow get: if true;
+      allow create: if codeAccount()
+        && request.resource.data.keys().hasOnly(['at'])
+        && request.resource.data.at == request.time;
+      allow list, update: if false;
+      allow delete: if codeAccount();
     }
 
     // ---------------------------------------------------------------

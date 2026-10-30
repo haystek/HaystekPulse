@@ -13,8 +13,10 @@ import 'vault_screens.dart';
 import 'verify_email_screen.dart';
 
 /// Decides which screen to show:
-/// not signed in        -> Login (also Create account)
-/// email not verified   -> Check your email
+/// not signed in        -> Welcome: join with entry code, personal code,
+///                         or admin sign in
+/// email not verified   -> Check your email (admins only; personal-code
+///                         accounts have no email)
 /// no employee record   -> Finish your profile (after sign-up)
 /// first login          -> Change password
 /// type 'm'             -> Admin home
@@ -48,7 +50,8 @@ class AuthGate extends StatelessWidget {
           _checkedUid = user.uid;
           auth.stillValid();
         }
-        if (!user.emailVerified) {
+        final codeAccount = AuthService.isCodeEmail(user.email);
+        if (!codeAccount && !user.emailVerified) {
           return VerifyEmailScreen(email: user.email ?? '');
         }
 
@@ -66,7 +69,9 @@ class AuthGate extends StatelessWidget {
             }
             final employee = empSnap.data;
             if (employee == null) {
-              // Signed up and verified, but not saved yet.
+              // Just joined with an entry code: save the account record.
+              if (codeAccount) return const CodeFinishScreen();
+              // Admin signed up and verified, but not saved yet.
               return const FinishProfileScreen();
             }
             if (!employee.active) {

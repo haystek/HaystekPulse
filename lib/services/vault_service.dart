@@ -8,6 +8,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:pointycastle/export.dart';
 
+import 'personal_code.dart';
+
 /// What the vault holds: the IDs of my posts and my Weekly Pulse answers.
 /// Only the employee can open it.
 class VaultData {
@@ -182,11 +184,45 @@ class VaultService {
   Future<void> startFresh(String uid, String password) =>
       _create(uid, password);
 
+  /// Personal-code accounts: opens the history with the personal code, or
+  /// makes a new, empty one the first time. There is no backup code: the
+  /// personal code itself is the key (locked with many rounds, slow to
+  /// guess). Throws if the code doesn't fit.
+  Future<void> openWithCode(String uid, String code) async {
+    final n = PersonalCode.normalize(code);
+    // From the server, so a new history is never made by mistake offline.
+    final doc = await _ref(uid).get(const GetOptions(source: Source.server));
+    final d = doc.data();
+    if (d == null) {
+      final key = _randomBytes(32);
+      final salt = _randomB64(16);
+      final codeKey = await _derive(n, salt, _passwordRounds);
+      const empty = VaultData();
+      await _ref(uid).set({
+        'v': 3,
+        'salt': salt,
+        'byPassword': _lockBytes(codeKey, key),
+        'list': _lock(key, jsonEncode(empty.toJson())),
+      });
+      await _activateAndSave(uid, key, empty);
+      return;
+    }
+    final rounds = d['v'] == 3 ? _passwordRounds : _codeRounds;
+    final codeKey = await _derive(n, d['salt'] as String, rounds);
+    final key = _openBytes(codeKey, d['byPassword'] as String);
+    final list = _open(key, d['list'] as String);
+    await _activateAndSave(
+      uid,
+      key,
+      VaultData.fromJson(jsonDecode(list) as Map<String, dynamic>),
+    );
+  }
+
   Future<void> _create(String uid, String password) async {
     final key = _randomBytes(32);
     final salt = _randomB64(16);
     final passKey = await _derive(password, salt, _passwordRounds);
-    final code = _newCode();
+    final code = newCode();
     final backupSalt = _randomB64(16);
     final codeKey = await _derive(normalizeCode(code), backupSalt, _codeRounds);
     const empty = VaultData();
@@ -227,7 +263,7 @@ class VaultService {
     if (uid == null || key == null) {
       throw StateError('Vault is locked');
     }
-    final code = _newCode();
+    final code = newCode();
     final backupSalt = _randomB64(16);
     final codeKey = await _derive(normalizeCode(code), backupSalt, _codeRounds);
     await _ref(uid).update({
@@ -332,14 +368,25 @@ class VaultService {
 
   static String _randomB64(int n) => base64Encode(_randomBytes(n));
 
-  /// Backup code: 16 letters/digits in 4 groups, like K7QM-2XPA-9RTD-4LNC.
-  /// No 0/O or 1/I, so it is easy to type.
-  static String _newCode() {
+  /// Backup code and personal code: 16 letters/digits in 4 groups, like
+  /// K7QM-2XPA-9RTD-4LNC. No 0/O or 1/I, so it is easy to type.
+  static String newCode() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     final b = StringBuffer();
     for (var i = 0; i < 16; i++) {
       if (i > 0 && i % 4 == 0) b.write('-');
       b.write(chars[_random.nextInt(chars.length)]);
+    }
+    return b.toString();
+  }
+
+  /// "k7qm2xpa9rtd4lnc" -> "K7QM-2XPA-9RTD-4LNC" (for showing).
+  static String formatCode(String code) {
+    final n = normalizeCode(code);
+    final b = StringBuffer();
+    for (var i = 0; i < n.length; i++) {
+      if (i > 0 && i % 4 == 0) b.write('-');
+      b.write(n[i]);
     }
     return b.toString();
   }
@@ -382,6 +429,11 @@ class VaultService {
 
   static String _open(Uint8List key, String lockedB64) =>
       utf8.decode(_openBytes(key, lockedB64));
+
+  /// PBKDF2-SHA256 (slow on purpose). Runs where it is called: wrap it
+  /// in [compute] to keep the screen smooth.
+  static Uint8List pbkdf2(String secret, String saltB64, int rounds) =>
+      _pbkdf2(<Object>[secret, saltB64, rounds]);
 
   /// SHA-256 of a text, as hex. Used for the admin code check.
   static String sha256Hex(String text) {

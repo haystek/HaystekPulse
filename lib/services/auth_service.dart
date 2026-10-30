@@ -2,9 +2,13 @@ import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../models/employee.dart';
+import 'device_id.dart';
 import 'notification_service.dart';
+import 'personal_code.dart';
 import 'vault_service.dart';
 
 class AuthService {
@@ -14,8 +18,245 @@ class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  /// Only office emails can sign up.
+  /// Only office emails can sign up (admins).
   static const officeDomain = '@haystek.com';
+
+  // ---------------------------------------------------------------------
+  // Employees: entry code + personal code (no email, no name, no password)
+  // ---------------------------------------------------------------------
+  //
+  // How it works:
+  // - HR mails one **entry code** to all employees. The app checks it by
+  //   looking up `entry_codes/{SHA-256 of the code}` (the code itself is
+  //   never stored).
+  // - The app makes a random **personal code**: three words and a number,
+  //   like river-tiger-mango-42 ([PersonalCode]). It becomes a hidden
+  //   Firebase login:
+  //     email    = slow hash of the code + "@code.haystekpulse.app"
+  //     password = the code
+  //   No mail is ever sent to that address. The same code always gives the
+  //   same login, so it works on a new phone too.
+  // - The history (vault) is locked with a key made from the personal code.
+  // - One account per phone: `devices/{SHA-256 of the phone ID}`.
+
+  /// The hidden login of a personal-code account ends with this.
+  static const codeDomain = 'code.haystekpulse.app';
+
+  /// Secure storage for the personal code on this phone. On iPhone this is
+  /// the Keychain, which keeps it after the app is deleted, so a reinstall
+  /// signs in by itself. "This device only": never copied to a new phone.
+  static const FlutterSecureStorage _codeStore = FlutterSecureStorage(
+    iOptions: IOSOptions(
+      accessibility: KeychainAccessibility.first_unlock_this_device,
+    ),
+  );
+  static const String _codeKey = 'personal_code_v1';
+
+  /// The personal code just typed or made. Used once to open the history,
+  /// then cleared. Never saved in Firebase.
+  String? pendingCode;
+
+  /// A personal code made by [joinWithEntryCode]. Shown once on the
+  /// "Save your personal code" screen, then cleared.
+  String? newPersonalCode;
+
+  /// The entry code just used. Kept in memory until the account record is
+  /// saved ([finishCodeAccount]).
+  String? pendingEntryCode;
+
+  /// True if the signed-in account is a personal-code account.
+  bool get isCodeAccount => isCodeEmail(_auth.currentUser?.email);
+
+  static bool isCodeEmail(String? email) =>
+      email != null && email.toLowerCase().endsWith('@$codeDomain');
+
+  /// "hstlgn " -> "HSTLGN". Entry codes are checked in capital letters.
+  static String normalizeEntryCode(String code) =>
+      code.trim().toUpperCase().replaceAll(RegExp(r'\s+'), '');
+
+  /// The hidden login email for a personal code.
+  static Future<String> codeEmail(String personalCode) =>
+      PersonalCode.loginEmail(personalCode, codeDomain);
+
+  /// Scrambled phone ID, the only form that is ever sent to Firebase.
+  static Future<String> _deviceHash() async =>
+      VaultService.sha256Hex('device:${await DeviceId.get()}');
+
+  /// True if this is a valid employee entry code.
+  Future<bool> isEntryCode(String code) async {
+    final c = normalizeEntryCode(code);
+    if (c.isEmpty) return false;
+    final hash = VaultService.sha256Hex(c);
+    final doc = await _db
+        .collection('entry_codes')
+        .doc(hash)
+        .get(const GetOptions(source: Source.server));
+    debugPrint('[Auth] entry code check: "$c" -> $hash -> found: ${doc.exists}');
+    return doc.exists;
+  }
+
+  /// True if an account was already made on this phone.
+  Future<bool> phoneHasAccount() async {
+    final doc = await _db
+        .collection('devices')
+        .doc(await _deviceHash())
+        .get(const GetOptions(source: Source.server));
+    return doc.exists;
+  }
+
+  /// "Join with entry code": checks the code and the phone, then makes the
+  /// hidden login with a new personal code. The account record is saved
+  /// right after by [finishCodeAccount] (AuthGate calls it).
+  Future<void> joinWithEntryCode(String entryCode) async {
+    final entry = normalizeEntryCode(entryCode);
+    if (!await isEntryCode(entry)) {
+      throw FirebaseAuthException(code: 'entry-code-wrong');
+    }
+    if (await phoneHasAccount()) {
+      throw FirebaseAuthException(code: 'device-has-account');
+    }
+    pendingEntryCode = entry;
+    String? code;
+    // A new code is almost never taken, but if it is, try another one.
+    for (var tries = 0; tries < 3 && code == null; tries++) {
+      final c = PersonalCode.generate();
+      try {
+        await _auth.createUserWithEmailAndPassword(
+          email: await codeEmail(c),
+          password: PersonalCode.password(c),
+        );
+        code = c;
+      } on FirebaseAuthException catch (e) {
+        if (e.code != 'email-already-in-use' || tries == 2) {
+          pendingEntryCode = null;
+          rethrow;
+        }
+      }
+    }
+    pendingCode = code;
+    newPersonalCode = code;
+    await _saveCodeOnPhone(code!);
+  }
+
+  /// Saves the account record of a new personal-code account, and marks
+  /// this phone as used. Runs right after [joinWithEntryCode]. If the app
+  /// was closed in between, the person types the entry code again.
+  Future<void> finishCodeAccount([String? entryCode]) async {
+    final user = _auth.currentUser;
+    if (user == null || !isCodeEmail(user.email)) {
+      throw FirebaseAuthException(code: 'no-current-user');
+    }
+    final entry = normalizeEntryCode(entryCode ?? pendingEntryCode ?? '');
+    if (entry.isEmpty) throw FirebaseAuthException(code: 'entry-code-wrong');
+    final ref = _db.collection('employees').doc(user.uid);
+    final existing = await ref.get(const GetOptions(source: Source.server));
+    if (!existing.exists) {
+      try {
+        await ref.set({
+          'employeeId': '',
+          'name': '',
+          'type': 'e',
+          'entryProof': VaultService.sha256Hex(entry),
+          'mustChangePassword': false,
+          'active': true,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      } on FirebaseException catch (e) {
+        if (e.code == 'permission-denied') {
+          throw FirebaseAuthException(code: 'entry-code-wrong');
+        }
+        rethrow;
+      }
+    }
+    pendingEntryCode = null;
+    await _markPhoneUsed();
+  }
+
+  /// "I have my personal code": signs in on any phone. Never blocked by
+  /// the phone check; it only marks this phone as used too.
+  Future<void> signInWithPersonalCode(String personalCode) async {
+    final n = PersonalCode.normalize(personalCode);
+    if (!PersonalCode.looksValid(n)) {
+      throw FirebaseAuthException(code: 'personal-code-wrong');
+    }
+    pendingCode = n;
+    try {
+      await _auth.signInWithEmailAndPassword(
+        email: await codeEmail(n),
+        password: PersonalCode.password(n),
+      );
+    } on FirebaseAuthException catch (e) {
+      pendingCode = null;
+      const wrong = [
+        'invalid-credential',
+        'user-not-found',
+        'wrong-password',
+        'invalid-email',
+      ];
+      if (wrong.contains(e.code)) {
+        throw FirebaseAuthException(code: 'personal-code-wrong');
+      }
+      rethrow;
+    }
+    await _saveCodeOnPhone(n);
+    unawaited(_markPhoneUsed());
+  }
+
+  /// App start with nobody signed in: if this phone still has the personal
+  /// code (iPhone after a reinstall), sign in with it. True if it did.
+  Future<bool> autoSignIn() async {
+    if (_auth.currentUser != null) return false;
+    final code = await savedCode();
+    if (code == null) return false;
+    try {
+      await signInWithPersonalCode(code);
+      return true;
+    } catch (e) {
+      debugPrint('[Auth] auto sign-in failed: $e');
+      // A wrong saved code (e.g. the account was deleted): forget it.
+      if (e is FirebaseAuthException && e.code == 'personal-code-wrong') {
+        await _forgetCodeOnPhone();
+      }
+      return false;
+    }
+  }
+
+  /// The personal code kept on this phone, or null.
+  Future<String?> savedCode() async {
+    try {
+      final c = await _codeStore.read(key: _codeKey);
+      return (c == null || c.isEmpty) ? null : c;
+    } catch (_) {
+      return null; // Not readable (e.g. Android after reinstall).
+    }
+  }
+
+  Future<void> _saveCodeOnPhone(String code) async {
+    try {
+      await _codeStore.write(key: _codeKey, value: PersonalCode.normalize(code));
+    } catch (e) {
+      debugPrint('[Auth] could not keep the personal code: $e');
+    }
+  }
+
+  Future<void> _forgetCodeOnPhone() async {
+    try {
+      await _codeStore.delete(key: _codeKey);
+    } catch (_) {}
+  }
+
+  /// Marks this phone as used, so it can't make a second account. The
+  /// record has only a time: no user ID, nothing that says who.
+  Future<void> _markPhoneUsed() async {
+    try {
+      final ref = _db.collection('devices').doc(await _deviceHash());
+      final doc = await ref.get();
+      if (doc.exists) return;
+      await ref.set({'at': FieldValue.serverTimestamp()});
+    } catch (e) {
+      debugPrint('[Auth] could not mark this phone: $e');
+    }
+  }
 
   /// Name typed on the sign-up form. Kept here until the email is
   /// verified, then saved to `employees`.
@@ -275,6 +516,12 @@ class AuthService {
     pendingAdmin = null;
     pendingAdminCode = null;
     pendingPassword = null;
+    pendingCode = null;
+    newPersonalCode = null;
+    pendingEntryCode = null;
+    // Personal-code account: forget the code on this phone, so the next
+    // person can't get in. Signing in again needs the code.
+    if (isCodeAccount) await _forgetCodeOnPhone();
     unawaited(NotificationService.instance.stop());
     // Forget the history key on this phone, so the next person sees nothing.
     await VaultService.instance.close();
@@ -307,9 +554,9 @@ class AuthService {
   static String messageFor(Object error) {
     if (error is FirebaseAuthException) {
       switch (error.code) {
-      // With "Email enumeration protection" ON in Firebase, both cases
-      // come as 'invalid-credential' (Firebase doesn't say which).
-      // With it OFF, the two cases below come separately.
+        // With "Email enumeration protection" ON in Firebase, both cases
+        // come as 'invalid-credential' (Firebase doesn't say which).
+        // With it OFF, the two cases below come separately.
         case 'invalid-credential':
           return wrongLogin;
         case 'user-not-found':
@@ -339,13 +586,25 @@ class AuthService {
               'not be updated (no internet?). Keep your backup code: you '
               'may need it next time you sign in.';
         case 'admin-code-wrong':
-          return 'The admin code is not correct. Please check it with your '
-              'manager, or sign up as Employee.';
+          return 'The admin entry code is not correct. Please check the '
+              'mail from HR.';
+        case 'entry-code-wrong':
+          return 'This entry code is not correct. Please check the mail '
+              'from HR.';
+        case 'device-has-account':
+          return 'This phone already has an account. Please sign in with '
+              'your personal code.';
+        case 'personal-code-wrong':
+          return 'This personal code is not correct. It looks like '
+              'river-tiger-mango-42. Please check it and try again.';
       }
     }
     if (error is FirebaseException && error.code == 'permission-denied') {
-      return 'Your account could not be set up. Please use your '
-          '$officeDomain email, or contact your admin.';
+      return 'Your account could not be set up. Please check your code, '
+          'or contact your admin.';
+    }
+    if (error is FirebaseException && error.code == 'unavailable') {
+      return 'No internet connection. Please check and try again.';
     }
     return 'Something went wrong. Please try again.';
   }

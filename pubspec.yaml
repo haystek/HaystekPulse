@@ -22,6 +22,7 @@ dependencies:
   # Keeps the history key on the phone while signed in (Android Keystore /
   # iPhone Keychain). Deleted on sign out.
   flutter_secure_storage: ^9.2.4
+  android_id: ^0.5.2
 
 dev_dependencies:
   flutter_test:

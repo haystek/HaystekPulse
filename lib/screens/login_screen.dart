@@ -2,9 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'package:firebase_auth/firebase_auth.dart';
+
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
-import 'verify_email_screen.dart' show RoleChoice;
+
+/// Which part of the sign-in screen shows.
+/// welcome:  Join with entry code / I have my personal code / Admin
+/// join:     enter the entry code from the HR mail (employees)
+/// personal: sign in with the personal code (new phone, reinstall)
+/// admin:    office email + password (sign in, create account, reset)
+enum _Entry { welcome, join, personal, admin }
 
 /// Inter font for everything on these screens, sheets and dialogs
 /// (same as the employee screens).
@@ -51,6 +59,16 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  _Entry _entry = _Entry.welcome;
+  final _entryCode = TextEditingController();
+  final _personalCode = TextEditingController();
+
+  /// The Firebase code of the last error (to offer the right button).
+  String? _errorCode;
+
+  /// True while signing in by itself with the code kept on this phone.
+  bool _autoTrying = false;
+
   final _formKey = GlobalKey<FormState>();
   final _email = TextEditingController();
   final _password = TextEditingController();
@@ -58,8 +76,8 @@ class _LoginScreenState extends State<LoginScreen> {
   final _adminCode = TextEditingController();
   bool _busy = false;
 
-  /// Create account: Employee (false) or Admin (true).
-  bool _admin = false;
+  /// Email accounts are only for admins now: always true.
+  final bool _admin = true;
   bool _hideCode = true;
 
   /// True after Sign in / Create account was tapped once. From then on
@@ -85,12 +103,88 @@ class _LoginScreenState extends State<LoginScreen> {
     // with the name and email filled in.
     final auth = AuthService.instance;
     if (auth.openSignUp) {
+      _entry = _Entry.admin;
       _signUpMode = true;
       _name.text = auth.signUpName ?? '';
       _email.text = auth.signUpEmail ?? '';
       auth.openSignUp = false;
       auth.signUpEmail = null;
       auth.signUpName = null;
+    }
+    _tryAutoSignIn();
+  }
+
+  /// iPhone after a reinstall: the personal code is still in the Keychain,
+  /// so sign in without asking.
+  Future<void> _tryAutoSignIn() async {
+    final auth = AuthService.instance;
+    if (await auth.savedCode() == null || !mounted) return;
+    setState(() => _autoTrying = true);
+    await auth.autoSignIn();
+    if (mounted) setState(() => _autoTrying = false);
+  }
+
+  /// Shows another part of the screen (welcome, join, personal, admin).
+  void _go(_Entry to) {
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _entry = to;
+      _signUpMode = false;
+      _resetMode = false;
+      _error = null;
+      _errorCode = null;
+      _tried = false;
+    });
+  }
+
+  /// "Join": checks the entry code and the phone, then makes the account.
+  Future<void> _join() async {
+    FocusScope.of(context).unfocus();
+    if (_entryCode.text.trim().isEmpty) {
+      setState(() => _error = 'Enter the entry code from the HR mail.');
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _error = null;
+      _errorCode = null;
+    });
+    try {
+      await AuthService.instance.joinWithEntryCode(_entryCode.text);
+      // AuthGate shows the next screen by itself.
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = AuthService.messageFor(e);
+        _errorCode = e is FirebaseAuthException ? e.code : null;
+      });
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// "Sign in" with the personal code.
+  Future<void> _signInWithCode() async {
+    FocusScope.of(context).unfocus();
+    if (_personalCode.text.trim().isEmpty) {
+      setState(() => _error = 'Enter your personal code.');
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _error = null;
+      _errorCode = null;
+    });
+    try {
+      await AuthService.instance.signInWithPersonalCode(_personalCode.text);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = AuthService.messageFor(e);
+        _errorCode = e is FirebaseAuthException ? e.code : null;
+      });
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
   }
 
@@ -100,6 +194,8 @@ class _LoginScreenState extends State<LoginScreen> {
     _password.dispose();
     _name.dispose();
     _adminCode.dispose();
+    _entryCode.dispose();
+    _personalCode.dispose();
     super.dispose();
   }
 
@@ -186,7 +282,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
   /// Typing again: hide the red message from the last try.
   void _clearError() {
-    if (_error != null) setState(() => _error = null);
+    if (_error != null) {
+      setState(() {
+        _error = null;
+        _errorCode = null;
+      });
+    }
   }
 
   /// Opens the "Reset password" step. Only the email field shows.
@@ -322,8 +423,173 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  /// One code field (entry code or personal code) in the grouped card.
+  Widget _codeField({
+    required TextEditingController controller,
+    required IconData icon,
+    required String label,
+    String? hint,
+    bool capitals = true,
+    required VoidCallback onDone,
+  }) {
+    return _card([
+      _row(
+        icon: icon,
+        field: TextField(
+          controller: controller,
+          autocorrect: false,
+          enableSuggestions: false,
+          textCapitalization: capitals
+              ? TextCapitalization.characters
+              : TextCapitalization.none,
+          keyboardType:
+              capitals ? TextInputType.text : TextInputType.visiblePassword,
+          textInputAction: TextInputAction.done,
+          onChanged: (_) => _clearError(),
+          onSubmitted: (_) => onDone(),
+          style: GoogleFonts.inter(
+            fontSize: 16,
+            color: AppColors.ink,
+            letterSpacing: capitals ? 1.2 : 0.3,
+          ),
+          decoration: _plain(label).copyWith(
+            hintText: hint,
+            hintStyle: GoogleFonts.inter(
+              color: const Color(0xFFC3C9D6),
+              letterSpacing: 1.2,
+            ),
+          ),
+        ),
+      ),
+    ]);
+  }
+
+  /// A white button with a light border (the second choice).
+  Widget _lightButton(String label, VoidCallback? onPressed) {
+    return OutlinedButton(
+      onPressed: onPressed,
+      style: OutlinedButton.styleFrom(
+        foregroundColor: AppColors.blue,
+        minimumSize: const Size.fromHeight(54),
+        side: const BorderSide(color: Color(0xFFE3E8F1), width: 1.5),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        textStyle: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600),
+      ),
+      child: Text(label),
+    );
+  }
+
+  /// Welcome, Join and Personal code (employees, no email).
+  Widget _codeForm() {
+    final error = _error == null
+        ? const <Widget>[]
+        : [
+            const SizedBox(height: 12),
+            _ErrorBox(
+              message: _error!,
+              actions: _errorCode == 'device-has-account'
+                  ? [('Use personal code', () => _go(_Entry.personal))]
+                  : const [],
+            ),
+          ];
+
+    switch (_entry) {
+      case _Entry.join:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('Join', style: _h(24)),
+            const SizedBox(height: 4),
+            const Text(
+              'Enter the entry code from the HR mail. It only shows you are '
+              'from Haystek, not who you are.',
+              style: _sub,
+            ),
+            const SizedBox(height: 18),
+            _codeField(
+              controller: _entryCode,
+              icon: Icons.mark_email_read_outlined,
+              label: 'Entry code',
+              onDone: _join,
+            ),
+            ...error,
+            const SizedBox(height: 20),
+            _GradientButton(
+              onPressed: _busy ? null : _join,
+              child: _busy ? _busyDot() : const Text('Join'),
+            ),
+            const SizedBox(height: 8),
+            _helpLine(
+              'Already joined?',
+              'Use personal code',
+              _busy ? null : () => _go(_Entry.personal),
+            ),
+          ],
+        );
+      case _Entry.personal:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('Sign in', style: _h(24)),
+            const SizedBox(height: 4),
+            const Text(
+              'Enter the personal code you saved when you joined.',
+              style: _sub,
+            ),
+            const SizedBox(height: 18),
+            _codeField(
+              controller: _personalCode,
+              icon: Icons.key_outlined,
+              label: 'Personal code',
+              hint: 'river-tiger-mango-42',
+              capitals: false,
+              onDone: _signInWithCode,
+            ),
+            ...error,
+            const SizedBox(height: 20),
+            _GradientButton(
+              onPressed: _busy ? null : _signInWithCode,
+              child: _busy ? _busyDot() : const Text('Sign in'),
+            ),
+            const SizedBox(height: 8),
+            _helpLine(
+              'New here?',
+              'Join with entry code',
+              _busy ? null : () => _go(_Entry.join),
+            ),
+          ],
+        );
+      case _Entry.welcome:
+      case _Entry.admin:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('Welcome', style: _h(24)),
+            const SizedBox(height: 4),
+            const Text(
+              'No email, no name. Nobody can tell who wrote what.',
+              style: _sub,
+            ),
+            const SizedBox(height: 22),
+            _GradientButton(
+              onPressed: () => _go(_Entry.join),
+              child: const Text('Join with entry code'),
+            ),
+            const SizedBox(height: 12),
+            _lightButton(
+              'I have my personal code',
+              () => _go(_Entry.personal),
+            ),
+            const SizedBox(height: 14),
+            _helpLine('Admin?', 'Sign in with email', () => _go(_Entry.admin)),
+          ],
+        );
+    }
+  }
+
   /// The form under the blue block: sign in, or reset password.
   Widget _form(ThemeData theme) {
+    if (_entry != _Entry.admin) return _codeForm();
     final error = _error == null
         ? const <Widget>[]
         : [
@@ -334,15 +600,15 @@ class _LoginScreenState extends State<LoginScreen> {
         actions: _signUpMode || _resetMode
             ? const []
             : _error == AuthService.noAccount
-            ? [('Create account', () => _toggleSignUp(true))]
-            : _error == AuthService.wrongPassword
-            ? [('Reset password', _openReset)]
-            : _error == AuthService.wrongLogin
-            ? [
-          ('Create account', () => _toggleSignUp(true)),
-          ('Reset password', _openReset),
-        ]
-            : const [],
+                ? [('Create account', () => _toggleSignUp(true))]
+                : _error == AuthService.wrongPassword
+                    ? [('Reset password', _openReset)]
+                    : _error == AuthService.wrongLogin
+                        ? [
+                            ('Create account', () => _toggleSignUp(true)),
+                            ('Reset password', _openReset),
+                          ]
+                        : const [],
       ),
     ];
 
@@ -460,10 +726,11 @@ class _LoginScreenState extends State<LoginScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('Create account', style: _h(24)),
+            Text('Create admin account', style: _h(24)),
             const SizedBox(height: 2),
             Text(
-              'Use your Haystek office email (${AuthService.officeDomain}).',
+              'Only for admins. Use your office email '
+              '(${AuthService.officeDomain}).',
               style: _sub,
             ),
             const SizedBox(height: 18),
@@ -493,11 +760,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 style: _sub,
               ),
             ),
-            const SizedBox(height: 16),
-            RoleChoice(
-              admin: _admin,
-              onChanged: _busy ? (_) {} : (v) => setState(() => _admin = v),
-            ),
             if (_admin) ...[
               const SizedBox(height: 12),
               _card([
@@ -508,9 +770,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     obscureText: _hideCode,
                     autocorrect: false,
                     style: GoogleFonts.inter(fontSize: 15.5, color: AppColors.ink),
-                    decoration: _plain('Admin code'),
+                    decoration: _plain('Admin entry code'),
                     validator: (v) => (_admin && (v == null || v.trim().isEmpty))
-                        ? 'Enter the admin code'
+                        ? 'Enter the admin entry code'
                         : null,
                   ),
                   trailing: TextButton(
@@ -523,7 +785,7 @@ class _LoginScreenState extends State<LoginScreen> {
               const Padding(
                 padding: EdgeInsets.fromLTRB(4, 6, 4, 0),
                 child: Text(
-                  'Only for admins. Ask your manager for the code.',
+                  'From the HR mail. Only admins get this code.',
                   style: _sub,
                 ),
               ),
@@ -555,7 +817,7 @@ class _LoginScreenState extends State<LoginScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('Sign in', style: _h(24)),
+          Text('Admin sign in', style: _h(24)),
           const SizedBox(height: 2),
           const Text('Use your office email.', style: _sub),
           const SizedBox(height: 18),
@@ -576,9 +838,14 @@ class _LoginScreenState extends State<LoginScreen> {
             _busy ? null : _openReset,
           ),
           _helpLine(
-            'New here?',
+            'New admin?',
             'Create account',
             _busy ? null : () => _toggleSignUp(true),
+          ),
+          _helpLine(
+            'Not an admin?',
+            'Back',
+            _busy ? null : () => _go(_Entry.welcome),
           ),
         ],
       ),
@@ -605,6 +872,8 @@ class _LoginScreenState extends State<LoginScreen> {
           _closeReset();
         } else if (_signUpMode) {
           _toggleSignUp(false);
+        } else if (_entry != _Entry.welcome) {
+          _go(_Entry.welcome);
         } else {
           _backOnSignIn();
         }
@@ -721,7 +990,21 @@ class _LoginScreenState extends State<LoginScreen> {
                                     child: Padding(
                                       padding: const EdgeInsets.fromLTRB(
                                           24, 28, 24, 0),
-                                      child: _form(theme),
+                                      child: _autoTrying
+                                          ? const Padding(
+                                              padding: EdgeInsets.only(top: 40),
+                                              child: Center(
+                                                child: SizedBox(
+                                                  width: 28,
+                                                  height: 28,
+                                                  child: CircularProgressIndicator(
+                                                    strokeWidth: 2.5,
+                                                    color: AppColors.blue,
+                                                  ),
+                                                ),
+                                              ),
+                                            )
+                                          : _form(theme),
                                     ),
                                   ),
                                 ),

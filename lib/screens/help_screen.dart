@@ -67,22 +67,36 @@ const List<_Qa> _questions = [
   _Qa(
     'Where can I see my old messages?',
     'In My Feedback. Only you can see them: the list is locked with your '
-        'password.',
+        'personal code.',
+  ),
+  _Qa(
+    'Why don’t I sign up with my email?',
+    'So nobody can tell who you are. You join with the entry code from the '
+        'HR mail. It only shows you are from Haystek, not who you are.',
+  ),
+  _Qa(
+    'What is my personal code?',
+    'The app gives it to you when you join: three words and a number, like '
+        'river-tiger-mango-42. It is '
+        'your key, like a password. Only you have it: we can’t see it or '
+        'send it again. You can see it in Profile → My personal code.',
   ),
   _Qa(
     'What if I change my phone?',
-    'Sign in with the same email and password. Everything comes back.',
+    'Install the app, tap “I have my personal code” and enter it. '
+        'Everything comes back.',
   ),
   _Qa(
-    'What if I forget my password?',
-    'Reset it from the sign-in screen, then enter your backup code (given '
-        'at sign-up). Without the backup code, your old messages can’t be '
-        'shown again. Admin still has them.',
+    'I deleted the app. What now?',
+    'iPhone: install it again and it signs you in by itself.\n'
+        'Android: install it again, tap “I have my personal code” and enter '
+        'it.',
   ),
   _Qa(
-    'I lost my backup code. What now?',
-    'While you still know your password: Profile → Backup code → make a '
-        'new one. The old code stops working.',
+    'I lost my personal code. What now?',
+    'While you are still signed in: Profile → My personal code, and save it. '
+        'If you are signed out and lost it, the old account can’t be opened. '
+        'Ask HR, and we can let this phone join again.',
   ),
 ];
 
