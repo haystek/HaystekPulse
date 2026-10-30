@@ -5,8 +5,10 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../models/employee.dart';
 import '../services/broadcast_service.dart';
+import '../services/typed_name.dart';
 import '../theme/app_theme.dart';
 import '../widgets/ui.dart';
+import 'typed_name_field.dart';
 import 'feedback_thread_screen.dart'
     show ThreadComposer, ThreadTitlePill, keepLastInView, threadDate, threadSoft, threadText;
 
@@ -354,6 +356,10 @@ class _BroadcastDetailScreenState extends State<BroadcastDetailScreen> {
 
   /// Employees: hide the name by default.
   bool _showName = false;
+
+  /// No name in the app (joined with an entry code): they type one.
+  late final bool _needsName = TypedName.needed(widget.employee);
+  final _name = TextEditingController();
   int _lastCount = -1;
   double _lastInset = 0;
 
@@ -363,6 +369,11 @@ class _BroadcastDetailScreenState extends State<BroadcastDetailScreen> {
   void initState() {
     super.initState();
     _text.addListener(() => setState(() {}));
+    if (_needsName) {
+      TypedName.load().then((n) {
+        if (mounted && _name.text.isEmpty) setState(() => _name.text = n);
+      });
+    }
     // Opened (for example from a notification): counts as read.
     BroadcastService.instance.markSeen(widget.employee.uid);
   }
@@ -370,6 +381,7 @@ class _BroadcastDetailScreenState extends State<BroadcastDetailScreen> {
   @override
   void dispose() {
     _text.dispose();
+    _name.dispose();
     _scroll.dispose();
     super.dispose();
   }
@@ -397,6 +409,15 @@ class _BroadcastDetailScreenState extends State<BroadcastDetailScreen> {
     final text = _text.text.trim();
     if (text.isEmpty) return;
     final messenger = ScaffoldMessenger.of(context);
+    final typed = !_admin && _showName && _needsName;
+    if (typed) {
+      final problem = TypedName.check(_name.text);
+      if (problem != null) {
+        messenger.showSnackBar(SnackBar(content: Text(problem)));
+        return;
+      }
+      unawaited(TypedName.save(_name.text));
+    }
     _text.clear();
     unawaited(
       BroadcastService.instance
@@ -405,6 +426,7 @@ class _BroadcastDetailScreenState extends State<BroadcastDetailScreen> {
             me: widget.employee,
             text: text,
             showName: _showName,
+            name: typed ? _name.text.trim() : null,
           )
           .catchError((Object e) {
         messenger.showSnackBar(
@@ -528,6 +550,12 @@ class _BroadcastDetailScreenState extends State<BroadcastDetailScreen> {
                   name: widget.employee.name,
                   onChanged: (v) => setState(() => _showName = v),
                 ),
+                if (!_admin && _showName && _needsName)
+                  Container(
+                    color: Colors.white,
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                    child: TypedNameField(controller: _name, compact: true),
+                  ),
                 ThreadComposer(
                   controller: _text,
                   hint: _admin ? 'Reply as Admin…' : 'Write a comment…',
@@ -682,40 +710,10 @@ class _NameChoice extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Widget chip(String label, bool value) {
-      final selected = show == value;
-      return Material(
-        color: selected ? AppColors.blueTint : Colors.white,
-        shape: StadiumBorder(
-          side: BorderSide(color: selected ? AppColors.blue : _line),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: () => onChanged(value),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            child: Text(
-              label,
-              style: threadText(
-                12.5,
-                color: selected ? AppColors.blue : const Color(0xFF5F6A84),
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
     return Container(
       color: Colors.white,
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-      child: Row(
-        children: [
-          chip('🔒 Hide my name', false),
-          const SizedBox(width: 8),
-          chip('👤 Show my name', true),
-        ],
-      ),
+      child: SendAsChoice(named: show, onChanged: onChanged, compact: true),
     );
   }
 }
@@ -833,7 +831,7 @@ class _NewBroadcastScreenState extends State<NewBroadcastScreen> {
                       maxLength: 120,
                       textCapitalization: TextCapitalization.sentences,
                       style: threadText(15),
-                      decoration: deco('eg: Air dryer added on 5th floor')
+                      decoration: deco('For example: Air dryer added on 5th floor')
                           .copyWith(counterText: ''),
                       validator: (v) => (v == null || v.trim().isEmpty)
                           ? 'Write a short title'

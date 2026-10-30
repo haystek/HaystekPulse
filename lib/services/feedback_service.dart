@@ -91,6 +91,7 @@ class FeedbackService {
     required String text,
     required bool anonymous,
     String? id,
+    String? name,
   }) async {
     final ref = _feedback.doc(id);
     await VaultService.instance.addPost(ref.id);
@@ -100,7 +101,8 @@ class FeedbackService {
         'source': 'box',
         'text': TextCrypto.encrypt(text.trim()),
         'anonymous': anonymous,
-        if (!anonymous) 'authorName': employee.name,
+        // [name]: typed by the employee (no name in the app).
+        if (!anonymous) 'authorName': (name ?? employee.name).trim(),
         if (!anonymous) 'authorEmployeeId': employee.employeeId,
         'status': FeedbackStatus.newItem,
         'managementMessage': '',

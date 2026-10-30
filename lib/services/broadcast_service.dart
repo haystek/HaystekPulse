@@ -151,6 +151,7 @@ class BroadcastService {
     required Employee me,
     required String text,
     required bool showName,
+    String? name,
   }) async {
     final t = text.trim();
     if (t.isEmpty) return;
@@ -159,7 +160,8 @@ class BroadcastService {
     batch.set(ref.collection('comments').doc(), <String, dynamic>{
       'text': TextCrypto.encrypt(t),
       'admin': me.isManagement,
-      if (!me.isManagement && showName) 'name': me.name,
+      // [name]: typed by the employee (no name in the app).
+      if (!me.isManagement && showName) 'name': (name ?? me.name).trim(),
       'createdAt': FieldValue.serverTimestamp(),
     });
     batch.update(ref, {'commentCount': FieldValue.increment(1)});

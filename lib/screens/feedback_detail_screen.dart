@@ -465,6 +465,8 @@ class _MessageCard extends StatelessWidget {
     final rating = item.rating;
     final sub = [
       if (!anonymous && id.isNotEmpty) id,
+      // Joined with an entry code: the name was typed, not checked.
+      if (!anonymous && id.isEmpty) 'Name typed by sender',
       if (date.isNotEmpty) date,
       if (!item.isFromBox && rating != null) PulseRating.label(rating),
     ].join(' · ');

@@ -8,9 +8,11 @@ import '../models/employee.dart';
 import '../models/pulse_rating.dart';
 import '../services/feedback_service.dart';
 import '../services/pulse_service.dart';
+import '../services/typed_name.dart';
 import '../theme/app_theme.dart';
 import '../widgets/ui.dart';
 import 'help_screen.dart';
+import 'typed_name_field.dart';
 
 enum _Stage { loading, loadError, closed, alreadyDone, pick, done }
 
@@ -18,7 +20,6 @@ enum _Stage { loading, loadError, closed, alreadyDone, pick, done }
 const _panel = Color(0xFFF6F8FB);
 const _line = Color(0xFFE3E8F1);
 const _soft = Color(0xFF8E97AB);
-const _tickOff = Color(0xFFC9D0DC);
 
 /// Weekly Pulse: one rating, one extra question for Okay or Difficult,
 /// and a confirmation. One answer per employee per week.
@@ -66,7 +67,14 @@ class _WeeklyPulseScreenState extends State<WeeklyPulseScreen>
   /// What was typed for Okay and for Difficult, kept apart, so switching
   /// between them shows each one's own text (empty the first time).
   final Map<String, String> _drafts = {};
-  bool _anonymous = false;
+
+  /// No name in the app (joined with an entry code): they type one.
+  late final bool _needsName = TypedName.needed(widget.employee);
+
+  /// Anonymous by default. "With my name" is a choice for this message.
+  bool _anonymous = true;
+  final _name = TextEditingController();
+  String? _nameError;
   bool _busy = false;
   String? _error;
 
@@ -76,6 +84,11 @@ class _WeeklyPulseScreenState extends State<WeeklyPulseScreen>
   void initState() {
     super.initState();
     _rating = widget.initialRating;
+    if (_needsName) {
+      TypedName.load().then((n) {
+        if (mounted && _name.text.isEmpty) setState(() => _name.text = n);
+      });
+    }
     _check();
     // The keyboard opening changes the screen size: see didChangeMetrics.
     WidgetsBinding.instance.addObserver(this);
@@ -171,6 +184,13 @@ class _WeeklyPulseScreenState extends State<WeeklyPulseScreen>
         !_formKey.currentState!.validate()) {
       return;
     }
+    final named = PulseRating.needsText(rating) && _needsName && !_anonymous;
+    if (named) {
+      final problem = TypedName.check(_name.text);
+      setState(() => _nameError = problem);
+      if (problem != null) return;
+      unawaited(TypedName.save(_name.text));
+    }
     FocusScope.of(context).unfocus();
     setState(() {
       _busy = true;
@@ -182,6 +202,7 @@ class _WeeklyPulseScreenState extends State<WeeklyPulseScreen>
         rating: rating,
         text: _text.text,
         anonymous: _anonymous,
+        name: named ? _name.text.trim() : null,
       );
       if (!mounted) return;
       setState(() => _stage = _Stage.done);
@@ -392,6 +413,16 @@ class _WeeklyPulseScreenState extends State<WeeklyPulseScreen>
                             : 'Send',
                       ),
                     ),
+                    // Only Okay / Difficult send words (with a name or not).
+                    if (needsText) ...[
+                      const SizedBox(height: 8),
+                      SentAsLine(
+                        named: !_anonymous,
+                        name: _needsName
+                            ? _name.text
+                            : widget.employee.name,
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -527,7 +558,30 @@ class _WeeklyPulseScreenState extends State<WeeklyPulseScreen>
             ),
           ),
           const SizedBox(height: 8),
-          _hideNameRow(),
+          const SizedBox(height: 6),
+          SendAsChoice(
+            named: !_anonymous,
+            enabled: !_busy,
+            onChanged: (named) => setState(() {
+              _anonymous = !named;
+              _nameError = null;
+            }),
+          ),
+          if (!_anonymous) ...[
+            const SizedBox(height: 12),
+            if (_needsName)
+              TypedNameField(
+                controller: _name,
+                enabled: !_busy,
+                error: _nameError,
+                onChanged: (_) => setState(() => _nameError = null),
+              )
+            else
+              Text(
+                'Admin will see: ${widget.employee.name}',
+                style: _inter(12.5, color: AppColors.muted),
+              ),
+          ],
           _privacyLink(),
         ],
       ),
@@ -553,64 +607,6 @@ class _WeeklyPulseScreenState extends State<WeeklyPulseScreen>
     );
   }
 
-  /// "Keep my name hidden": a rounded checkbox. Tap anywhere on the row.
-  Widget _hideNameRow() {
-    return Semantics(
-      checked: _anonymous,
-      child: Material(
-        color: _panel,
-        borderRadius: BorderRadius.circular(14),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: _busy ? null : () => setState(() => _anonymous = !_anonymous),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-            child: Row(
-              children: [
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 160),
-                  width: 22,
-                  height: 22,
-                  decoration: BoxDecoration(
-                    color: _anonymous ? AppColors.blue : Colors.white,
-                    borderRadius: BorderRadius.circular(7),
-                    border: Border.all(
-                      color: _anonymous ? AppColors.blue : _tickOff,
-                      width: 2,
-                    ),
-                  ),
-                  child: _anonymous
-                      ? const Icon(Icons.check_rounded,
-                      size: 15, color: Colors.white)
-                      : null,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Keep my name hidden',
-                        style: _inter(14.5, weight: FontWeight.w700),
-                      ),
-                      const SizedBox(height: 1),
-                      Text(
-                        _anonymous
-                            ? 'Admin won’t know it’s you'
-                            : 'Admin will see: ${widget.employee.name}',
-                        maxLines: 2,
-                        style: _inter(12.5, color: AppColors.muted),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 /// One font for this screen: Inter.

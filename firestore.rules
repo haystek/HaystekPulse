@@ -184,8 +184,13 @@ service cloud.firestore {
         && request.resource.data.updatedAt == request.time
         && (request.resource.data.anonymous
               ? !request.resource.data.keys().hasAny(['authorName', 'authorEmployeeId'])
-              : (request.resource.data.authorName == me().name
-                 && request.resource.data.authorEmployeeId == me().employeeId));
+              : (request.resource.data.authorEmployeeId == me().employeeId
+                 && (me().name == ''
+                       // No name in the app (entry code): the name is typed.
+                       ? (request.resource.data.authorName is string
+                          && request.resource.data.authorName.size() >= 2
+                          && request.resource.data.authorName.size() <= 60)
+                       : request.resource.data.authorName == me().name)));
 
       // Admins open any entry. An employee opens an entry only by its ID,
       // and only the author has the ID (in their locked vault). Employees
@@ -359,7 +364,12 @@ service cloud.firestore {
                 ? (isManagement() && !('name' in request.resource.data))
                 : (request.resource.data.admin == false
                    && (!('name' in request.resource.data)
-                       || request.resource.data.name == me().name)));
+                       || (me().name == ''
+                             // No name in the app (entry code): typed name.
+                             ? (request.resource.data.name is string
+                                && request.resource.data.name.size() >= 2
+                                && request.resource.data.name.size() <= 60)
+                             : request.resource.data.name == me().name))));
 
         allow update: if false;
         allow delete: if isManagement();

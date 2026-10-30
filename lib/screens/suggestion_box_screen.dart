@@ -1,17 +1,20 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../models/employee.dart';
 import '../services/feedback_service.dart';
+import '../services/typed_name.dart';
 import '../theme/app_theme.dart';
 import '../widgets/ui.dart';
 import 'help_screen.dart';
+import 'typed_name_field.dart';
 
 /// Soft greys used on this screen.
 const _panel = Color(0xFFF6F8FB);
 const _line = Color(0xFFE3E8F1);
 const _soft = Color(0xFF8E97AB);
-const _tickOff = Color(0xFFC9D0DC);
 
 /// Inter with a chosen size, weight and colour.
 TextStyle _t(
@@ -67,7 +70,13 @@ class _SuggestionBoxScreenState extends State<SuggestionBoxScreen>
   late final String _id = FeedbackService.instance.newSuggestionId();
   final _focus = FocusNode();
 
-  bool _anonymous = false;
+  /// No name in the app (joined with an entry code): they type one.
+  late final bool _needsName = TypedName.needed(widget.employee);
+
+  /// Anonymous by default. "With my name" is a choice for this message.
+  bool _anonymous = true;
+  final _name = TextEditingController();
+  String? _nameError;
   bool _busy = false;
   bool _submitted = false;
   String? _error;
@@ -77,6 +86,11 @@ class _SuggestionBoxScreenState extends State<SuggestionBoxScreen>
   @override
   void initState() {
     super.initState();
+    if (_needsName) {
+      TypedName.load().then((n) {
+        if (mounted && _name.text.isEmpty) setState(() => _name.text = n);
+      });
+    }
     WidgetsBinding.instance.addObserver(this);
     _focus.addListener(() {
       if (!mounted) return;
@@ -89,6 +103,7 @@ class _SuggestionBoxScreenState extends State<SuggestionBoxScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _text.dispose();
+    _name.dispose();
     _focus.dispose();
     super.dispose();
   }
@@ -112,8 +127,18 @@ class _SuggestionBoxScreenState extends State<SuggestionBoxScreen>
     });
   }
 
+  /// The name shown with the message ('' when hidden).
+  String get _shownName =>
+      _needsName ? _name.text.trim() : widget.employee.name;
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_needsName && !_anonymous) {
+      final problem = TypedName.check(_name.text);
+      setState(() => _nameError = problem);
+      if (problem != null) return;
+      unawaited(TypedName.save(_name.text));
+    }
     FocusScope.of(context).unfocus();
     setState(() {
       _busy = true;
@@ -125,6 +150,7 @@ class _SuggestionBoxScreenState extends State<SuggestionBoxScreen>
         text: _text.text,
         anonymous: _anonymous,
         id: _id,
+        name: _needsName && !_anonymous ? _name.text.trim() : null,
       );
       if (!mounted) return;
       setState(() => _submitted = true);
@@ -208,7 +234,29 @@ class _SuggestionBoxScreenState extends State<SuggestionBoxScreen>
                       const SizedBox(height: 8),
                       _writingBox(),
                       const SizedBox(height: 14),
-                      _hideNameRow(),
+                      SendAsChoice(
+                        named: !_anonymous,
+                        enabled: !_busy,
+                        onChanged: (named) => setState(() {
+                          _anonymous = !named;
+                          _nameError = null;
+                        }),
+                      ),
+                      if (!_anonymous) ...[
+                        const SizedBox(height: 12),
+                        if (_needsName)
+                          TypedNameField(
+                            controller: _name,
+                            enabled: !_busy,
+                            error: _nameError,
+                            onChanged: (_) => setState(() => _nameError = null),
+                          )
+                        else
+                          Text(
+                            'Admin will see: ${widget.employee.name}',
+                            style: _t(13, color: AppColors.muted),
+                          ),
+                      ],
                       _privacyLink(),
                       if (_error != null) ...[
                         const SizedBox(height: 12),
@@ -279,12 +327,12 @@ class _SuggestionBoxScreenState extends State<SuggestionBoxScreen>
                             ],
                           )
                               : Text(
-                            _anonymous
-                                ? 'Send anonymously'
-                                : 'Send suggestion',
+                            'Send suggestion',
                           ),
                         ),
                       ),
+                      const SizedBox(height: 8),
+                      SentAsLine(named: !_anonymous, name: _shownName),
                       // Hidden while typing, to give the box more room.
                       if (!typing) ...[
                         const SizedBox(height: 12),
@@ -403,71 +451,6 @@ class _SuggestionBoxScreenState extends State<SuggestionBoxScreen>
     );
   }
 
-  /// "Keep my name hidden": checkbox on the left, white row with a border.
-  /// When ticked the row turns light blue. Tap anywhere on the row.
-  Widget _hideNameRow() {
-    return Semantics(
-      checked: _anonymous,
-      child: Material(
-        color: _anonymous ? AppColors.blueTint : Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: BorderSide(
-            color: _anonymous ? AppColors.blue : _line,
-            width: 1.5,
-          ),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: _busy ? null : () => setState(() => _anonymous = !_anonymous),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-            child: Row(
-              children: [
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 160),
-                  width: 24,
-                  height: 24,
-                  decoration: BoxDecoration(
-                    color: _anonymous ? AppColors.blue : Colors.white,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: _anonymous ? AppColors.blue : _tickOff,
-                      width: 2,
-                    ),
-                  ),
-                  child: _anonymous
-                      ? const Icon(Icons.check_rounded,
-                      size: 16, color: Colors.white)
-                      : null,
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Keep my name hidden',
-                        style: _t(15.5, weight: FontWeight.w700),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        _anonymous
-                            ? 'Admin won’t know it’s you'
-                            : 'Admin will see: ${widget.employee.name}',
-                        maxLines: 2,
-                        style: _t(13, color: AppColors.muted, height: 1.35),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 
   Widget _buildDone(BuildContext context) {
     return SafeArea(

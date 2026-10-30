@@ -251,6 +251,7 @@ class PulseService {
     required String rating,
     String text = '',
     bool anonymous = false,
+    String? name,
   }) async {
     final weekId = currentWeekId();
     final responseRef = _responses.doc('${weekId}_${employee.uid}');
@@ -292,7 +293,8 @@ class PulseService {
               'weekId': weekId,
               'text': TextCrypto.encrypt(text.trim()),
               'anonymous': anonymous,
-              if (!anonymous) 'authorName': employee.name,
+              // [name]: typed by the employee (no name in the app).
+              if (!anonymous) 'authorName': (name ?? employee.name).trim(),
               if (!anonymous) 'authorEmployeeId': employee.employeeId,
               'status': FeedbackStatus.newItem,
               'managementMessage': '',
