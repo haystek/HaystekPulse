@@ -29,8 +29,8 @@ class AuthService {
   // - HR mails one **entry code** to all employees. The app checks it by
   //   looking up `entry_codes/{SHA-256 of the code}` (the code itself is
   //   never stored).
-  // - The app makes a random **personal code**: three words and a number,
-  //   like river-tiger-mango-42 ([PersonalCode]). It becomes a hidden
+  // - The app makes a random **personal code**: 10 letters and numbers,
+  //   like K7M2P-X9F4R ([PersonalCode]). It becomes a hidden
   //   Firebase login:
   //     email    = slow hash of the code + "@code.haystekpulse.app"
   //     password = the code
@@ -82,6 +82,101 @@ class AuthService {
   static Future<String> _deviceHash() async =>
       VaultService.sha256Hex('device:${await DeviceId.get()}');
 
+  // ---------------------------------------------------------------
+  // One phone at a time.
+  // sessions/{uid} = {phone: scrambled phone ID, at}. Signing in with the
+  // personal code (typed) or joining makes this phone the account's phone.
+  // Any other phone that still has the account sees it changed and signs
+  // out by itself ("Your account moved to another phone").
+  // The scramble is different from the devices record, so the two can't
+  // be linked.
+  // ---------------------------------------------------------------
+
+  static Future<String> _sessionHash() async =>
+      VaultService.sha256Hex('session:${await DeviceId.get()}');
+
+  /// True while this phone is taking the account (so it doesn't see its
+  /// own old record and sign itself out).
+  bool claiming = false;
+
+  /// Set when this phone was signed out because the account moved.
+  /// The sign-in screen shows "Your account moved to another phone".
+  bool movedNotice = false;
+
+  DocumentReference<Map<String, dynamic>> _session(String uid) =>
+      _db.collection('sessions').doc(uid);
+
+  /// True while Delete my account runs (don't make the record again).
+  bool _deleting = false;
+
+  /// This phone is now the account's phone. False if it could not be saved.
+  Future<bool> claimThisPhone() async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null || _deleting) return false;
+    try {
+      await _session(uid).set({
+        'phone': await _sessionHash(),
+        'at': FieldValue.serverTimestamp(),
+      });
+      return true;
+    } catch (e) {
+      debugPrint('[Auth] could not claim this phone: $e');
+      return false;
+    }
+  }
+
+  /// True if the account is now on another phone. Accounts from before
+  /// this check have no record yet: this phone claims it.
+  Future<bool> isMovedAway() async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) return false;
+    try {
+      final d = await _session(uid).get(const GetOptions(source: Source.server));
+      final phone = d.data()?['phone'];
+      if (phone is! String) {
+        await claimThisPhone();
+        return false;
+      }
+      return phone != await _sessionHash();
+    } catch (e) {
+      debugPrint('[Auth] could not check the account phone: $e');
+      return false; // No internet: check again later.
+    }
+  }
+
+  /// Watches the account's phone. Calls [onMoved] once if another phone
+  /// takes the account.
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>> watchMove(
+    String uid,
+    VoidCallback onMoved,
+  ) {
+    var done = false;
+    return _session(uid).snapshots().listen((d) async {
+      if (done || claiming) return;
+      final phone = d.data()?['phone'];
+      if (phone is! String) {
+        if (!d.metadata.isFromCache && !_deleting) await claimThisPhone();
+        return;
+      }
+      if (phone != await _sessionHash() && !claiming) {
+        done = true;
+        onMoved();
+      }
+    }, onError: (e) => debugPrint('[Auth] watch phone: $e'));
+  }
+
+  /// The account moved to another phone: free this phone and sign out.
+  /// Its record is removed, so it won't open the account again by itself.
+  Future<void> leaveMovedAccount() async {
+    movedNotice = true;
+    try {
+      await _db.collection('devices').doc(await _deviceHash()).delete();
+    } catch (e) {
+      debugPrint('[Auth] could not free this phone: $e');
+    }
+    await signOut();
+  }
+
   /// True if this is a valid employee entry code.
   Future<bool> isEntryCode(String code) async {
     final c = normalizeEntryCode(code);
@@ -113,7 +208,24 @@ class AuthService {
       throw FirebaseAuthException(code: 'entry-code-wrong');
     }
     if (await phoneHasAccount()) {
-      throw FirebaseAuthException(code: 'device-has-account');
+      // This phone is already registered: just sign in to its account
+      // (no new account, no code to type).
+      final mine = await codeOnThisPhone();
+      var moved = false;
+      if (mine != null) {
+        try {
+          await signInWithPersonalCode(mine, claim: false);
+          return;
+        } on FirebaseAuthException catch (e) {
+          // Its account moved to another phone: this phone is free now,
+          // so go on and make a new account.
+          if (e.code != 'account-moved') rethrow;
+          movedNotice = false;
+          moved = true;
+        }
+      }
+      // Registered, but its code can't be opened here (very rare).
+      if (!moved) throw FirebaseAuthException(code: 'device-has-account');
     }
     pendingEntryCode = entry;
     String? code;
@@ -169,17 +281,23 @@ class AuthService {
       }
     }
     pendingEntryCode = null;
-    await _markPhoneUsed();
+    await claimThisPhone();
+    await _markPhoneUsed(pendingCode ?? await savedCode());
   }
 
   /// "I have my personal code": signs in on any phone. Never blocked by
   /// the phone check; it only marks this phone as used too.
-  Future<void> signInWithPersonalCode(String personalCode) async {
+  /// [claim]: true when the person typed the code (or joined): this phone
+  /// takes the account, any other phone signs out. False when the phone
+  /// signs in by itself (reinstall): if the account moved to another phone
+  /// meanwhile, this phone is freed and 'account-moved' is thrown.
+  Future<void> signInWithPersonalCode(String personalCode, {bool claim = true}) async {
     final n = PersonalCode.normalize(personalCode);
     if (!PersonalCode.looksValid(n)) {
       throw FirebaseAuthException(code: 'personal-code-wrong');
     }
     pendingCode = n;
+    if (claim) claiming = true;
     try {
       await _auth.signInWithEmailAndPassword(
         email: await codeEmail(n),
@@ -187,6 +305,7 @@ class AuthService {
       );
     } on FirebaseAuthException catch (e) {
       pendingCode = null;
+      claiming = false;
       const wrong = [
         'invalid-credential',
         'user-not-found',
@@ -198,8 +317,17 @@ class AuthService {
       }
       rethrow;
     }
+    if (claim) {
+      // If it could not be saved, stay "claiming" so this phone never signs
+      // itself out by mistake (the next typed sign-in saves it).
+      if (await claimThisPhone()) claiming = false;
+    } else if (await isMovedAway()) {
+      pendingCode = null;
+      await leaveMovedAccount();
+      throw FirebaseAuthException(code: 'account-moved');
+    }
     await _saveCodeOnPhone(n);
-    unawaited(_markPhoneUsed());
+    unawaited(_markPhoneUsed(n));
   }
 
   /// App start with nobody signed in: if this phone still has the personal
@@ -209,7 +337,7 @@ class AuthService {
     final code = await savedCode();
     if (code == null) return false;
     try {
-      await signInWithPersonalCode(code);
+      await signInWithPersonalCode(code, claim: false);
       return true;
     } catch (e) {
       debugPrint('[Auth] auto sign-in failed: $e');
@@ -245,16 +373,50 @@ class AuthService {
     } catch (_) {}
   }
 
-  /// Marks this phone as used, so it can't make a second account. The
-  /// record has only a time: no user ID, nothing that says who.
-  Future<void> _markPhoneUsed() async {
+  /// Registers this phone (once): it can't make a second account, and it
+  /// can sign in again by itself after a reinstall.
+  ///
+  /// The record has no user ID. It keeps the personal code locked with a
+  /// key made from this phone's ID, which is never sent anywhere (only a
+  /// scrambled form is the record's name). So only this phone can open it:
+  /// not admin, not the developer.
+  Future<void> _markPhoneUsed(String? code) async {
     try {
+      final phoneId = await DeviceId.get();
       final ref = _db.collection('devices').doc(await _deviceHash());
-      final doc = await ref.get();
-      if (doc.exists) return;
-      await ref.set({'at': FieldValue.serverTimestamp()});
+      final data = <String, dynamic>{'at': FieldValue.serverTimestamp()};
+      if (code != null) {
+        data.addAll(await VaultService.lockWith(
+          'phone:$phoneId',
+          PersonalCode.normalize(code),
+        ));
+      }
+      await ref.set(data);
     } catch (e) {
-      debugPrint('[Auth] could not mark this phone: $e');
+      debugPrint('[Auth] could not register this phone: $e');
+    }
+  }
+
+  /// App opened with nobody signed in: if this phone is registered, the
+  /// personal code it keeps (locked with this phone's ID). Null if this
+  /// phone is new, or the code can't be opened.
+  Future<String?> codeOnThisPhone() async {
+    try {
+      final phoneId = await DeviceId.get();
+      final doc = await _db
+          .collection('devices')
+          .doc(await _deviceHash())
+          .get(const GetOptions(source: Source.server));
+      final d = doc.data();
+      if (d == null || d['lock'] == null || d['salt'] == null) return null;
+      return await VaultService.openWith(
+        'phone:$phoneId',
+        d['salt'] as String,
+        d['lock'] as String,
+      );
+    } catch (e) {
+      debugPrint('[Auth] no account found on this phone: $e');
+      return null;
     }
   }
 
@@ -528,6 +690,83 @@ class AuthService {
     await _auth.signOut();
   }
 
+  /// Profile -> Delete my account. Deletes, in this order:
+  /// 1. a fresh sign-in (Firebase asks for it before deleting a login):
+  ///    with the personal code kept on this phone (or [secret] if typed),
+  ///    or with the password for email accounts ([secret]),
+  /// 2. the locked history, private settings, this phone's record (so the
+  ///    phone can join again) and the account record,
+  /// 3. the login itself.
+  /// Messages already sent stay with admin: they never had a user ID.
+  Future<void> deleteMyAccount({String? secret}) async {
+    final user = _auth.currentUser;
+    if (user == null || user.email == null) {
+      throw FirebaseAuthException(code: 'no-current-user');
+    }
+    final uid = user.uid;
+    final code = isCodeAccount;
+    _deleting = true;
+    try {
+
+    // 1. Fresh sign-in.
+    if (code) {
+      final c = (secret != null && secret.trim().isNotEmpty)
+          ? secret
+          : await savedCode();
+      if (c == null) throw FirebaseAuthException(code: 'personal-code-needed');
+      if (await codeEmail(c) != user.email!.toLowerCase()) {
+        throw FirebaseAuthException(code: 'personal-code-wrong');
+      }
+      await user.reauthenticateWithCredential(
+        EmailAuthProvider.credential(
+          email: user.email!,
+          password: PersonalCode.password(c),
+        ),
+      );
+    } else {
+      if (secret == null || secret.isEmpty) {
+        throw FirebaseAuthException(code: 'password-needed');
+      }
+      try {
+        await user.reauthenticateWithCredential(
+          EmailAuthProvider.credential(email: user.email!, password: secret),
+        );
+      } on FirebaseAuthException catch (e) {
+        if (e.code == 'invalid-credential' || e.code == 'wrong-password') {
+          throw FirebaseAuthException(code: 'wrong-password');
+        }
+        rethrow;
+      }
+    }
+
+    // 2. Data. Leave notification groups first (not awaited for long).
+    await NotificationService.instance.stop().timeout(
+          const Duration(seconds: 5),
+          onTimeout: () {},
+        );
+    final batch = _db.batch()
+      ..delete(_db.collection('vaults').doc(uid))
+      ..delete(_db.collection('user_state').doc(uid))
+      ..delete(_db.collection('sessions').doc(uid))
+      ..delete(_db.collection('employees').doc(uid));
+    if (code) {
+      batch.delete(_db.collection('devices').doc(await _deviceHash()));
+    }
+    await batch.commit();
+
+    // 3. The login. Then forget everything on this phone.
+    await user.delete();
+    if (code) await _forgetCodeOnPhone();
+    pendingCode = null;
+    newPersonalCode = null;
+    pendingEntryCode = null;
+    pendingPassword = null;
+    await VaultService.instance.close();
+    } finally {
+      _deleting = false;
+    }
+  }
+
   /// Checks the password with Firebase (used before opening the history
   /// or making a new backup code). Throws if it is wrong.
   Future<void> checkPassword(String password) async {
@@ -589,14 +828,21 @@ class AuthService {
           return 'The admin entry code is not correct. Please check the '
               'mail from HR.';
         case 'entry-code-wrong':
-          return 'This entry code is not correct. Please check the mail '
-              'from HR.';
+          return 'This entry code is not correct. Please check it and '
+              'try again.';
+        case 'account-moved':
+          return 'Your account is now on another phone. Sign in with your '
+              'personal code to use it here.';
         case 'device-has-account':
           return 'This phone already has an account. Please sign in with '
               'your personal code.';
+        case 'personal-code-needed':
+          return 'Please enter your personal code to delete your account.';
+        case 'password-needed':
+          return 'Please enter your password to delete your account.';
         case 'personal-code-wrong':
           return 'This personal code is not correct. It looks like '
-              'river-tiger-mango-42. Please check it and try again.';
+              'K7M2P-X9F4R. Please check it and try again.';
       }
     }
     if (error is FirebaseException && error.code == 'permission-denied') {

@@ -6,16 +6,18 @@ import 'package:flutter/foundation.dart';
 
 import 'vault_service.dart';
 
-/// The personal code of an employee: three simple words and a number,
-/// like `river-tiger-mango-42`. Made by the app, easy to remember.
+/// The personal code of an employee: 10 random letters and numbers in two
+/// groups, like `K7M2P-X9F4R` (like a GitHub recovery code). Made by the
+/// app. No look-alike characters (no 0/O, 1/I/L), so it is easy to copy.
+/// Older accounts may still have a word code (`river-tiger-mango-42`):
+/// those keep working.
 ///
 /// It is the only key to the account:
 /// - Login: a hidden Firebase login is made from it (see [loginEmail]).
 ///   The code itself is never saved in Firebase.
 /// - History: the locked list of "my posts" opens with it.
 ///
-/// About 500 words x 3 + a number from 10 to 99: about 11 billion
-/// codes. Guessing online is blocked by Firebase (too many tries), and the
+/// 31 characters x 10 places: about 800 trillion codes. Guessing online is blocked by Firebase (too many tries), and the
 /// hidden login is made with a slow hash, so trying codes one by one is
 /// very slow too.
 class PersonalCode {
@@ -23,8 +25,21 @@ class PersonalCode {
 
   static final Random _random = Random.secure();
 
-  /// A new random code, like "river-tiger-mango-42".
+  /// Characters used in new codes: no 0, O, 1, I or L.
+  static const String _chars = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
+
+  /// A new random code, like "K7M2P-X9F4R".
   static String generate() {
+    final b = StringBuffer();
+    for (var i = 0; i < 10; i++) {
+      if (i == 5) b.write('-');
+      b.write(_chars[_random.nextInt(_chars.length)]);
+    }
+    return b.toString();
+  }
+
+  /// Old style (only for accounts made before): "river-tiger-mango-42".
+  static String generateWords() {
     String pick() => words[_random.nextInt(words.length)];
     var a = pick(), b = pick(), c = pick();
     while (b == a) {
@@ -37,8 +52,14 @@ class PersonalCode {
     return '$a-$b-$c-$n';
   }
 
-  /// "River Tiger, mango42 " -> "river-tiger-mango-42".
+  /// New codes: "k7m2p x9f4r" -> "K7M2P-X9F4R".
+  /// Old word codes: "River Tiger, mango42 " -> "river-tiger-mango-42".
+  /// (A word code always has more than 10 letters, so they never mix.)
   static String normalize(String code) {
+    final clean = code.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
+    if (clean.length == 10) {
+      return '${clean.substring(0, 5)}-${clean.substring(5)}';
+    }
     final s = code
         .toLowerCase()
         // "mango42" -> "mango 42"
@@ -48,9 +69,12 @@ class PersonalCode {
     return parts.join('-');
   }
 
-  /// True if it looks like a personal code: 3 known words and a number.
+  /// True if it looks like a personal code: 10 letters/numbers (new), or
+  /// 3 known words and a number (old accounts).
   static bool looksValid(String code) {
-    final p = normalize(code).split('-');
+    final n = normalize(code);
+    if (RegExp(r'^[A-Z0-9]{5}-[A-Z0-9]{5}$').hasMatch(n)) return true;
+    final p = n.split('-');
     return p.length == 4 &&
         _set.contains(p[0]) &&
         _set.contains(p[1]) &&

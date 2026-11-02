@@ -29,79 +29,78 @@ class _Qa {
 
 const List<_Qa> _questions = [
   _Qa(
-    'What can I do in this app?',
-    'Two things:\n'
-        '• Suggestion Box: send an idea or a problem to admin, any time.\n'
-        '• Weekly Pulse: once a week, tell admin how your week was.',
+    'What can I do here?',
+    '• Suggestion Box: send an idea or a problem to admin, any time.\n'
+        '• Weekly Pulse: once a week, tap how your week was.\n'
+        '• Broadcast: read updates from admin and comment.',
   ),
   _Qa(
-    'Who reads what I send?',
-    'Only admins. Other employees can’t see it, and the developer can’t '
-        'see who sent it.',
+    'Will admin know it’s me?',
+    'No. Everything you send is anonymous by default.\n\n'
+        'If you want admin to know, choose “With my name” and type your name '
+        'before you send. Your name is shown only on that one message.',
   ),
   _Qa(
-    'Will admin know it was me?',
-    'You decide, every time:\n'
-        '• Hide my name: admin reads your message but does not know who '
-        'sent it.\n'
-        '• Show my name: admin sees your name with the message.',
+    'Who reads my messages?',
+    'Only admins. Other employees can’t see them.',
   ),
   _Qa(
-    'In Weekly Pulse, does admin see my answer?',
-    'Admin sees only numbers, like “Great 5 · Good 3 · Okay 2 · '
-        'Difficult 1”. Admin does not see what you chose.\n\n'
-        'If you choose Okay or Difficult, you can add a comment. You choose '
-        'again: hide or show your name. If you show your name, admin will '
-        'know your answer.',
+    'Can anyone find out a message is mine?',
+    'No. Messages are saved with no name and no ID. Nobody can tell which '
+        'ones are yours: not admin, not the developer.',
   ),
   _Qa(
-    'Can admin reply if my name is hidden?',
-    'Yes. Admin replies to the message and you get a notification. You can '
+    'Is my data encrypted?',
+    'Yes. Messages are stored encrypted, so in the database they look like '
+        'scrambled text. Admin reads them in the app. Your list of sent '
+        'messages is locked with your personal code.',
+  ),
+  _Qa(
+    'What does admin see in Weekly Pulse?',
+    '• Great or Good: admin sees only the count, like “Great 12 · Good 6”. '
+        'Not who chose it.\n'
+        '• Okay or Difficult: you write a few words, and admin reads them. '
+        'Your name is not shown, unless you choose “With my name”.',
+  ),
+  _Qa(
+    'Can admin reply to me?',
+    'Yes. You get a notification and see the reply in My Feedback. You can '
         'reply back, like a chat. Admin still doesn’t know it’s you.',
   ),
   _Qa(
-    'Can anyone find out who sent a hidden message?',
-    'No. Hidden messages are saved without your name and without any ID '
-        'that points to you. Not admin, not the developer.',
-  ),
-  _Qa(
-    'Where can I see my old messages?',
-    'In My Feedback. Only you can see them: the list is locked with your '
-        'personal code.',
-  ),
-  _Qa(
-    'Why don’t I sign up with my email?',
-    'So nobody can tell who you are. You join with the entry code from the '
-        'HR mail. It only shows you are from Haystek, not who you are.',
+    'Why no email or name to sign up?',
+    'So nobody can tell who you are. You join with the entry code shared '
+        'with your team. It is the same for everyone, so it only shows you are from '
+        'Haystek, not who you are.',
   ),
   _Qa(
     'What is my personal code?',
-    'The app gives it to you when you join: three words and a number, like '
-        'river-tiger-mango-42. It is '
-        'your key, like a password. Only you have it: we can’t see it or '
-        'send it again. You can see it in Profile → My personal code.',
+    '10 letters and numbers, like K7M2P-X9F4R. The app gives it '
+        'to you when you join.\n\n'
+        'You need it only when you change to a new phone. You can see it any '
+        'time in Profile → My personal code. Keep it safe and don’t share it.',
   ),
   _Qa(
-    'What if I change my phone?',
-    'Install the app, tap “I have my personal code” and enter it. '
-        'Everything comes back.',
+    'I reinstalled the app or got a new phone.',
+    '• Same phone: the app finds your account. Tap Continue.\n'
+        '• New phone: tap “I have my personal code” and enter it.',
   ),
   _Qa(
-    'I deleted the app. What now?',
-    'iPhone: install it again and it signs you in by itself.\n'
-        'Android: install it again, tap “I have my personal code” and enter '
-        'it.',
+    'I lost my phone and my code.',
+    'Join again with the entry code. Admin keeps your old messages, but your '
+        'history in the app is gone.',
   ),
   _Qa(
-    'I lost my personal code. What now?',
-    'While you are still signed in: Profile → My personal code, and save it. '
-        'If you are signed out and lost it, the old account can’t be opened. '
-        'Ask HR, and we can let this phone join again.',
+    'When should I delete my account?',
+    'Only when you leave Haystek. You don’t need to delete it for a new '
+        'phone or a reinstall.\n\n'
+        'Profile → Delete my account. Your personal code stops working and '
+        'your history in the app is removed. Messages you sent stay with '
+        'admin, without your name.',
   ),
 ];
 
-/// Profile → Help & Privacy. Questions open when tapped, and a small
-/// "Who sees what" table at the end.
+/// Profile → Help & Privacy. Questions open when tapped.
 class HelpScreen extends StatelessWidget {
   const HelpScreen({super.key});
 
@@ -146,8 +145,9 @@ class HelpScreen extends StatelessWidget {
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
-                            'Name hidden means nobody knows it’s you. '
-                            'Not admin, not the developer.',
+                            'Everything is anonymous by default. Nobody can '
+                            'tell which messages are yours: not admin, not '
+                            'the developer.',
                             style: _t(14.5, height: 1.45),
                           ),
                         ),
@@ -156,10 +156,6 @@ class HelpScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 18),
                   for (final qa in _questions) _QaTile(qa: qa),
-                  const SizedBox(height: 22),
-                  Text('Who sees what', style: _t(16, weight: FontWeight.w500)),
-                  const SizedBox(height: 10),
-                  const _WhoSeesWhat(),
                 ],
               ),
             ),
@@ -170,14 +166,40 @@ class HelpScreen extends StatelessWidget {
   }
 }
 
-class _QaTile extends StatelessWidget {
+/// One question. When opened, it scrolls up so the whole answer shows
+/// (no need to scroll by hand, even for the last question).
+class _QaTile extends StatefulWidget {
   const _QaTile({required this.qa});
 
   final _Qa qa;
 
   @override
+  State<_QaTile> createState() => _QaTileState();
+}
+
+class _QaTileState extends State<_QaTile> {
+  final _key = GlobalKey();
+
+  void _opened(bool open) {
+    if (!open) return;
+    // After the open animation, bring the whole tile into view.
+    Future<void>.delayed(const Duration(milliseconds: 260), () {
+      final ctx = _key.currentContext;
+      if (!mounted || ctx == null) return;
+      Scrollable.ensureVisible(
+        ctx,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOutCubic,
+        alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
+      );
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final qa = widget.qa;
     return Container(
+      key: _key,
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
@@ -192,85 +214,10 @@ class _QaTile extends StatelessWidget {
         collapsedIconColor: _soft,
         shape: const Border(),
         collapsedShape: const Border(),
+        onExpansionChanged: _opened,
         title: Text(qa.q, style: _t(15, weight: FontWeight.w500)),
         children: [
           Text(qa.a, style: _t(14, color: AppColors.muted, height: 1.5)),
-        ],
-      ),
-    );
-  }
-}
-
-/// You / Admin / Developer, row by row.
-class _WhoSeesWhat extends StatelessWidget {
-  const _WhoSeesWhat();
-
-  @override
-  Widget build(BuildContext context) {
-    const rows = [
-      // The developer can still open the database (message text and a
-      // shown name). Change these two to false once only admins can read
-      // posts (admin lock).
-      ('Your messages', true, true, true),
-      ('Your name (shown)', true, true, true),
-      ('Your name (hidden)', true, false, false),
-      ('Your Weekly Pulse choice', true, false, false),
-      ('Your list of old messages', true, false, false),
-    ];
-
-    Widget mark(bool yes) => Icon(
-          yes ? Icons.check_circle_rounded : Icons.remove_circle_outline,
-          size: 18,
-          color: yes ? const Color(0xFF16A34A) : const Color(0xFFC9D0DC),
-        );
-
-    Widget head(String s) => SizedBox(
-          width: 64,
-          child: Text(s,
-              textAlign: TextAlign.center,
-              style: _t(12, weight: FontWeight.w500, color: _soft)),
-        );
-
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _line, width: 1.2),
-      ),
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 12, 6, 8),
-            child: Row(
-              children: [
-                const Expanded(child: SizedBox()),
-                head('You'),
-                head('Admin'),
-                head('Developer'),
-              ],
-            ),
-          ),
-          for (final r in rows) ...[
-            const Divider(height: 1, color: Color(0xFFF0F2F7)),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 11, 6, 11),
-              child: Row(
-                children: [
-                  Expanded(child: Text(r.$1, style: _t(13.5))),
-                  SizedBox(width: 64, child: Center(child: mark(r.$2))),
-                  SizedBox(width: 64, child: Center(child: mark(r.$3))),
-                  SizedBox(width: 64, child: Center(child: mark(r.$4))),
-                ],
-              ),
-            ),
-          ],
-          const Divider(height: 1, color: Color(0xFFF0F2F7)),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
-            child: Text(
-              'Weekly Pulse: admin sees only the totals.',
-              style: _t(12, color: _soft),
-            ),
-          ),
         ],
       ),
     );

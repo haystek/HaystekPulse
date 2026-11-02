@@ -7,6 +7,7 @@ import '../models/employee.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/ui.dart';
+import 'delete_account_screen.dart';
 import 'help_screen.dart';
 import 'vault_screens.dart';
 
@@ -53,7 +54,7 @@ Future<void> confirmSignOut(BuildContext context) async {
       content: Text(
         AuthService.instance.isCodeAccount
             ? 'You’ll need your personal code to sign in again. Make sure '
-                'you saved it.'
+            'you saved it.'
             : 'You’ll need your email and password to sign in again.',
         style: GoogleFonts.inter(
           fontSize: 15,
@@ -115,6 +116,8 @@ class ProfileScreen extends StatelessWidget {
     final role = employee.isManagement ? 'Admin' : 'Employee';
     // Joined with an entry code: no email, no name, no password.
     final codeAccount = AuthService.isCodeEmail(email);
+    // Employees with a personal code: their own privacy-first profile.
+    if (codeAccount) return _inter(context, const _CodeProfile());
 
     return _inter(
       context,
@@ -153,7 +156,10 @@ class ProfileScreen extends StatelessWidget {
                             color: AppColors.blue,
                             shape: BoxShape.circle,
                           ),
-                          child: Text(
+                          child: initial == '?'
+                              ? const Icon(Icons.person_outline_rounded,
+                              color: Colors.white, size: 36)
+                              : Text(
                             initial,
                             style: _title(30, color: Colors.white),
                           ),
@@ -196,12 +202,12 @@ class ProfileScreen extends StatelessWidget {
                     child: Column(
                       children: codeAccount
                           ? const [
-                              _InfoRow(
-                                icon: Icons.visibility_off_outlined,
-                                label: 'Account',
-                                value: 'Anonymous · no email, no name',
-                              ),
-                            ]
+                        _InfoRow(
+                          icon: Icons.visibility_off_outlined,
+                          label: 'Account',
+                          value: 'Anonymous · no email, no name',
+                        ),
+                      ]
                           : [
                         _InfoRow(
                           icon: Icons.badge_outlined,
@@ -231,33 +237,33 @@ class ProfileScreen extends StatelessWidget {
                     ),
                   // Change password (email accounts only).
                   if (!codeAccount)
-                  Material(
-                    color: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                      side: const BorderSide(color: Color(0xFFE6EBF4)),
-                    ),
-                    clipBehavior: Clip.antiAlias,
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.fromLTRB(18, 6, 12, 6),
-                      leading: const Icon(Icons.lock_outline,
-                          color: AppColors.blue),
-                      title: const Text(
-                        'Change password',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
+                    Material(
+                      color: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                        side: const BorderSide(color: Color(0xFFE6EBF4)),
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.fromLTRB(18, 6, 12, 6),
+                        leading: const Icon(Icons.lock_outline,
+                            color: AppColors.blue),
+                        title: const Text(
+                          'Change password',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        trailing: const Icon(Icons.chevron_right,
+                            color: AppColors.muted),
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const ChangeMyPasswordScreen(),
+                          ),
                         ),
                       ),
-                      trailing: const Icon(Icons.chevron_right,
-                          color: AppColors.muted),
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => const ChangeMyPasswordScreen(),
-                        ),
-                      ),
                     ),
-                  ),
                   // Backup code (older email employee accounts).
                   if (!employee.isManagement && !codeAccount) ...[
                     const SizedBox(height: 12),
@@ -322,27 +328,40 @@ class ProfileScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 28),
-
-                  // Sign out.
-                  OutlinedButton.icon(
-                    onPressed: () => confirmSignOut(context),
-                    icon: const Icon(Icons.logout, size: 20),
-                    label: const Text('Sign out'),
-                    style: OutlinedButton.styleFrom(
-                      minimumSize: const Size.fromHeight(52),
-                      foregroundColor: const Color(0xFFC0392B),
-                      side: const BorderSide(
-                        color: Color(0xFFF1C9C2),
-                        width: 1.5,
-                      ),
-                      shape: const StadiumBorder(),
-                      textStyle: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
+                  const SizedBox(height: 12),
+                  // Delete my account (both stores ask for this).
+                  _Tile(
+                    icon: Icons.delete_outline_rounded,
+                    title: 'Delete my account',
+                    subtitle: 'Only when you leave Haystek',
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const DeleteAccountScreen(),
                       ),
                     ),
                   ),
+                  const SizedBox(height: 28),
+
+                  // Sign out (admins and older email accounts only).
+                  if (!codeAccount)
+                    OutlinedButton.icon(
+                      onPressed: () => confirmSignOut(context),
+                      icon: const Icon(Icons.logout, size: 20),
+                      label: const Text('Sign out'),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(52),
+                        foregroundColor: const Color(0xFFC0392B),
+                        side: const BorderSide(
+                          color: Color(0xFFF1C9C2),
+                          width: 1.5,
+                        ),
+                        shape: const StadiumBorder(),
+                        textStyle: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -677,7 +696,7 @@ Future<void> _showPersonalCode(BuildContext context) async {
           if (code == null)
             Text(
               'Your code is not saved on this phone. Use the code you saved '
-              'when you joined.',
+                  'when you joined.',
               style: GoogleFonts.inter(
                 fontSize: 15,
                 height: 1.45,
@@ -704,8 +723,8 @@ Future<void> _showPersonalCode(BuildContext context) async {
             ),
             const SizedBox(height: 12),
             Text(
-              'Keep it safe and don’t share it. Anyone with this code can '
-              'open your account.',
+              'On a new phone, enter this code to get your account back. '
+                  'Keep it safe and don’t share it.',
               style: GoogleFonts.inter(
                 fontSize: 13.5,
                 height: 1.45,
@@ -772,11 +791,424 @@ class _Tile extends StatelessWidget {
         subtitle: subtitle == null
             ? null
             : Text(
-                subtitle!,
-                style: const TextStyle(fontSize: 13, color: AppColors.muted),
-              ),
+          subtitle!,
+          style: const TextStyle(fontSize: 13, color: AppColors.muted),
+        ),
         trailing: const Icon(Icons.chevron_right, color: AppColors.muted),
         onTap: onTap,
+      ),
+    );
+  }
+}
+
+
+// ---------------------------------------------------------------------------
+// Profile for personal-code employees: "Anonymous", what admin can and
+// can't see, how to get credit for an idea, the personal code (hidden
+// until Show), Help & Privacy and Delete my account.
+// ---------------------------------------------------------------------------
+
+const Color _line = Color(0xFFE3E8F1);
+const Color _soft = Color(0xFF8E97AB);
+const Color _red = Color(0xFFC0392B);
+const Color _green = Color(0xFF16A34A);
+
+TextStyle _s(double size, {FontWeight w = FontWeight.w400, Color c = AppColors.ink, double? h}) =>
+    GoogleFonts.inter(fontSize: size, fontWeight: w, color: c, height: h);
+
+class _CodeProfile extends StatefulWidget {
+  const _CodeProfile();
+
+  @override
+  State<_CodeProfile> createState() => _CodeProfileState();
+}
+
+class _CodeProfileState extends State<_CodeProfile> {
+  String? _code;
+  bool _loaded = false;
+  bool _show = false;
+
+  @override
+  void initState() {
+    super.initState();
+    AuthService.instance.savedCode().then((c) {
+      if (mounted) setState(() {
+        _code = c;
+        _loaded = true;
+      });
+    });
+  }
+
+  void _copy() {
+    final c = _code;
+    if (c == null) return;
+    Clipboard.setData(ClipboardData(text: c));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Personal code copied')),
+    );
+  }
+
+  Widget _label(String t) => Padding(
+    padding: const EdgeInsets.only(bottom: 8),
+    child: Text(t, style: _s(11.5, c: _soft).copyWith(letterSpacing: 0.7)),
+  );
+
+  Widget _item(bool hidden, String t) => Padding(
+    padding: const EdgeInsets.only(bottom: 10),
+    child: Row(
+      children: [
+        Container(
+          width: 24,
+          height: 24,
+          decoration: BoxDecoration(
+            color: hidden ? Colors.white : const Color(0xFFE7F6EC),
+            shape: BoxShape.circle,
+            border: hidden ? Border.all(color: const Color(0xFFD7E1FB)) : null,
+          ),
+          child: Icon(
+            hidden ? Icons.lock_outline_rounded : Icons.check_rounded,
+            size: 13,
+            color: hidden ? AppColors.blue : _green,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(child: Text(t, style: _s(14))),
+      ],
+    ),
+  );
+
+  Widget _smallButton(IconData icon, String t, VoidCallback? onTap) => Material(
+    color: Colors.white,
+    shape: const StadiumBorder(side: BorderSide(color: _line, width: 1.5)),
+    clipBehavior: Clip.antiAlias,
+    child: InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 15, color: AppColors.blue),
+            const SizedBox(width: 5),
+            Text(t, style: _s(13, w: FontWeight.w500, c: AppColors.blue)),
+          ],
+        ),
+      ),
+    ),
+  );
+
+  Widget _row({
+    required IconData icon,
+    required String title,
+    required String sub,
+    required VoidCallback onTap,
+    bool danger = false,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: danger ? const Color(0xFFFDEFEC) : AppColors.blueTint,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, size: 20, color: danger ? _red : AppColors.blue),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title,
+                      style: _s(15, w: FontWeight.w500, c: danger ? _red : AppColors.ink)),
+                  const SizedBox(height: 1),
+                  Text(sub, style: _s(12.5, c: AppColors.muted)),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right, color: _soft),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final code = _code;
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        leadingWidth: 68,
+        leading: const AppBackButton(),
+        title: const SizedBox.shrink(),
+        actions: const [_TitlePill('Profile', icon: Icons.person_outline)],
+      ),
+      body: SafeArea(
+        child: Align(
+          alignment: Alignment.topCenter,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 560),
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(20, 6, 20, 28),
+              children: [
+                // Who you are here: nobody.
+                Row(
+                  children: [
+                    Container(
+                      width: 56,
+                      height: 56,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [Color(0xFF0B1B4D), Color(0xFF14328F), AppColors.blue],
+                          stops: [0, 0.55, 1],
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Color(0x662453D6),
+                            blurRadius: 22,
+                            offset: Offset(0, 10),
+                            spreadRadius: -10,
+                          ),
+                        ],
+                      ),
+                      child: const Icon(Icons.person_outline_rounded,
+                          color: Colors.white, size: 26),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Anonymous', style: _s(21, w: FontWeight.w600)),
+                          const SizedBox(height: 2),
+                          Text('Employee · No email · No name',
+                              style: _s(12.5, c: AppColors.muted)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // Your privacy: hidden from admin / admin sees.
+                Container(
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20),
+                    gradient: const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [AppColors.blueTint, Color(0xFFF7F9FE)],
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.shield_outlined, size: 19, color: AppColors.blue),
+                          const SizedBox(width: 8),
+                          Text('Your privacy', style: _s(15, w: FontWeight.w600)),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      _label('HIDDEN FROM ADMIN'),
+                      _item(true, 'Your name'),
+                      _item(true, 'Your email and phone number'),
+                      _item(true, 'Who wrote which message'),
+                      const Divider(height: 12, color: Color(0xFFDCE5FA)),
+                      const SizedBox(height: 6),
+                      _label('ADMIN SEES'),
+                      _item(false, 'Your message, without your name'),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // Want credit? Name on one message only.
+                Container(
+                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFC9D6FF), width: 1.5),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('💡', style: TextStyle(fontSize: 18)),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Want credit for a good idea?',
+                                style: _s(14, w: FontWeight.w500)),
+                            const SizedBox(height: 3),
+                            Text.rich(
+                              TextSpan(
+                                children: [
+                                  const TextSpan(text: 'When you send, choose '),
+                                  TextSpan(
+                                    text: '👤 With my name',
+                                    style: _s(12.5, w: FontWeight.w500, c: AppColors.blue),
+                                  ),
+                                  const TextSpan(
+                                    text: '. Your name shows only on that one '
+                                        'message. Everything else stays anonymous.',
+                                  ),
+                                ],
+                              ),
+                              style: _s(12.5, c: AppColors.muted, h: 1.45),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // My personal code: hidden until Show.
+                Container(
+                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: _line),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 34,
+                            height: 34,
+                            decoration: BoxDecoration(
+                              color: AppColors.blueTint,
+                              borderRadius: BorderRadius.circular(11),
+                            ),
+                            child: const Icon(Icons.key_outlined,
+                                size: 18, color: AppColors.blue),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('My personal code', style: _s(15, w: FontWeight.w500)),
+                                Text('Needed only when you change your phone',
+                                    style: _s(12, c: AppColors.muted)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      if (!_loaded)
+                        const SizedBox(height: 40)
+                      else if (code == null)
+                        Text(
+                          'Your code is not saved on this phone. Use the code '
+                              'you saved when you joined.',
+                          style: _s(13, c: AppColors.muted, h: 1.45),
+                        )
+                      else
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Container(
+                                height: 40,
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF6F8FB),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                                    child: Text(
+                                      _show ? code : '•••••–•••••',
+                                      maxLines: 1,
+                                      style: GoogleFonts.robotoMono(
+                                        fontSize: 17,
+                                        fontWeight: FontWeight.w700,
+                                        letterSpacing: 2,
+                                        color: AppColors.blue,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            _smallButton(
+                              _show ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                              _show ? 'Hide' : 'Show',
+                                  () => setState(() => _show = !_show),
+                            ),
+                            const SizedBox(width: 6),
+                            _smallButton(Icons.copy_rounded, 'Copy', _copy),
+                          ],
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // Help & Privacy, Delete my account.
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: _line),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: Material(
+                    color: Colors.white,
+                    child: Column(
+                      children: [
+                        _row(
+                          icon: Icons.shield_outlined,
+                          title: 'Help & Privacy',
+                          sub: 'Questions and answers about the app',
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(builder: (_) => const HelpScreen()),
+                          ),
+                        ),
+                        const Divider(height: 1, color: Color(0xFFEEF1F6)),
+                        _row(
+                          icon: Icons.delete_outline_rounded,
+                          title: 'Delete my account',
+                          sub: 'Only when you leave Haystek',
+                          danger: true,
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => const DeleteAccountScreen(),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

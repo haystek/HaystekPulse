@@ -98,8 +98,8 @@ service cloud.firestore {
         && request.resource.data.adminProof is string
         && exists(/databases/$(database)/documents/admin_codes/$(request.resource.data.adminProof));
 
-      // Removing people is done only in the Firebase console.
-      allow delete: if false;
+      // Delete my account: each person can delete only their own record.
+      allow delete: if signedIn() && request.auth.uid == uid;
     }
 
     // ---------------------------------------------------------------
@@ -130,13 +130,39 @@ service cloud.firestore {
     // user ID, nothing that says who. Can't be changed. A personal-code
     // account can remove one (Delete my account frees the phone).
     // ---------------------------------------------------------------
+    // It also keeps the personal code, locked with a key made from the
+    // phone's ID (never sent anywhere), so the same phone signs in again
+    // by itself after a reinstall. Only that phone can open it.
     match /devices/{hash} {
       allow get: if true;
-      allow create: if codeAccount()
-        && request.resource.data.keys().hasOnly(['at'])
-        && request.resource.data.at == request.time;
-      allow list, update: if false;
+      allow create, update: if codeAccount()
+        && request.resource.data.keys().hasOnly(['at', 'salt', 'lock'])
+        && request.resource.data.at == request.time
+        && (!('lock' in request.resource.data)
+            || (request.resource.data.lock is string
+                && request.resource.data.lock.size() < 500
+                && request.resource.data.salt is string
+                && request.resource.data.salt.size() < 100));
+      allow list: if false;
       allow delete: if codeAccount();
+    }
+
+    // ---------------------------------------------------------------
+    // sessions/{uid}: which phone a personal-code account is on now
+    // (a scrambled phone ID, different from the devices record, so the two
+    // can't be linked). One phone at a time: when the code is used on a new
+    // phone, the old phone sees this change and signs out by itself.
+    // ---------------------------------------------------------------
+    match /sessions/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow create, update: if codeAccount()
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['phone', 'at'])
+        && request.resource.data.phone is string
+        && request.resource.data.phone.size() == 64
+        && request.resource.data.at == request.time;
+      // Delete my account.
+      allow delete: if signedIn() && request.auth.uid == uid;
     }
 
     // ---------------------------------------------------------------
@@ -153,7 +179,8 @@ service cloud.firestore {
              'v', 'salt', 'byPassword', 'backupSalt', 'byBackup', 'list'])
         && request.resource.data.list is string
         && request.resource.data.list.size() < 200000;
-      allow delete: if false;
+      // Delete my account.
+      allow delete: if signedIn() && request.auth.uid == uid;
     }
 
     // ---------------------------------------------------------------
@@ -403,7 +430,8 @@ service cloud.firestore {
         && (!('broadcastsSeenAt' in request.resource.data)
             || request.resource.data.broadcastsSeenAt is timestamp);
 
-      allow delete: if false;
+      // Delete my account.
+      allow delete: if signedIn() && request.auth.uid == uid;
     }
 
     // ---------------------------------------------------------------

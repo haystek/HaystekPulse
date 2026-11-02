@@ -10,6 +10,7 @@ import '../demo_data.dart';
 import '../models/employee.dart';
 import '../models/feedback_item.dart';
 import '../models/pulse_rating.dart';
+import '../services/auth_service.dart';
 import '../services/broadcast_service.dart';
 import '../services/feedback_service.dart';
 import '../services/notification_service.dart';
@@ -117,10 +118,13 @@ class EmployeeHomeScreen extends StatelessWidget {
                             ),
                           ),
                           MenuAction('My Feedback', () => openFeedback(0)),
-                          MenuAction(
-                            'Sign out',
-                                () => confirmSignOut(context),
-                          ),
+                          // Joined with an entry code: this phone is their
+                          // account, so no Sign out (only Delete my account).
+                          if (!AuthService.instance.isCodeAccount)
+                            MenuAction(
+                              'Sign out',
+                                  () => confirmSignOut(context),
+                            ),
                         ],
                       ),
                     ],
@@ -133,17 +137,17 @@ class EmployeeHomeScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Text(
+                      //   _greeting(),
+                      //   style: _inter(18, color: AppColors.muted),
+                      // ),
+                      // const SizedBox(height: 2),
                       Text(
                         _greeting(),
-                        style: _inter(15, color: AppColors.muted),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        name[0].toUpperCase() + name.substring(1),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: _inter(
-                          28,
+                          22,
                           weight: FontWeight.w700,
                           height: 1.15,
                           letterSpacing: -0.6,
@@ -196,7 +200,7 @@ class _AccountButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final initial = name.trim().isEmpty ? '?' : name.trim()[0].toUpperCase();
+    final initial = name.trim().isEmpty ? '' : name.trim()[0].toUpperCase();
     return PopupMenuButton<int>(
       tooltip: 'Your account',
       position: PopupMenuPosition.under,
@@ -213,10 +217,13 @@ class _AccountButton extends StatelessWidget {
           color: AppColors.blue,
           shape: BoxShape.circle,
         ),
-        child: Text(
-          initial,
-          style: _inter(16, weight: FontWeight.w700, color: Colors.white),
-        ),
+        // No name (joined with an entry code): a person icon.
+        child: initial.isEmpty
+            ? const Icon(Icons.person_outline_rounded, color: Colors.white, size: 22)
+            : Text(
+                initial,
+                style: _inter(16, weight: FontWeight.w700, color: Colors.white),
+              ),
       ),
     );
   }

@@ -2,10 +2,12 @@ import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/pulse_loading.dart';
 
 TextStyle _t(
   double size, {
@@ -548,19 +550,7 @@ class _FinishProfileScreenState extends State<FinishProfileScreen> {
   Widget build(BuildContext context) {
     // Saving by itself: just a spinner, the person sees no extra screen.
     if (_auto) {
-      return const Scaffold(
-        backgroundColor: Colors.white,
-        body: Center(
-          child: SizedBox(
-            width: 28,
-            height: 28,
-            child: CircularProgressIndicator(
-              strokeWidth: 2.5,
-              color: AppColors.blue,
-            ),
-          ),
-        ),
-      );
+      return const PulseLoadingScreen(text: 'Setting up your account…');
     }
     return Scaffold(
       backgroundColor: Colors.white,
@@ -600,6 +590,13 @@ class _FinishProfileScreenState extends State<FinishProfileScreen> {
                         controller: _code,
                         obscureText: _hideCode,
                         autocorrect: false,
+                        enableSuggestions: false,
+                        textCapitalization: TextCapitalization.characters,
+                        // Admin codes are 6 letters or numbers, like HSTADM.
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]')),
+                          LengthLimitingTextInputFormatter(6),
+                        ],
                         decoration: InputDecoration(
                           labelText: 'Admin entry code',
                           helperText: 'From the HR mail (only for admins)',

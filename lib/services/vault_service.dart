@@ -430,6 +430,20 @@ class VaultService {
   static String _open(Uint8List key, String lockedB64) =>
       utf8.decode(_openBytes(key, lockedB64));
 
+  /// Locks a short text with a key from [secret] (used to keep the
+  /// personal code locked with the phone's ID). Returns {salt, lock}.
+  static Future<Map<String, String>> lockWith(String secret, String text) async {
+    final salt = _randomB64(16);
+    final key = await _derive(secret, salt, _codeRounds);
+    return {'salt': salt, 'lock': _lock(key, text)};
+  }
+
+  /// Opens [lockWith]. Throws if [secret] is not the right one.
+  static Future<String> openWith(String secret, String salt, String lock) async {
+    final key = await _derive(secret, salt, _codeRounds);
+    return _open(key, lock);
+  }
+
   /// PBKDF2-SHA256 (slow on purpose). Runs where it is called: wrap it
   /// in [compute] to keep the screen smooth.
   static Uint8List pbkdf2(String secret, String saltB64, int rounds) =>

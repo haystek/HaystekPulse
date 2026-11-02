@@ -153,6 +153,12 @@ class NotificationService {
     } catch (error) {
       debugPrint('Notification setup: $error');
     }
+    // iPhone without push set up (no Apple developer account yet): the
+    // app works, only without notifications.
+    if (!await _pushReady()) {
+      debugPrint('Push not available on this phone yet: skipping groups.');
+      return;
+    }
     try {
       // The token is not needed for groups (topics). If it is slow, carry
       // on and join the groups anyway.
@@ -201,6 +207,19 @@ class NotificationService {
       }
     } catch (error) {
       debugPrint('Notifications not started: $error');
+    }
+  }
+
+  /// iPhone: push works only when Apple gave the phone an address (APNS
+  /// token). Without a paid Apple developer account with Push enabled
+  /// there is none: then skip joining and leaving groups (it can only
+  /// fail). Android is always ready.
+  Future<bool> _pushReady() async {
+    if (defaultTargetPlatform != TargetPlatform.iOS) return true;
+    try {
+      return await _fm.getAPNSToken() != null;
+    } catch (_) {
+      return false;
     }
   }
 
@@ -327,6 +346,8 @@ class NotificationService {
   /// once, so that is the only step normally needed. If it fails (for
   /// example no internet), leave the groups instead, all at the same time.
   Future<void> _cleanUp(List<String> followed) async {
+    // Never joined any group (iPhone without push): nothing to leave.
+    if (!await _pushReady()) return;
     try {
       await _fm.deleteToken().timeout(const Duration(seconds: 10));
       return;
