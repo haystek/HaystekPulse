@@ -162,8 +162,8 @@ class SentAsLine extends StatelessWidget {
   Widget build(BuildContext context) {
     final n = name.trim();
     final text = !named
-        ? '🔒 Sent without your name'
-        : (n.isEmpty ? '👤 Type your name above' : '👤 Sent as $n');
+        ? '🔒 Will be sent without your name'
+        : (n.isEmpty ? '👤 Type your name above' : '👤 Will be sent as $n');
     return Text(
       text,
       textAlign: TextAlign.center,

@@ -21,15 +21,6 @@ Widget _inter(BuildContext context, Widget child) {
   );
 }
 
-/// Inter for titles that set their own style.
-TextStyle _title(double size, {Color color = AppColors.ink}) =>
-    GoogleFonts.inter(
-      fontSize: size,
-      fontWeight: FontWeight.w800,
-      color: color,
-      letterSpacing: -0.3,
-    );
-
 /// Asks "Sign out?", then shows "Signing out…" while it happens.
 /// Used by the account menu and the Profile screen.
 /// Asks "Sign out?" and signs out only after the dialog has closed.
@@ -110,260 +101,202 @@ class ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final name = employee.name.trim();
-    final initial = name.isEmpty ? '?' : name[0].toUpperCase();
     final email = FirebaseAuth.instance.currentUser?.email ?? '';
-    final role = employee.isManagement ? 'Admin' : 'Employee';
     // Joined with an entry code: no email, no name, no password.
     final codeAccount = AuthService.isCodeEmail(email);
     // Employees with a personal code: their own privacy-first profile.
     if (codeAccount) return _inter(context, const _CodeProfile());
+    // Admins (and older email accounts): picture on top, name, settings.
+    return _inter(context, _AdminProfile(employee: employee, email: email));
+  }
+}
 
-    return _inter(
-      context,
-      Scaffold(
+// ---------------------------------------------------------------------------
+// Profile for admins and older email accounts: the same picture card as the
+// entry-code screen (shield badge, role pill, tilted chips), name and email,
+// "Your promise to the team" card, settings, then the Sign out button.
+// ---------------------------------------------------------------------------
+
+class _AdminProfile extends StatelessWidget {
+  const _AdminProfile({required this.employee, required this.email});
+
+  final Employee employee;
+  final String email;
+
+  @override
+  Widget build(BuildContext context) {
+    final name = employee.name.trim();
+    final isAdmin = employee.isManagement;
+
+    Widget divider() => const Divider(height: 1, color: Color(0xFFEEF1F6));
+
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
         backgroundColor: Colors.white,
-        appBar: AppBar(
-          backgroundColor: Colors.white,
-          surfaceTintColor: Colors.white,
-          leadingWidth: 68,
-          leading: const AppBackButton(),
-          // No title on the left: the name sits on the right in a pill.
-          title: const SizedBox.shrink(),
-          actions: const [
-            _TitlePill('Profile', icon: Icons.person_outline),
-          ],
-        ),
-        body: SafeArea(
-          child: Align(
-            alignment: Alignment.topCenter,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 560),
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
-                children: [
-                  // Name card.
+        surfaceTintColor: Colors.white,
+        leadingWidth: 68,
+        leading: const AppBackButton(),
+        title: const SizedBox.shrink(),
+        actions: const [_TitlePill('Profile', icon: Icons.person_outline)],
+      ),
+      body: SafeArea(
+        child: Align(
+          alignment: Alignment.topCenter,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 560),
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(20, 6, 20, 20),
+              children: [
+                _ProfilePicture(
+                  initial: name.isEmpty ? null : name[0].toUpperCase(),
+                  isAdmin: isAdmin,
+                ),
+                const SizedBox(height: 16),
+
+                // Name and email.
+                Text(
+                  name.isEmpty ? 'No name' : name,
+                  textAlign: TextAlign.center,
+                  style: _s(23, w: FontWeight.w600),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  email.isEmpty ? '—' : email,
+                  textAlign: TextAlign.center,
+                  style: _s(13.5, c: AppColors.muted),
+                ),
+
+                // Admins: the promise that keeps people speaking openly.
+                if (isAdmin) ...[
+                  const SizedBox(height: 16),
                   Container(
-                    padding: const EdgeInsets.fromLTRB(20, 24, 20, 22),
-                    decoration: _card(),
+                    padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+                    decoration: BoxDecoration(
+                      color: AppColors.blueTint,
+                      borderRadius: BorderRadius.circular(18),
+                    ),
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(
-                          width: 76,
-                          height: 76,
-                          alignment: Alignment.center,
-                          decoration: const BoxDecoration(
-                            color: AppColors.blue,
-                            shape: BoxShape.circle,
-                          ),
-                          child: initial == '?'
-                              ? const Icon(Icons.person_outline_rounded,
-                              color: Colors.white, size: 36)
-                              : Text(
-                            initial,
-                            style: _title(30, color: Colors.white),
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                        Text(
-                          name.isEmpty
-                              ? (codeAccount ? 'Anonymous' : 'No name')
-                              : name,
-                          textAlign: TextAlign.center,
-                          style: _title(22),
+                        Row(
+                          children: [
+                            const Icon(Icons.shield_outlined,
+                                size: 18, color: AppColors.blue),
+                            const SizedBox(width: 8),
+                            Text('Your promise to the team',
+                                style: _s(14.5, w: FontWeight.w600)),
+                          ],
                         ),
                         const SizedBox(height: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 5,
+                        Text.rich(
+                          TextSpan(
+                            children: [
+                              const TextSpan(text: 'You see every message, but '),
+                              TextSpan(
+                                text: 'never who wrote it',
+                                style: _s(13, w: FontWeight.w500),
+                              ),
+                              const TextSpan(
+                                text: ', unless they choose “With my name”. '
+                                    'This is what makes people speak openly.',
+                              ),
+                            ],
                           ),
-                          decoration: BoxDecoration(
-                            color: AppColors.blueTint,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            role,
-                            style: const TextStyle(
-                              color: AppColors.blueDeep,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
+                          style: _s(13, c: AppColors.muted, h: 1.45),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 16),
+                ],
+                const SizedBox(height: 14),
 
-                  // Details.
-                  Container(
-                    decoration: _card(),
-                    child: Column(
-                      children: codeAccount
-                          ? const [
-                        _InfoRow(
-                          icon: Icons.visibility_off_outlined,
-                          label: 'Account',
-                          value: 'Anonymous · no email, no name',
-                        ),
-                      ]
-                          : [
-                        _InfoRow(
-                          icon: Icons.badge_outlined,
-                          label: 'Employee ID',
-                          value: employee.employeeId.isEmpty
-                              ? '—'
-                              : employee.employeeId,
-                        ),
-                        const Divider(height: 1, color: Color(0xFFEEF1F6)),
-                        _InfoRow(
-                          icon: Icons.mail_outline,
-                          label: 'Email',
-                          value: email.isEmpty ? '—' : email,
-                        ),
-                      ],
-                    ),
+                // Settings. The border is on the Material itself, so the
+                // rows and the tap ripple stay inside the rounded corners.
+                Material(
+                  color: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
+                    side: const BorderSide(color: _line),
                   ),
-                  const SizedBox(height: 16),
-
-                  // Personal-code accounts: see the code again.
-                  if (codeAccount)
-                    _Tile(
-                      icon: Icons.key_outlined,
-                      title: 'My personal code',
-                      subtitle: 'You need it on a new phone',
-                      onTap: () => _showPersonalCode(context),
-                    ),
-                  // Change password (email accounts only).
-                  if (!codeAccount)
-                    Material(
-                      color: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                        side: const BorderSide(color: Color(0xFFE6EBF4)),
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.fromLTRB(18, 6, 12, 6),
-                        leading: const Icon(Icons.lock_outline,
-                            color: AppColors.blue),
-                        title: const Text(
-                          'Change password',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        trailing: const Icon(Icons.chevron_right,
-                            color: AppColors.muted),
+                  clipBehavior: Clip.antiAlias,
+                  child: Column(
+                    children: [
+                      _ListRow(
+                        icon: Icons.lock_outline,
+                        title: 'Change password',
+                        sub: 'Use at least 8 characters',
                         onTap: () => Navigator.of(context).push(
                           MaterialPageRoute<void>(
                             builder: (_) => const ChangeMyPasswordScreen(),
                           ),
                         ),
                       ),
-                    ),
-                  // Backup code (older email employee accounts).
-                  if (!employee.isManagement && !codeAccount) ...[
-                    const SizedBox(height: 12),
-                    Material(
-                      color: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                        side: const BorderSide(color: Color(0xFFE6EBF4)),
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.fromLTRB(18, 6, 12, 6),
-                        leading: const Icon(Icons.key_outlined,
-                            color: AppColors.blue),
-                        title: const Text(
-                          'Backup code',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
+                      divider(),
+                      // Backup code (older email employee accounts only).
+                      if (!isAdmin) ...[
+                        _ListRow(
+                          icon: Icons.key_outlined,
+                          title: 'Backup code',
+                          sub: 'Make a new code if you lost yours',
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => const NewBackupCodeScreen(),
+                            ),
                           ),
                         ),
-                        subtitle: const Text(
-                          'Make a new code if you lost yours',
-                          style: TextStyle(fontSize: 13, color: AppColors.muted),
-                        ),
-                        trailing: const Icon(Icons.chevron_right,
-                            color: AppColors.muted),
+                        divider(),
+                      ],
+                      _ListRow(
+                        icon: Icons.shield_outlined,
+                        title: 'Help & Privacy',
+                        sub: 'Questions and answers about the app',
                         onTap: () => Navigator.of(context).push(
                           MaterialPageRoute<void>(
-                            builder: (_) => const NewBackupCodeScreen(),
+                            builder: (_) => const HelpScreen(),
                           ),
                         ),
                       ),
-                    ),
-                  ],
-                  const SizedBox(height: 12),
-                  // Help & Privacy: questions and answers, who sees what.
-                  Material(
-                    color: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                      side: const BorderSide(color: Color(0xFFE6EBF4)),
-                    ),
-                    clipBehavior: Clip.antiAlias,
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.fromLTRB(18, 6, 12, 6),
-                      leading: const Icon(Icons.shield_outlined,
-                          color: AppColors.blue),
-                      title: const Text(
-                        'Help & Privacy',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
+                      // Delete my account (older email employee accounts only).
+                      if (!isAdmin) ...[
+                        divider(),
+                        _ListRow(
+                          icon: Icons.delete_outline_rounded,
+                          title: 'Delete my account',
+                          sub: 'Only when you leave Haystek',
+                          danger: true,
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => const DeleteAccountScreen(),
+                            ),
+                          ),
                         ),
-                      ),
-                      trailing: const Icon(Icons.chevron_right,
-                          color: AppColors.muted),
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => const HelpScreen(),
-                        ),
-                      ),
-                    ),
+                      ],
+                    ],
                   ),
-                  const SizedBox(height: 12),
-                  // Delete my account (both stores ask for this).
-                  _Tile(
-                    icon: Icons.delete_outline_rounded,
-                    title: 'Delete my account',
-                    subtitle: 'Only when you leave Haystek',
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => const DeleteAccountScreen(),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 28),
+                ),
+                const SizedBox(height: 24),
 
-                  // Sign out (admins and older email accounts only).
-                  if (!codeAccount)
-                    OutlinedButton.icon(
-                      onPressed: () => confirmSignOut(context),
-                      icon: const Icon(Icons.logout, size: 20),
-                      label: const Text('Sign out'),
-                      style: OutlinedButton.styleFrom(
-                        minimumSize: const Size.fromHeight(52),
-                        foregroundColor: const Color(0xFFC0392B),
-                        side: const BorderSide(
-                          color: Color(0xFFF1C9C2),
-                          width: 1.5,
-                        ),
-                        shape: const StadiumBorder(),
-                        textStyle: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
+                // Sign out.
+                OutlinedButton.icon(
+                  onPressed: () => confirmSignOut(context),
+                  icon: const Icon(Icons.logout_rounded, size: 20),
+                  label: const Text('Sign out'),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(52),
+                    foregroundColor: _red,
+                    side: const BorderSide(color: Color(0xFFF1C9C2), width: 1.5),
+                    shape: const StadiumBorder(),
+                    textStyle: _s(15.5, w: FontWeight.w600),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  'Haystek Pulse',
+                  textAlign: TextAlign.center,
+                  style: _s(12, c: _soft),
+                ),
+              ],
             ),
           ),
         ),
@@ -372,62 +305,219 @@ class ProfileScreen extends StatelessWidget {
   }
 }
 
-BoxDecoration _card() => BoxDecoration(
-  color: Colors.white,
-  borderRadius: BorderRadius.circular(20),
-  border: Border.all(color: const Color(0xFFE6EBF4)),
-  boxShadow: const [
+/// The picture card on top of the admin profile (same style as the
+/// entry-code screen): soft blue card, big shield badge (letter for older
+/// email accounts), role pill and small tilted chips.
+class _ProfilePicture extends StatelessWidget {
+  const _ProfilePicture({required this.initial, required this.isAdmin});
+
+  final String? initial;
+  final bool isAdmin;
+
+  static const _shadow = [
     BoxShadow(
-      color: Color(0x0F0E1A3A),
-      blurRadius: 18,
-      offset: Offset(0, 6),
+      color: Color(0x7314286E),
+      blurRadius: 30,
+      offset: Offset(0, 14),
+      spreadRadius: -16,
     ),
-  ],
-);
+  ];
 
-class _InfoRow extends StatelessWidget {
-  const _InfoRow({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
+  Widget _chip(String emoji, String text) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: _line),
+      boxShadow: _shadow,
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(emoji, style: const TextStyle(fontSize: 13)),
+        const SizedBox(width: 6),
+        Text(text, style: _s(11.5)),
+      ],
+    ),
+  );
 
-  final IconData icon;
-  final String label;
-  final String value;
+  Widget _tilt(double deg, Widget child) =>
+      Transform.rotate(angle: deg * 3.1415926 / 180, child: child);
+
+  Widget _circle(double size) => Container(
+    width: size,
+    height: size,
+    decoration: const BoxDecoration(
+      color: Color(0x122453D6),
+      shape: BoxShape.circle,
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
-      child: Row(
+    return Container(
+      height: 240,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(30),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [AppColors.blueTint, Color(0xFFF7F9FE)],
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
         children: [
-          Icon(icon, color: AppColors.muted, size: 22),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: const TextStyle(
-                    color: AppColors.muted,
-                    fontSize: 13,
+          // Soft circles in the corners.
+          Positioned(left: -60, top: -70, child: _circle(200)),
+          Positioned(right: -30, bottom: -40, child: _circle(140)),
+
+          // Small tilted chips.
+          if (isAdmin) ...[
+            Positioned(
+              left: 14,
+              top: 30,
+              child: _tilt(-6, _chip('💬', 'Read & reply')),
+            ),
+            Positioned(
+              right: -8,
+              top: 118,
+              child: _tilt(6, _chip('🙈', 'No names')),
+            ),
+          ],
+
+          // Big badge in the middle: shield for admins.
+          Positioned(
+            left: 0,
+            right: 0,
+            top: 40,
+            child: Center(
+              child: Container(
+                width: 116,
+                height: 116,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(36),
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Color(0xFF0B1B4D),
+                      Color(0xFF14328F),
+                      AppColors.blue,
+                    ],
+                    stops: [0, 0.55, 1],
                   ),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0xD92453D6),
+                      blurRadius: 40,
+                      offset: Offset(0, 22),
+                      spreadRadius: -18,
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  value,
-                  style: const TextStyle(
-                    color: AppColors.ink,
-                    fontSize: 15.5,
-                    fontWeight: FontWeight.w600,
-                  ),
+                child: isAdmin
+                    ? const Icon(Icons.shield_outlined,
+                    color: Colors.white, size: 54)
+                    : initial == null
+                    ? const Icon(Icons.person_outline_rounded,
+                    color: Colors.white, size: 52)
+                    : Text(
+                  initial!,
+                  style: _s(50, w: FontWeight.w600, c: Colors.white),
                 ),
-              ],
+              ),
+            ),
+          ),
+
+          // Role pill under the badge.
+          Positioned(
+            left: 0,
+            right: 0,
+            top: 180,
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(12, 7, 14, 7),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: _line),
+                  boxShadow: _shadow,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.shield_outlined,
+                        size: 15, color: AppColors.blue),
+                    const SizedBox(width: 6),
+                    Text(
+                      isAdmin ? 'Admin · Haystek Pulse' : 'Employee',
+                      style: _s(13, w: FontWeight.w500),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// One row in the admin profile list: icon square, title, small text, arrow.
+class _ListRow extends StatelessWidget {
+  const _ListRow({
+    required this.icon,
+    required this.title,
+    required this.sub,
+    required this.onTap,
+    this.danger = false,
+  });
+
+  final IconData icon;
+  final String title;
+  final String sub;
+  final VoidCallback onTap;
+  final bool danger;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: danger ? const Color(0xFFFDEFEC) : AppColors.blueTint,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child:
+              Icon(icon, size: 20, color: danger ? _red : AppColors.blue),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: _s(15,
+                        w: FontWeight.w500, c: danger ? _red : AppColors.ink),
+                  ),
+                  const SizedBox(height: 1),
+                  Text(sub, style: _s(12.5, c: AppColors.muted)),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right, color: _soft),
+          ],
+        ),
       ),
     );
   }
@@ -670,137 +760,6 @@ class _TitlePill extends StatelessWidget {
     );
   }
 }
-
-/// Profile -> My personal code: shows the code kept on this phone.
-Future<void> _showPersonalCode(BuildContext context) async {
-  final code = await AuthService.instance.savedCode();
-  if (!context.mounted) return;
-  await showDialog<void>(
-    context: context,
-    builder: (c) => AlertDialog(
-      backgroundColor: Colors.white,
-      surfaceTintColor: Colors.white,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      title: Text(
-        'My personal code',
-        style: GoogleFonts.inter(
-          fontSize: 20,
-          fontWeight: FontWeight.w600,
-          color: AppColors.ink,
-        ),
-      ),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (code == null)
-            Text(
-              'Your code is not saved on this phone. Use the code you saved '
-                  'when you joined.',
-              style: GoogleFonts.inter(
-                fontSize: 15,
-                height: 1.45,
-                color: AppColors.muted,
-              ),
-            )
-          else ...[
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF6F8FB),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFE3E8F1), width: 1.5),
-              ),
-              child: SelectableText(
-                code,
-                textAlign: TextAlign.center,
-                style: GoogleFonts.robotoMono(
-                  fontSize: 18,
-                  letterSpacing: 1.2,
-                  color: AppColors.ink,
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'On a new phone, enter this code to get your account back. '
-                  'Keep it safe and don’t share it.',
-              style: GoogleFonts.inter(
-                fontSize: 13.5,
-                height: 1.45,
-                color: AppColors.muted,
-              ),
-            ),
-          ],
-        ],
-      ),
-      actions: [
-        if (code != null)
-          TextButton(
-            onPressed: () {
-              Clipboard.setData(ClipboardData(text: code));
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Personal code copied')),
-              );
-            },
-            child: const Text('Copy'),
-          ),
-        FilledButton(
-          onPressed: () => Navigator.of(c).pop(),
-          style: FilledButton.styleFrom(
-            backgroundColor: AppColors.blue,
-            shape: const StadiumBorder(),
-          ),
-          child: const Text('Done'),
-        ),
-      ],
-    ),
-  );
-}
-
-/// One row button on the Profile screen.
-class _Tile extends StatelessWidget {
-  const _Tile({
-    required this.icon,
-    required this.title,
-    required this.onTap,
-    this.subtitle,
-  });
-
-  final IconData icon;
-  final String title;
-  final String? subtitle;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: const BorderSide(color: Color(0xFFE6EBF4)),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: ListTile(
-        contentPadding: const EdgeInsets.fromLTRB(18, 6, 12, 6),
-        leading: Icon(icon, color: AppColors.blue),
-        title: Text(
-          title,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-        ),
-        subtitle: subtitle == null
-            ? null
-            : Text(
-          subtitle!,
-          style: const TextStyle(fontSize: 13, color: AppColors.muted),
-        ),
-        trailing: const Icon(Icons.chevron_right, color: AppColors.muted),
-        onTap: onTap,
-      ),
-    );
-  }
-}
-
 
 // ---------------------------------------------------------------------------
 // Profile for personal-code employees: "Anonymous", what admin can and

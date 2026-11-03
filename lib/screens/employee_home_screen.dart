@@ -105,8 +105,8 @@ class EmployeeHomeScreen extends StatelessWidget {
                         fit: BoxFit.contain,
                       ),
                       const Spacer(),
-                      NotificationBell(employee: employee),
-                      const SizedBox(width: 10),
+                     // NotificationBell(employee: employee),
+                      //const SizedBox(width: 10),
                       _AccountButton(
                         name: employee.name,
                         actions: [

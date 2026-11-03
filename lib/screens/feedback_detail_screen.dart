@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../demo_data.dart';
 import '../models/feedback_item.dart';
 import '../models/pulse_rating.dart';
 import '../services/feedback_service.dart';
@@ -76,6 +77,9 @@ class _FeedbackDetailScreenState extends State<FeedbackDetailScreen> {
   /// Live copy of the entry (status changes show at once).
   late FeedbackItem _item;
   StreamSubscription<FeedbackItem?>? _itemSub;
+
+  /// Sample items are not in Firestore, so they update from DemoData.
+  StreamSubscription<void>? _demoSub;
   late final Stream<List<ThreadEntry>> _thread;
   int _lastCount = -1;
   double _lastInset = 0;
@@ -98,11 +102,20 @@ class _FeedbackDetailScreenState extends State<FeedbackDetailScreen> {
     _itemSub = FeedbackService.instance.watchOne(widget.item.id).listen((i) {
       if (i != null && mounted) setState(() => _item = i);
     });
+    if (widget.item.id.startsWith(DemoData.idPrefix)) {
+      _demoSub = DemoData.changes.listen((_) {
+        final latest = DemoData.all()
+            .where((i) => i.id == widget.item.id)
+            .firstOrNull;
+        if (latest != null && mounted) setState(() => _item = latest);
+      });
+    }
   }
 
   @override
   void dispose() {
     _itemSub?.cancel();
+    _demoSub?.cancel();
     _reply.dispose();
     _scroll.dispose();
     super.dispose();
@@ -147,7 +160,7 @@ class _FeedbackDetailScreenState extends State<FeedbackDetailScreen> {
   /// The "Change status" sheet.
   Future<void> _openStatusSheet() async {
     FocusScope.of(context).unfocus();
-    final changed = await showModalBottomSheet<String>(
+    final changed = await showModalBottomSheet<(String, String)>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -160,13 +173,84 @@ class _FeedbackDetailScreenState extends State<FeedbackDetailScreen> {
         _StatusSheet(item: _item, employeeName: _firstName),
       ),
     );
-    if (changed != null && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Status changed to ${FeedbackStatus.label(changed)}.'),
+    if (changed == null || !mounted) return;
+    final (status, message) = changed;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Status changed to ${FeedbackStatus.label(status)}.'),
+      ),
+    );
+    // Done: offer to tell everyone (good news builds trust).
+    if (status == FeedbackStatus.implemented) await _askShare(message);
+  }
+
+  /// After "Implemented": "Share with everyone?" Opens a new broadcast
+  /// with the suggestion quoted (never the name) and admin's message.
+  Future<void> _askShare(String message) async {
+    final share = await showDialog<bool>(
+      context: context,
+      builder: (c) => _withInter(
+        context,
+        AlertDialog(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          icon: Container(
+            width: 56,
+            height: 56,
+            decoration: const BoxDecoration(
+              color: AppColors.blueTint,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.campaign_outlined, color: AppColors.blue, size: 28),
+          ),
+          title: Text(
+            'Share with everyone?',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w600),
+          ),
+          content: Text(
+            'Let the whole team know this is done. The suggestion is shown '
+                'without the name of who sent it.',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.inter(fontSize: 14.5, height: 1.45, color: AppColors.muted),
+          ),
+          actionsPadding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+          actions: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                FilledButton(
+                  onPressed: () => Navigator.pop(c, true),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.blue,
+                    minimumSize: const Size.fromHeight(50),
+                    shape: const StadiumBorder(),
+                  ),
+                  child: const Text('Share with everyone'),
+                ),
+                const SizedBox(height: 8),
+                TextButton(
+                  onPressed: () => Navigator.pop(c, false),
+                  style: TextButton.styleFrom(minimumSize: const Size.fromHeight(46)),
+                  child: const Text('Not now'),
+                ),
+              ],
+            ),
+          ],
         ),
-      );
-    }
+      ),
+    );
+    if (share != true || !mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => NewBroadcastScreen(
+          quote: _item.text,
+          title: 'Done ✅',
+          body: message,
+        ),
+      ),
+    );
   }
 
   String _date(DateTime? d) {
@@ -224,27 +308,20 @@ class _FeedbackDetailScreenState extends State<FeedbackDetailScreen> {
                   final entries = snap.data ?? const <ThreadEntry>[];
                   if (snap.hasData) _scrollDownIfNew(entries.length);
                   final rows = buildThreadRows(_item, entries);
+                  if (rows.isEmpty) {
+                    // Still loading: show nothing, so it does not flash.
+                    if (!snap.hasData) return const SizedBox.expand();
+                    return _NoReplies(scroll: _scroll);
+                  }
                   return ListView(
                     controller: _scroll,
                     padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
                     children: [
-                      if (rows.isEmpty)
-                        Text(
-                          'No replies yet. Write below to reply, or tap the '
-                          'list button to change the status.',
-                          style: _t(
-                            13.5,
-                            weight: FontWeight.w400,
-                            color: AppColors.muted,
-                            height: 1.45,
-                          ),
-                        )
-                      else
-                        FeedbackTimeline(
-                          rows: rows,
-                          managementView: true,
-                          employeeName: name,
-                        ),
+                      FeedbackTimeline(
+                        rows: rows,
+                        managementView: true,
+                        employeeName: name,
+                      ),
                     ],
                   );
                 },
@@ -280,6 +357,77 @@ class _FeedbackDetailScreenState extends State<FeedbackDetailScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// No replies yet: a small message in the middle of the empty space.
+/// It scrolls when the keyboard leaves little room.
+class _NoReplies extends StatelessWidget {
+  const _NoReplies({required this.scroll});
+
+  final ScrollController scroll;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, box) {
+        return SingleChildScrollView(
+          controller: scroll,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: box.maxHeight),
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(32, 16, 32, 16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 56,
+                      height: 56,
+                      decoration: const BoxDecoration(
+                        color: AppColors.blueTint,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.chat_bubble_outline_rounded,
+                        size: 24,
+                        color: AppColors.blue,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Text('No replies yet', style: _t(16)),
+                    const SizedBox(height: 4),
+                    Text.rich(
+                      TextSpan(
+                        text: 'Write a reply below, or tap ',
+                        children: const [
+                          WidgetSpan(
+                            alignment: PlaceholderAlignment.middle,
+                            child: Icon(
+                              Icons.tune_rounded,
+                              size: 16,
+                              color: AppColors.blue,
+                            ),
+                          ),
+                          TextSpan(text: ' to change the status.'),
+                        ],
+                      ),
+                      textAlign: TextAlign.center,
+                      style: _t(
+                        13.5,
+                        weight: FontWeight.w400,
+                        color: AppColors.muted,
+                        height: 1.45,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -330,7 +478,7 @@ class _StatusSheetState extends State<_StatusSheet> {
         status: status,
         message: text,
       );
-      navigator.pop(status);
+      navigator.pop((status, text));
     } catch (_) {
       if (!mounted) return;
       setState(() {
@@ -349,9 +497,9 @@ class _StatusSheetState extends State<_StatusSheet> {
         if (s != widget.item.status) s,
     ];
     OutlineInputBorder border(Color color) => OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: color, width: 1.5),
-        );
+      borderRadius: BorderRadius.circular(14),
+      borderSide: BorderSide(color: color, width: 1.5),
+    );
 
     return Padding(
       // Stay above the keyboard.
@@ -383,9 +531,9 @@ class _StatusSheetState extends State<_StatusSheet> {
                 onTap: _busy
                     ? null
                     : (s) => setState(() {
-                          _chosen = s == _chosen ? null : s;
-                          _error = null;
-                        }),
+                  _chosen = s == _chosen ? null : s;
+                  _error = null;
+                }),
               ),
               const SizedBox(height: 14),
               TextField(
@@ -426,18 +574,18 @@ class _StatusSheetState extends State<_StatusSheet> {
                 ),
                 child: _busy
                     ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
                     : Text(
-                        _chosen == null
-                            ? 'Choose a status'
-                            : 'Change to ${FeedbackStatus.label(_chosen!)}',
-                      ),
+                  _chosen == null
+                      ? 'Choose a status'
+                      : 'Change to ${FeedbackStatus.label(_chosen!)}',
+                ),
               ),
             ],
           ),
@@ -474,53 +622,53 @@ class _MessageCard extends StatelessWidget {
     return ThreadHeaderCard(
       text: item.text,
       top: Row(
-            children: [
-              Container(
-                width: 32,
-                height: 32,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: anonymous ? Colors.white : AppColors.blueTint,
-                  borderRadius: BorderRadius.circular(11),
-                ),
-                child: anonymous
-                    ? const Icon(
-                  Icons.lock_outline_rounded,
-                  size: 17,
-                  color: Color(0xFF8E97AB),
-                )
-                    : Text(
-                  name[0].toUpperCase(),
-                  style: _t(14, color: AppColors.blue),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      anonymous ? 'Name hidden' : name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: _t(14),
-                    ),
-                    if (sub.isNotEmpty)
-                      Text(
-                        sub,
-                        style: _t(
-                          12,
-                          weight: FontWeight.w400,
-                          color: const Color(0xFF8E97AB),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              _Pill(status: item.status),
-            ],
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: anonymous ? Colors.white : AppColors.blueTint,
+              borderRadius: BorderRadius.circular(11),
+            ),
+            child: anonymous
+                ? const Icon(
+              Icons.lock_outline_rounded,
+              size: 17,
+              color: Color(0xFF8E97AB),
+            )
+                : Text(
+              name[0].toUpperCase(),
+              style: _t(14, color: AppColors.blue),
+            ),
           ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  anonymous ? 'Name hidden' : name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: _t(14),
+                ),
+                if (sub.isNotEmpty)
+                  Text(
+                    sub,
+                    style: _t(
+                      12,
+                      weight: FontWeight.w400,
+                      color: const Color(0xFF8E97AB),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          _Pill(status: item.status),
+        ],
+      ),
     );
   }
 }
@@ -725,4 +873,4 @@ class _TitlePill extends StatelessWidget {
       ),
     );
   }
-} 
+}

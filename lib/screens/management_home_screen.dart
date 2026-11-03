@@ -16,7 +16,7 @@ import '../services/feedback_service.dart';
 import '../services/pulse_service.dart';
 import '../services/push_sender.dart';
 import '../theme/app_theme.dart';
-import '../widgets/notification_bell.dart';
+// import '../widgets/notification_bell.dart';
 import '../widgets/pulse_line.dart';
 import '../widgets/ui.dart' hide PulseLine;
 import 'all_weeks_screen.dart';
@@ -195,6 +195,7 @@ class _ManagementHomeScreenState extends State<ManagementHomeScreen>
         builder: (_) => AllWeeksScreen(
           totalEmployees: _totalEmployees,
           selectedWeekId: _shownWeekId,
+          onRemind: PushSender.available ? _remind : null,
         ),
       ),
     );
@@ -221,7 +222,8 @@ class _ManagementHomeScreenState extends State<ManagementHomeScreen>
   }
 
   /// Asks first, then sends, then says whether it went out.
-  Future<void> _confirmAndSend({
+  /// True only when the notification was sent.
+  Future<bool> _confirmAndSend({
     required String title,
     required String question,
     required Future<bool> Function() send,
@@ -244,10 +246,10 @@ class _ManagementHomeScreenState extends State<ManagementHomeScreen>
         ],
       )),
     );
-    if (yes != true || !mounted) return;
+    if (yes != true || !mounted) return false;
     setState(() => _sending = true);
     final ok = await send();
-    if (!mounted) return;
+    if (!mounted) return ok;
     setState(() => _sending = false);
     messenger.showSnackBar(
       SnackBar(
@@ -258,10 +260,11 @@ class _ManagementHomeScreenState extends State<ManagementHomeScreen>
         ),
       ),
     );
+    return ok;
   }
 
-  void _remind() {
-    _confirmAndSend(
+  Future<bool> _remind() {
+    return _confirmAndSend(
       title: 'Send a reminder?',
       question:
       'Only employees who have not answered this week will '
@@ -318,8 +321,8 @@ class _ManagementHomeScreenState extends State<ManagementHomeScreen>
                                 child: Wordmark(height: onBlue ? 26 : 34),
                               ),
                               const Spacer(),
-                              NotificationBell(employee: widget.employee),
-                              const SizedBox(width: 8),
+                              // NotificationBell(employee: widget.employee),
+                              // const SizedBox(width: 8),
                               _AccountButton(
                                 name: widget.employee.name,
                                 onBlue: onBlue,
@@ -770,7 +773,12 @@ Color _moodColor(String rating) {
         : ('No answers yet', 'Answers show here as soon as people send them.');
   }
   if (submitted < needed) {
-    return (
+    return closed
+        ? (
+    'Not enough answers',
+    'A summary needs at least $needed answers.',
+    )
+        : (
     'Waiting for more answers',
     '$submitted of $total answered. The summary shows after $needed.',
     );
@@ -998,7 +1006,12 @@ class _WeekHeroState extends State<_WeekHero> {
           children: [
             Icon(icon, size: 15, color: fg),
             const SizedBox(width: 5),
-            Text(text, style: _t(13, weight: FontWeight.w500, color: fg)),
+            Flexible(
+              child: Text(
+                text,
+                style: _t(13, weight: FontWeight.w500, color: fg),
+              ),
+            ),
           ],
         ),
       ),
@@ -1224,86 +1237,100 @@ class _WeekHeroState extends State<_WeekHero> {
       closed: true,
     );
     final submitted = widget.totals.submitted;
-    final missed = (widget.total - submitted).clamp(0, widget.total);
-
-    final Widget bottom;
-    if (widget.isThisWeek) {
-      final nextWeek = PulseService.shortWeekLabel(PulseService.nextWeekId());
-      final next = PulseService.dateTimeLabel(PulseService.nextOpensAt());
-      bottom = Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            'NEXT WEEKLY PULSE',
-            style: _t(11, weight: FontWeight.w600, color: _soft)
-                .copyWith(letterSpacing: 1.1),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            nextWeek,
-            style: _t(15, weight: FontWeight.w600, color: Colors.white),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            'Opens $next',
-            style: _t(13, color: _soft),
-          ),
-        ],
-      );
-    } else {
-      bottom = Text('This week is closed.', style: _t(13, color: _soft));
-    }
+    final name = PulseService.weekName(widget.weekId);
+    final dates = _weekDates();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _top(
-          _HeroChip(
-            'Closed',
-            bg: Colors.white.withValues(alpha: 0.14),
-            fg: Colors.white,
-          ),
-        ),
-        const SizedBox(height: 16),
-        Text('Weekly Pulse closed', style: _t(15, color: _light)),
-        const SizedBox(height: 2),
-        Text(
-          title,
-          style: _t(28, weight: FontWeight.w700, letterSpacing: -0.6),
-        ),
-        ..._underTitle(line),
-        const SizedBox(height: 10),
-        // Faint: shows how far the answers got.
-        PulseLine(
-          progress: _answered,
-          showDot: false,
-          heartColor: Colors.white.withValues(alpha: 0.35),
-          lineColor: Colors.white.withValues(alpha: 0.45),
-        ),
-        if (widget.total > 0) ...[
-          const SizedBox(height: 8),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: _when('Answered', '$submitted of ${widget.total}'),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                name.isEmpty ? dates : '$name, $dates',
+                style: _t(13, color: _light),
               ),
-              _when("Didn't answer", '$missed', right: true),
-            ],
+            ),
+            const SizedBox(width: 8),
+            _HeroChip(
+              'Closed',
+              bg: Colors.white.withValues(alpha: 0.14),
+              fg: Colors.white,
+            ),
+          ],
+        ),
+        const SizedBox(height: 18),
+        Row(
+          children: [
+            // How many answered, in a ring.
+            SizedBox(
+              width: 72,
+              height: 72,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  CircularProgressIndicator(
+                    value: _answered,
+                    strokeWidth: 7,
+                    strokeCap: StrokeCap.round,
+                    color: Colors.white,
+                    backgroundColor: Colors.white.withValues(alpha: 0.22),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        '$submitted/${widget.total}',
+                        style: _t(16, weight: FontWeight.w500),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: _t(20, weight: FontWeight.w500)),
+                  if (line.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(line, style: _t(13, color: _light)),
+                  ] else if (_trend() != null)
+                    _trend()!,
+                ],
+              ),
+            ),
+          ],
+        ),
+        // Only this week shows when the next Weekly Pulse opens.
+        if (widget.isThisWeek) ...[
+          const SizedBox(height: 18),
+          Container(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Next Weekly Pulse, '
+                      '${PulseService.shortWeekLabel(PulseService.nextWeekId())}',
+                  style: _t(13, color: _light),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Opens ${PulseService.dateTimeLabel(PulseService.nextOpensAt())}',
+                  style: _t(16, weight: FontWeight.w500),
+                ),
+              ],
+            ),
           ),
         ],
-        if (!AppConfig.pulseOpenEveryDay) ...[
-          const SizedBox(height: 16),
-          // Opened → Closed, all done.
-          _Timeline(
-            opensAt: PulseService.opensAt(_weekDate),
-            closesAt: PulseService.closesAt(_weekDate),
-            closed: true,
-          ),
-        ],
-        const SizedBox(height: 14),
-        bottom,
       ],
     );
   }
@@ -1959,7 +1986,8 @@ String _shortWeek(String weekId) {
 
 /// A row of week cards you can swipe sideways, newest on the right.
 /// Each card shows the dates, a small colour bar and how many answered.
-class _WeekCards extends StatelessWidget {
+/// The selected week scrolls to the centre.
+class _WeekCards extends StatefulWidget {
   const _WeekCards({
     required this.weekIds,
     required this.weeks,
@@ -1980,16 +2008,82 @@ class _WeekCards extends StatelessWidget {
   final ValueChanged<String> onPick;
 
   @override
+  State<_WeekCards> createState() => _WeekCardsState();
+}
+
+class _WeekCardsState extends State<_WeekCards> {
+  static const double _cardWidth = 116;
+  static const double _gap = 8;
+  static const double _sidePadding = 20;
+
+  final ScrollController _scroll = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _showSelected(animate: false);
+  }
+
+  @override
+  void didUpdateWidget(_WeekCards old) {
+    super.didUpdateWidget(old);
+    if (old.selected != widget.selected) _showSelected(animate: true);
+  }
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  /// Puts the selected week in the centre, as far as the row allows.
+  /// The row is reversed, so 0 is the newest week on the right.
+  void _showSelected({required bool animate}) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scroll.hasClients) return;
+      final index = widget.weekIds.indexOf(widget.selected);
+      if (index < 0) return;
+      final position = _scroll.position;
+      final centre =
+          _sidePadding + index * (_cardWidth + _gap) + _cardWidth / 2;
+      final target = (centre - position.viewportDimension / 2)
+          .clamp(0.0, position.maxScrollExtent);
+      if (animate) {
+        _scroll.animateTo(
+          target,
+          duration: const Duration(milliseconds: 350),
+          curve: Curves.easeOutCubic,
+        );
+      } else {
+        _scroll.jumpTo(target);
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final weekIds = widget.weekIds;
+    final weeks = widget.weeks;
+    final selected = widget.selected;
+    final upcoming = widget.upcoming;
+    final closedThisWeek = widget.closedThisWeek;
+    final onPick = widget.onPick;
+
     return SizedBox(
       height: 92,
-      child: ListView.separated(
+      child: ListView.builder(
+        controller: _scroll,
         // Reversed, so it opens at the newest week on the right.
         reverse: true,
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 20),
+        // The left side is smaller because each card brings its own gap.
+        padding: const EdgeInsets.only(
+          left: _sidePadding - _gap,
+          right: _sidePadding,
+        ),
+        // Every card has the same width, so its place is known exactly.
+        itemExtent: _cardWidth + _gap,
         itemCount: weekIds.length,
-        separatorBuilder: (context, index) => const SizedBox(width: 8),
         itemBuilder: (context, i) {
           final id = weekIds[i];
           final t = weeks[id] ?? const PulseTotals();
@@ -2013,7 +2107,7 @@ class _WeekCards extends StatelessWidget {
                 if (t.countFor(r) > 0) r,
           ];
 
-          return Material(
+          final card = Material(
             // Not open yet: a light grey card, so it looks like it is waiting.
             color: isUpcoming
                 ? const Color(0xFFF6F8FB)
@@ -2094,6 +2188,10 @@ class _WeekCards extends StatelessWidget {
                 ),
               ),
             ),
+          );
+          return Padding(
+            padding: const EdgeInsets.only(left: _gap),
+            child: card,
           );
         },
       ),

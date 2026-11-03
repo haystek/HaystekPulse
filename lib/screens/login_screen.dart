@@ -898,8 +898,26 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
     );
 
-    // Create account.
+    // Create account (admins only): "About you" and "Admin code" sections,
+    // each field in its own rounded box, with a short hint under it.
     if (_signUpMode) {
+      Widget section(String t) => Padding(
+            padding: const EdgeInsets.fromLTRB(4, 14, 4, 8),
+            child: Text(
+              t,
+              style: GoogleFonts.inter(
+                fontSize: 12,
+                letterSpacing: 0.7,
+                color: const Color(0xFF8E97AB),
+              ),
+            ),
+          );
+      Widget hint(String t) => Padding(
+            padding: const EdgeInsets.fromLTRB(6, 6, 6, 0),
+            child: Text(t, style: _sub),
+          );
+      Widget gap() => const SizedBox(height: 10);
+
       return Form(
         key: _formKey,
         autovalidateMode: _tried
@@ -910,13 +928,12 @@ class _LoginScreenState extends State<LoginScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text('Create admin account', style: _h(24)),
-            const SizedBox(height: 2),
+            const SizedBox(height: 4),
             Text(
-              'Only for admins. Use your office email '
-                  '(${AuthService.officeDomain}).',
-              style: _sub,
+              'Only for managers and HR.',
+              style: GoogleFonts.inter(fontSize: 14, color: AppColors.muted),
             ),
-            const SizedBox(height: 18),
+            section('ABOUT YOU'),
             _card([
               _row(
                 icon: Icons.person_outline,
@@ -932,54 +949,72 @@ class _LoginScreenState extends State<LoginScreen> {
                       : null,
                 ),
               ),
-              emailRow,
-              passwordRow,
             ]),
-            const Padding(
-              padding: EdgeInsets.fromLTRB(4, 6, 4, 0),
-              child: Text(
-                'At least 8 characters. It also locks your history, '
-                    'so pick one only you know.',
-                style: _sub,
-              ),
-            ),
+            gap(),
+            _card([emailRow]),
+            hint('Must end with ${AuthService.officeDomain}'),
+            gap(),
+            _card([passwordRow]),
+            hint('At least 8 characters.'),
             if (_admin) ...[
-              const SizedBox(height: 12),
-              _card([
-                _row(
-                  icon: Icons.key_outlined,
-                  field: TextFormField(
-                    controller: _adminCode,
-                    obscureText: _hideCode,
-                    autocorrect: false,
-                    enableSuggestions: false,
-                    textCapitalization: TextCapitalization.characters,
-                    // Admin codes are 6 letters or numbers, like HSTADM.
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]')),
-                      LengthLimitingTextInputFormatter(6),
-                      TextInputFormatter.withFunction(
-                            (old, now) => now.copyWith(text: now.text.toUpperCase()),
-                      ),
-                    ],
-                    style: GoogleFonts.inter(fontSize: 15.5, color: AppColors.ink),
-                    decoration: _plain('Admin entry code'),
-                    validator: (v) => (_admin && (v == null || v.trim().isEmpty))
-                        ? 'Enter the admin entry code'
-                        : null,
-                  ),
-                  trailing: TextButton(
-                    onPressed: () => setState(() => _hideCode = !_hideCode),
-                    style: _linkButton,
-                    child: Text(_hideCode ? 'Show' : 'Hide'),
+              section('ADMIN CODE'),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(18),
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [AppColors.blueTint, Color(0xFFF7F9FE)],
                   ),
                 ),
-              ]),
-              const Padding(
-                padding: EdgeInsets.fromLTRB(4, 6, 4, 0),
-                child: Text(
-                  'From the HR mail. Only admins get this code.',
-                  style: _sub,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _card([
+                      _row(
+                        icon: Icons.key_outlined,
+                        field: TextFormField(
+                          controller: _adminCode,
+                          obscureText: _hideCode,
+                          autocorrect: false,
+                          enableSuggestions: false,
+                          textCapitalization: TextCapitalization.characters,
+                          // Admin codes are 6 letters or numbers, like HSTADM.
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]')),
+                            LengthLimitingTextInputFormatter(6),
+                            TextInputFormatter.withFunction(
+                              (old, now) => now.copyWith(text: now.text.toUpperCase()),
+                            ),
+                          ],
+                          style: GoogleFonts.inter(fontSize: 15.5, color: AppColors.ink),
+                          decoration: _plain('Admin code (6 letters)'),
+                          validator: (v) => (_admin && (v == null || v.trim().isEmpty))
+                              ? 'Enter the admin code'
+                              : null,
+                        ),
+                        trailing: TextButton(
+                          onPressed: () => setState(() => _hideCode = !_hideCode),
+                          style: _linkButton,
+                          child: Text(_hideCode ? 'Show' : 'Hide'),
+                        ),
+                      ),
+                    ]),
+                    const SizedBox(height: 8),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: Text(
+                        'This makes sure only real admins can sign up. '
+                        'Employees join with the entry code instead.',
+                        style: GoogleFonts.inter(
+                          fontSize: 12.5,
+                          height: 1.4,
+                          color: AppColors.muted,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -991,7 +1026,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             const SizedBox(height: 8),
             _helpLine(
-              'Already have an account?',
+              'Already an admin?',
               'Sign in',
               _busy ? null : () => _toggleSignUp(false),
             ),

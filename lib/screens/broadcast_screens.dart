@@ -725,9 +725,13 @@ class _NameChoice extends StatelessWidget {
 /// Admin: write a broadcast. From a suggestion, [quote] is its text
 /// (never the name of who wrote it), and can be removed with ✕.
 class NewBroadcastScreen extends StatefulWidget {
-  const NewBroadcastScreen({super.key, this.quote});
+  const NewBroadcastScreen({super.key, this.quote, this.title, this.body});
 
   final String? quote;
+
+  /// Filled in already (from "Share with everyone?" after Implemented).
+  final String? title;
+  final String? body;
 
   @override
   State<NewBroadcastScreen> createState() => _NewBroadcastScreenState();
@@ -745,6 +749,8 @@ class _NewBroadcastScreenState extends State<NewBroadcastScreen> {
   void initState() {
     super.initState();
     _quote = widget.quote;
+    _title.text = widget.title ?? '';
+    _body.text = widget.body ?? '';
   }
 
   @override
