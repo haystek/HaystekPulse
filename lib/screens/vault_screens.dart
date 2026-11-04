@@ -1190,8 +1190,8 @@ class _CodeFinishScreenState extends State<CodeFinishScreen> {
       key: const ValueKey('finish-entry'),
       icon: Icons.mark_email_read_outlined,
       title: 'Enter your entry code',
-      text: 'To finish setting up your account, enter the entry code '
-          'shared with your team.',
+      text: 'To finish setting up your account, enter a code from '
+          'Pulse Codes in Zoho.',
       label: 'Entry code',
       obscure: false,
       button: 'Continue',

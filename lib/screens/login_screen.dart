@@ -265,7 +265,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _join() async {
     FocusScope.of(context).unfocus();
     if (_entryCode.text.trim().isEmpty) {
-      setState(() => _error = 'Enter the entry code shared with your team.');
+      setState(() => _error = 'Enter a code from Pulse Codes in Zoho.');
       return;
     }
     setState(() {
@@ -683,7 +683,7 @@ class _LoginScreenState extends State<LoginScreen> {
             Text('Join', style: _h(24)),
             const SizedBox(height: 4),
             const Text(
-              'Enter the entry code shared with your team. It only shows you are '
+              'Pick any code from Pulse Codes in Zoho. It only shows you are '
                   'from Haystek, not who you are.',
               style: _sub,
             ),
@@ -2037,8 +2037,8 @@ class _JoinViewState extends State<_JoinView> {
                         widget.personal
                             ? 'Enter your personal code to get your account back on this phone.\n'
                             'Don’t have it? Find it on your old phone in Profile → My personal code.'
-                            : 'Enter the entry code shared with your team.\n'
-                            'It’s the same for everyone.',
+                            : 'Pick any code from Pulse Codes in Zoho.\n'
+                            'Each code works only once.',
                         textAlign: TextAlign.center,
                         style: _s(14, c: AppColors.muted, h: 1.45),
                       ),

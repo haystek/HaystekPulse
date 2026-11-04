@@ -69,8 +69,8 @@ const List<_Qa> _questions = [
   ),
   _Qa(
     'Why no email or name to sign up?',
-    'So nobody can tell who you are. You join with the entry code shared '
-        'with your team. It is the same for everyone, so it only shows you are from '
+    'So nobody can tell who you are. You join with a code from Pulse Codes '
+        'in Zoho. Codes are not linked to anyone, so they only show you are from '
         'Haystek, not who you are.',
   ),
   _Qa(
@@ -87,7 +87,7 @@ const List<_Qa> _questions = [
   ),
   _Qa(
     'I lost my phone and my code.',
-    'Join again with the entry code. Admin keeps your old messages, but your '
+    'Join again with a new code from Pulse Codes in Zoho. Admin keeps your old messages, but your '
         'history in the app is gone.',
   ),
   _Qa(

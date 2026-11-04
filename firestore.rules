@@ -56,8 +56,9 @@ service cloud.firestore {
 
       // Employees (join with entry code): a personal-code account creates
       // its own record, once. Always an employee ('e'), no name, no email.
-      // The app sends a SHA-256 of the entry code (entryProof), and
-      // entry_codes/{entryProof} must exist.
+      // The app sends a SHA-256 of the join code (entryProof). In the same
+      // step the app must mark join_codes/{entryProof} as used: it must be
+      // active before and inactive after, so each code makes one account.
       allow create: if codeAccount()
         && request.auth.uid == uid
         && request.resource.data.keys().hasOnly([
@@ -70,7 +71,7 @@ service cloud.firestore {
         && request.resource.data.active == true
         && request.resource.data.createdAt == request.time
         && request.resource.data.entryProof is string
-        && exists(/databases/$(database)/documents/entry_codes/$(request.resource.data.entryProof));
+        && joinCodeUsedNow(request.resource.data.entryProof);
 
       // Admins (email sign-up): a verified @haystek.com person creates their
       // own record, once, only with the right admin entry code: the app
@@ -114,7 +115,34 @@ service cloud.firestore {
     }
 
     // ---------------------------------------------------------------
-    // entry_codes/{SHA-256 of the code}: the employee entry code(s) HR
+    // join_codes/{SHA-256 of the code}: one-time join codes. Made only by
+    // the Cloud Function (always 20 active), shown on the Pulse Codes page
+    // in Zoho. The app may look up one code by its SHA-256 (get only,
+    // nobody can list them). The only change allowed: active true -> false,
+    // together with creating the person's own employee record.
+    // ---------------------------------------------------------------
+    function joinCodeUsedNow(proof) {
+      let path = /databases/$(database)/documents/join_codes/$(proof);
+      return exists(path)
+        && get(path).data.active == true
+        && getAfter(path).data.active == false;
+    }
+
+    match /join_codes/{hash} {
+      allow get: if true;
+      allow list, create, delete: if false;
+      allow update: if codeAccount()
+        && resource.data.active == true
+        && request.resource.data.active == false
+        && request.resource.data.usedAt == request.time
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['active', 'usedAt'])
+        && !exists(/databases/$(database)/documents/employees/$(request.auth.uid))
+        && getAfter(/databases/$(database)/documents/employees/$(request.auth.uid)).data.entryProof == hash;
+    }
+
+    // ---------------------------------------------------------------
+    // entry_codes/{SHA-256 of the code}: old single entry code (not used
+    // for joining any more; kept so nothing breaks). The employee entry code(s) HR
     // mails to everyone. Added only in the Firebase console. The Join
     // screen checks a typed code by looking up its SHA-256 (get only).
     // To change the code: add the new one, delete the old one.

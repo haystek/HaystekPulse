@@ -177,17 +177,21 @@ class AuthService {
     await signOut();
   }
 
-  /// True if this is a valid employee entry code.
-  Future<bool> isEntryCode(String code) async {
+  /// Checks a join code from the "Pulse Codes" page in Zoho.
+  /// Each code works only once: join_codes/{SHA-256 of the code} has
+  /// active: true until someone joins with it.
+  /// Throws 'entry-code-wrong' (no such code) or 'entry-code-used'.
+  Future<void> checkJoinCode(String code) async {
     final c = normalizeEntryCode(code);
-    if (c.isEmpty) return false;
-    final hash = VaultService.sha256Hex(c);
+    if (c.isEmpty) throw FirebaseAuthException(code: 'entry-code-wrong');
     final doc = await _db
-        .collection('entry_codes')
-        .doc(hash)
+        .collection('join_codes')
+        .doc(VaultService.sha256Hex(c))
         .get(const GetOptions(source: Source.server));
-    debugPrint('[Auth] entry code check: "$c" -> $hash -> found: ${doc.exists}');
-    return doc.exists;
+    if (!doc.exists) throw FirebaseAuthException(code: 'entry-code-wrong');
+    if (doc.data()?['active'] != true) {
+      throw FirebaseAuthException(code: 'entry-code-used');
+    }
   }
 
   /// True if an account was already made on this phone.
@@ -204,9 +208,6 @@ class AuthService {
   /// right after by [finishCodeAccount] (AuthGate calls it).
   Future<void> joinWithEntryCode(String entryCode) async {
     final entry = normalizeEntryCode(entryCode);
-    if (!await isEntryCode(entry)) {
-      throw FirebaseAuthException(code: 'entry-code-wrong');
-    }
     if (await phoneHasAccount()) {
       // This phone is already registered: just sign in to its account
       // (no new account, no code to type).
@@ -227,6 +228,8 @@ class AuthService {
       // Registered, but its code can't be opened here (very rare).
       if (!moved) throw FirebaseAuthException(code: 'device-has-account');
     }
+    // New account: the join code must exist and not be used yet.
+    await checkJoinCode(entry);
     pendingEntryCode = entry;
     String? code;
     // A new code is almost never taken, but if it is, try another one.
@@ -263,19 +266,32 @@ class AuthService {
     final ref = _db.collection('employees').doc(user.uid);
     final existing = await ref.get(const GetOptions(source: Source.server));
     if (!existing.exists) {
-      try {
-        await ref.set({
+      final proof = VaultService.sha256Hex(entry);
+      // One step: save the account record AND mark the join code as used.
+      // If someone used the same code a moment earlier, Firebase refuses
+      // both, so one code can never make two accounts.
+      final batch = _db.batch()
+        ..set(ref, {
           'employeeId': '',
           'name': '',
           'type': 'e',
-          'entryProof': VaultService.sha256Hex(entry),
+          'entryProof': proof,
           'mustChangePassword': false,
           'active': true,
           'createdAt': FieldValue.serverTimestamp(),
+        })
+        ..update(_db.collection('join_codes').doc(proof), {
+          'active': false,
+          'usedAt': FieldValue.serverTimestamp(),
         });
+      try {
+        await batch.commit();
       } on FirebaseException catch (e) {
-        if (e.code == 'permission-denied') {
-          throw FirebaseAuthException(code: 'entry-code-wrong');
+        if (e.code == 'permission-denied' || e.code == 'not-found') {
+          // Someone used this code a moment earlier. The login stays; the
+          // finish screen asks for another code from Pulse Codes.
+          pendingEntryCode = null;
+          throw FirebaseAuthException(code: 'entry-code-used');
         }
         rethrow;
       }
@@ -828,8 +844,11 @@ class AuthService {
           return 'The admin entry code is not correct. Please check the '
               'mail from HR.';
         case 'entry-code-wrong':
-          return 'This entry code is not correct. Please check it and '
-              'try again.';
+          return 'This code is not correct. Please check it, or pick '
+              'another code from Pulse Codes in Zoho.';
+        case 'entry-code-used':
+          return 'This code is already used. Please pick another code '
+              'from Pulse Codes in Zoho.';
         case 'account-moved':
           return 'Your account is now on another phone. Sign in with your '
               'personal code to use it here.';

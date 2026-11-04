@@ -41,5 +41,22 @@
         "*.local"
       ]
     }
-  ]
+  ],
+  "hosting": {
+    "public": "hosting",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "/join/**",
+        "function": {
+          "functionId": "codes",
+          "region": "asia-south1"
+        }
+      }
+    ]
+  }
 }
