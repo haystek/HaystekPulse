@@ -57,3 +57,4 @@ tools/create_users/node_modules/
 tools/create_users/employees.csv
 functions/node_modules/
 .firebase/
+tools/create_users/reset_test_data.js

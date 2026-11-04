@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../demo_data.dart';
 import '../models/feedback_item.dart';
 import '../models/pulse_rating.dart';
+import '../services/broadcast_service.dart';
 import '../services/feedback_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/ui.dart';
@@ -160,6 +161,7 @@ class _FeedbackDetailScreenState extends State<FeedbackDetailScreen> {
   /// The "Change status" sheet.
   Future<void> _openStatusSheet() async {
     FocusScope.of(context).unfocus();
+
     final changed = await showModalBottomSheet<(String, String)>(
       context: context,
       isScrollControlled: true,
@@ -175,81 +177,42 @@ class _FeedbackDetailScreenState extends State<FeedbackDetailScreen> {
     );
     if (changed == null || !mounted) return;
     final (status, message) = changed;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Status changed to ${FeedbackStatus.label(status)}.'),
-      ),
-    );
-    // Done: offer to tell everyone (good news builds trust).
-    if (status == FeedbackStatus.implemented) await _askShare(message);
+    // No snackbar: the status pill on the card already shows the change.
+    // Implemented: nothing is saved yet. The dialog asks who gets the
+    // message, and saves + sends only when admin taps Send.
+    if (status == FeedbackStatus.implemented) {
+      // Let the sheet finish sliding down, then open the dialog gently.
+      await Future<void>.delayed(const Duration(milliseconds: 180));
+      if (!mounted) return;
+      await _askShare(message);
+    }
   }
 
-  /// After "Implemented": "Share with everyone?" Opens a new broadcast
-  /// with the suggestion quoted (never the name) and admin's message.
+  /// Implemented: who gets the message? Only the employee, or the employee
+  /// and everyone (a broadcast, no name). Saves and sends only on Send.
+  /// The X closes without changing anything; tapping outside does nothing.
   Future<void> _askShare(String message) async {
-    final share = await showDialog<bool>(
+    await showGeneralDialog<void>(
       context: context,
-      builder: (c) => _withInter(
+      barrierDismissible: false,
+      barrierLabel: 'Mark as Implemented',
+      barrierColor: Colors.black54,
+      transitionDuration: const Duration(milliseconds: 260),
+      pageBuilder: (_, __, ___) => _withInter(
         context,
-        AlertDialog(
-          backgroundColor: Colors.white,
-          surfaceTintColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          icon: Container(
-            width: 56,
-            height: 56,
-            decoration: const BoxDecoration(
-              color: AppColors.blueTint,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.campaign_outlined, color: AppColors.blue, size: 28),
-          ),
-          title: Text(
-            'Share with everyone?',
-            textAlign: TextAlign.center,
-            style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w600),
-          ),
-          content: Text(
-            'Let the whole team know this is done. The suggestion is shown '
-                'without the name of who sent it.',
-            textAlign: TextAlign.center,
-            style: GoogleFonts.inter(fontSize: 14.5, height: 1.45, color: AppColors.muted),
-          ),
-          actionsPadding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
-          actions: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                FilledButton(
-                  onPressed: () => Navigator.pop(c, true),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.blue,
-                    minimumSize: const Size.fromHeight(50),
-                    shape: const StadiumBorder(),
-                  ),
-                  child: const Text('Share with everyone'),
-                ),
-                const SizedBox(height: 8),
-                TextButton(
-                  onPressed: () => Navigator.pop(c, false),
-                  style: TextButton.styleFrom(minimumSize: const Size.fromHeight(46)),
-                  child: const Text('Not now'),
-                ),
-              ],
-            ),
-          ],
-        ),
+        _ShareDialog(item: _item, message: message),
       ),
-    );
-    if (share != true || !mounted) return;
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => NewBroadcastScreen(
-          quote: _item.text,
-          title: 'Done ✅',
-          body: message,
-        ),
-      ),
+      transitionBuilder: (_, anim, __, child) {
+        final curved =
+        CurvedAnimation(parent: anim, curve: Curves.easeOutCubic);
+        return FadeTransition(
+          opacity: curved,
+          child: ScaleTransition(
+            scale: Tween<double>(begin: 0.94, end: 1).animate(curved),
+            child: child,
+          ),
+        );
+      },
     );
   }
 
@@ -361,6 +324,364 @@ class _FeedbackDetailScreenState extends State<FeedbackDetailScreen> {
   }
 }
 
+/// "Mark as Implemented" dialog: who gets the message?
+///   Only the employee: status + message to the employee.
+///   Employee + everyone: the same, plus a broadcast (Title = the
+///   suggestion, Message = admin's message, never the sender's name).
+/// Nothing is saved until Send. The X closes without changing anything;
+/// tapping outside does nothing.
+class _ShareDialog extends StatefulWidget {
+  const _ShareDialog({required this.item, required this.message});
+
+  final FeedbackItem item;
+
+  /// What admin wrote in the status sheet.
+  final String message;
+
+  @override
+  State<_ShareDialog> createState() => _ShareDialogState();
+}
+
+class _ShareDialogState extends State<_ShareDialog> {
+  static const _line = Color(0xFFE3E8F1);
+  static const _soft = Color(0xFF8E97AB);
+  static const _muted = Color(0xFF5F6A84);
+  static const _green = Color(0xFF16A34A);
+  static const _titleMax = 120;
+
+  bool _everyone = false;
+  late final _title =
+  TextEditingController(text: _shortTitle(widget.item.text));
+  late final _body = TextEditingController(text: widget.message);
+  bool _busy = false;
+  String? _error;
+
+  /// Status + message already saved (only the broadcast failed): Send then
+  /// only retries the broadcast.
+  bool _statusSaved = false;
+
+  /// The suggestion as the title (cut to fit, if very long).
+  static String _shortTitle(String text) {
+    final t = text.trim().replaceAll(RegExp(r'\s+'), ' ');
+    return t.length <= _titleMax
+        ? t
+        : '${t.substring(0, _titleMax - 1).trimRight()}…';
+  }
+
+  @override
+  void dispose() {
+    _title.dispose();
+    _body.dispose();
+    super.dispose();
+  }
+
+  TextStyle _s(double size,
+      {FontWeight w = FontWeight.w400, Color c = AppColors.ink, double? h}) =>
+      GoogleFonts.inter(fontSize: size, fontWeight: w, color: c, height: h);
+
+  void _choose(bool everyone) {
+    if (_busy || _statusSaved || everyone == _everyone) return;
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _everyone = everyone;
+      _error = null;
+    });
+  }
+
+  Future<void> _send() async {
+    final body = _body.text.trim();
+    final title = _title.text.trim();
+    if (body.isEmpty) {
+      setState(() => _error = 'Write a message');
+      return;
+    }
+    if (_everyone && title.isEmpty) {
+      setState(() => _error = 'Write a short title');
+      return;
+    }
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    final nav = Navigator.of(context);
+
+    // 1) Status + message to the employee.
+    if (!_statusSaved) {
+      try {
+        await FeedbackService.instance.updateStatus(
+          id: widget.item.id,
+          status: FeedbackStatus.implemented,
+          message: body,
+        );
+        _statusSaved = true;
+      } catch (_) {
+        if (!mounted) return;
+        setState(() {
+          _busy = false;
+          _error = 'Could not send. Please check your internet and try again.';
+        });
+        return;
+      }
+    }
+
+    // 2) Everyone: the broadcast.
+    if (_everyone) {
+      try {
+        await BroadcastService.instance.send(title: title, body: body);
+      } catch (_) {
+        if (!mounted) return;
+        setState(() {
+          _busy = false;
+          _error = 'Sent to the employee, but could not share with everyone. '
+              'Tap Send to try again.';
+        });
+        return;
+      }
+    }
+    nav.pop();
+  }
+
+  // Same look as the fields on the New broadcast screen.
+  OutlineInputBorder _border(Color c) => OutlineInputBorder(
+    borderRadius: BorderRadius.circular(14),
+    borderSide: BorderSide(color: c, width: 1.5),
+  );
+
+  InputDecoration _deco(String hint) => InputDecoration(
+    hintText: hint,
+    hintStyle: _s(15, c: const Color(0xFF9AA3B8)),
+    contentPadding: const EdgeInsets.all(14),
+    border: _border(_line),
+    enabledBorder: _border(_line),
+    focusedBorder: _border(AppColors.blue),
+    counterText: '',
+  );
+
+  Widget _label(String s) => Padding(
+    padding: const EdgeInsets.only(left: 4, bottom: 6),
+    child: Text(s, style: _s(13, c: _muted)),
+  );
+
+  /// Only the employee | Employee + everyone, with a sliding highlight.
+  Widget _switch() {
+    Widget label(String text, bool on, bool everyone) => Expanded(
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => _choose(everyone),
+        child: Center(
+          child: AnimatedDefaultTextStyle(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+            style: _s(13.5,
+                w: on ? FontWeight.w600 : FontWeight.w400,
+                c: on ? AppColors.blue : _muted),
+            child: Text(text, maxLines: 1),
+          ),
+        ),
+      ),
+    );
+    return Container(
+      height: 46,
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F4F9),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Stack(
+        children: [
+          AnimatedAlign(
+            duration: const Duration(milliseconds: 240),
+            curve: Curves.easeOutCubic,
+            alignment:
+            _everyone ? Alignment.centerRight : Alignment.centerLeft,
+            child: FractionallySizedBox(
+              widthFactor: 0.5,
+              heightFactor: 1,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(11),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x2E0E1A3A),
+                      blurRadius: 8,
+                      offset: Offset(0, 2),
+                      spreadRadius: -2,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Row(
+            children: [
+              label('👤 Only the employee', !_everyone, false),
+              label('📣 Employee + everyone', _everyone, true),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _messageField() => TextField(
+    controller: _body,
+    enabled: !_busy && !_statusSaved,
+    minLines: 3,
+    maxLines: 6,
+    maxLength: 1000,
+    textCapitalization: TextCapitalization.sentences,
+    scrollPadding: const EdgeInsets.only(bottom: 160),
+    style: _s(15, h: 1.45),
+    decoration: _deco('What has been done?'),
+  );
+
+  Widget _onlyEmployee() => Column(
+    key: const ValueKey('employee'),
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      _label('Message to the employee'),
+      _messageField(),
+      const SizedBox(height: 8),
+      Text('Only the employee who sent it will see this.',
+          style: _s(12.5, c: _soft)),
+    ],
+  );
+
+  Widget _withEveryone() => Column(
+    key: const ValueKey('everyone'),
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      _label('Title (the suggestion, name not shared)'),
+      TextField(
+        controller: _title,
+        enabled: !_busy,
+        minLines: 1,
+        maxLines: 3,
+        maxLength: _titleMax,
+        textCapitalization: TextCapitalization.sentences,
+        scrollPadding: const EdgeInsets.only(bottom: 160),
+        style: _s(15, h: 1.4),
+        decoration: _deco('For example: Air dryer added on 5th floor'),
+      ),
+      const SizedBox(height: 14),
+      _label('Message'),
+      _messageField(),
+      const SizedBox(height: 8),
+      Text(
+        'The employee gets this message. Everyone else sees it as a '
+            'broadcast, without the sender’s name.',
+        style: _s(12.5, c: _soft, h: 1.4),
+      ),
+    ],
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    // Dialog moves itself above the keyboard; the content scrolls, so the
+    // fields and the button stay visible while typing.
+    return Dialog(
+      backgroundColor: Colors.white,
+      surfaceTintColor: Colors.white,
+      insetPadding: const EdgeInsets.fromLTRB(18, 24, 18, 24),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 440),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(18, 8, 18, 18),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Close: nothing changes, nothing is sent.
+              Align(
+                alignment: Alignment.centerRight,
+                child: IconButton(
+                  tooltip: 'Close',
+                  onPressed: _busy ? null : () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.close_rounded, color: _soft),
+                ),
+              ),
+              Center(
+                child: Container(
+                  width: 54,
+                  height: 54,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFE7F6EC),
+                    shape: BoxShape.circle,
+                  ),
+                  child:
+                  const Icon(Icons.check_rounded, color: _green, size: 28),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text('Mark as Implemented',
+                  textAlign: TextAlign.center,
+                  style: _s(19.5, w: FontWeight.w600)),
+              const SizedBox(height: 4),
+              Text('Who should get your message?',
+                  textAlign: TextAlign.center, style: _s(14, c: _muted)),
+              const SizedBox(height: 16),
+              _switch(),
+              const SizedBox(height: 16),
+              // Smooth change between the two: fade + resize.
+              AnimatedSize(
+                duration: const Duration(milliseconds: 260),
+                curve: Curves.easeOutCubic,
+                alignment: Alignment.topCenter,
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 200),
+                  switchInCurve: Curves.easeOut,
+                  switchOutCurve: Curves.easeIn,
+                  layoutBuilder: (current, previous) => Stack(
+                    alignment: Alignment.topCenter,
+                    children: [...previous, if (current != null) current],
+                  ),
+                  child: _everyone ? _withEveryone() : _onlyEmployee(),
+                ),
+              ),
+              if (_error != null) ...[
+                const SizedBox(height: 10),
+                Text(_error!,
+                    style: _s(13.5,
+                        c: Theme.of(context).colorScheme.error, h: 1.4)),
+              ],
+              const SizedBox(height: 18),
+              FilledButton.icon(
+                onPressed: _busy ? null : _send,
+                icon: _busy
+                    ? const SizedBox.shrink()
+                    : const Icon(Icons.send_rounded, size: 18),
+                label: _busy
+                    ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: Colors.white),
+                )
+                    : AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 180),
+                  child: Text(
+                    _everyone ? 'Send to employee + everyone' : 'Send to employee',
+                    key: ValueKey(_everyone),
+                  ),
+                ),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.blue,
+                  minimumSize: const Size.fromHeight(52),
+                  shape: const StadiumBorder(),
+                  textStyle: _s(15.5, w: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// No replies yet: a small message in the middle of the empty space.
 /// It scrolls when the keyboard leaves little room.
 class _NoReplies extends StatelessWidget {
@@ -447,6 +768,8 @@ class _StatusSheet extends StatefulWidget {
 
 class _StatusSheetState extends State<_StatusSheet> {
   final _message = TextEditingController();
+  final _focus = FocusNode();
+  final _scroll = ScrollController();
   String? _chosen;
   bool _busy = false;
   String? _error;
@@ -454,9 +777,32 @@ class _StatusSheetState extends State<_StatusSheet> {
   bool get _implemented => _chosen == FeedbackStatus.implemented;
 
   @override
+  void initState() {
+    super.initState();
+    // Typing: move the sheet up so the box and the button stay visible.
+    _focus.addListener(() {
+      if (_focus.hasFocus) _showButton();
+    });
+  }
+
+  @override
   void dispose() {
     _message.dispose();
+    _focus.dispose();
+    _scroll.dispose();
     super.dispose();
+  }
+
+  /// Scrolls to the bottom once the keyboard has opened.
+  void _showButton() {
+    Future<void>.delayed(const Duration(milliseconds: 320), () {
+      if (!mounted || !_scroll.hasClients) return;
+      _scroll.animateTo(
+        _scroll.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+      );
+    });
   }
 
   Future<void> _save() async {
@@ -467,17 +813,27 @@ class _StatusSheetState extends State<_StatusSheet> {
       setState(() => _error = 'A message is needed for Implemented.');
       return;
     }
+    final navigator = Navigator.of(context);
+    if (_implemented) {
+      // Implemented is saved by the next dialog (after choosing who gets it).
+      FocusScope.of(context).unfocus();
+      await Future<void>.delayed(const Duration(milliseconds: 220));
+      navigator.pop((status, text));
+      return;
+    }
     setState(() {
       _busy = true;
       _error = null;
     });
-    final navigator = Navigator.of(context);
     try {
       await FeedbackService.instance.updateStatus(
         id: widget.item.id,
         status: status,
         message: text,
       );
+      // Close the keyboard first, then slide the sheet down (smooth).
+      if (mounted) FocusScope.of(context).unfocus();
+      await Future<void>.delayed(const Duration(milliseconds: 220));
       navigator.pop((status, text));
     } catch (_) {
       if (!mounted) return;
@@ -507,6 +863,7 @@ class _StatusSheetState extends State<_StatusSheet> {
       child: SafeArea(
         top: false,
         child: SingleChildScrollView(
+          controller: _scroll,
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -538,6 +895,9 @@ class _StatusSheetState extends State<_StatusSheet> {
               const SizedBox(height: 14),
               TextField(
                 controller: _message,
+                focusNode: _focus,
+                onChanged: (_) => _showButton(),
+                scrollPadding: const EdgeInsets.only(bottom: 120),
                 minLines: 2,
                 maxLines: 5,
                 maxLength: 1000,
@@ -584,6 +944,8 @@ class _StatusSheetState extends State<_StatusSheet> {
                     : Text(
                   _chosen == null
                       ? 'Choose a status'
+                      : _implemented
+                      ? 'Next'
                       : 'Change to ${FeedbackStatus.label(_chosen!)}',
                 ),
               ),
