@@ -249,6 +249,7 @@ exports.codes = onRequest(
     const codes = docs
       .sort((a, b) => (a.get("slot") ?? 99) - (b.get("slot") ?? 99))
       .map((d) => d.get("code"));
+    if (req.query.json === "1") { res.status(200).json({ v: await currentVersion(), codes }); return; }
     res.status(200).type("html").send(codesPage(codes, await currentVersion()));
   }
 );
