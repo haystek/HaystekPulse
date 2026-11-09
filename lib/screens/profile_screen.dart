@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import '../models/employee.dart';
 import '../services/auth_service.dart';
@@ -291,11 +292,7 @@ class _AdminProfile extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 14),
-                Text(
-                  'Haystek Pulse',
-                  textAlign: TextAlign.center,
-                  style: _s(12, c: _soft),
-                ),
+                const _VersionLine(),
               ],
             ),
           ),
@@ -1164,11 +1161,40 @@ class _CodeProfileState extends State<_CodeProfile> {
                     ),
                   ),
                 ),
+                const SizedBox(height: 18),
+                const _VersionLine(),
               ],
             ),
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Bottom of Profile: "Haystek Pulse · Version 1.0.0 (5) · DEV" (or PROD),
+/// so testers can say exactly which build they have.
+class _VersionLine extends StatelessWidget {
+  const _VersionLine();
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<PackageInfo>(
+      future: PackageInfo.fromPlatform(),
+      builder: (context, snap) {
+        final info = snap.data;
+        final build = appFlavor == 'dev' ? 'DEV' : 'PROD';
+        final text = info == null
+            ? 'Haystek Pulse'
+            : 'Haystek Pulse · Version '
+                '${info.version.replaceAll('-dev', '')} '
+                '(${info.buildNumber}) · $build';
+        return Text(
+          text,
+          textAlign: TextAlign.center,
+          style: _s(12, c: _soft),
+        );
+      },
     );
   }
 }

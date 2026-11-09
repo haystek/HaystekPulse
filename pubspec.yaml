@@ -24,6 +24,7 @@ dependencies:
   flutter_secure_storage: ^9.2.4
   android_id: ^0.5.2
   url_launcher: ^6.3.2
+  package_info_plus: ^9.0.1
 
 dev_dependencies:
   flutter_test:
