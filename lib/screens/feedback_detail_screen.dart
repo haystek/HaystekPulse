@@ -83,12 +83,15 @@ class _FeedbackDetailScreenState extends State<FeedbackDetailScreen> {
   late Stream<List<ThreadEntry>> _thread;
   int _limit = threadPageSize;
   final _keeper = ThreadScrollKeeper();
+  bool _loadingOlder = false;
+  int _shown = 0;
   double _lastInset = 0;
 
   /// First name of the author, or null when anonymous or unknown.
   String? get _firstName {
     final item = _item;
     if (item.anonymous) return null;
+
     final name = (item.authorName ?? '').trim();
     if (name.isEmpty) return null;
     return name.split(RegExp(r'\s+')).first;
@@ -99,7 +102,10 @@ class _FeedbackDetailScreenState extends State<FeedbackDetailScreen> {
     super.initState();
     _item = widget.item;
     _reply.addListener(() => setState(() {}));
-    _thread = FeedbackService.instance.watchThread(widget.item.id);
+    _thread = FeedbackService.instance.watchThread(
+      widget.item.id,
+      limit: _limit,
+    );
     _itemSub = FeedbackService.instance.watchOne(widget.item.id).listen((i) {
       if (i != null && mounted) setState(() => _item = i);
     });
@@ -122,14 +128,20 @@ class _FeedbackDetailScreenState extends State<FeedbackDetailScreen> {
     super.dispose();
   }
 
-  /// "Show older messages": load 50 more.
+  /// "Show older messages": load 50 more, with a small loader on top.
   void _showOlder() {
+    if (_loadingOlder) return;
     setState(() {
+      _loadingOlder = true;
       _limit += threadPageSize;
       _thread = FeedbackService.instance.watchThread(
         widget.item.id,
         limit: _limit,
       );
+    });
+    // Safety: never spin for ever (for example, no older ones after all).
+    Future<void>.delayed(const Duration(seconds: 4), () {
+      if (mounted && _loadingOlder) setState(() => _loadingOlder = false);
     });
   }
 
@@ -271,22 +283,31 @@ class _FeedbackDetailScreenState extends State<FeedbackDetailScreen> {
                 builder: (context, snap) {
                   final entries = snap.data ?? const <ThreadEntry>[];
                   if (snap.hasData) _keeper.update(_scroll, entries);
+                  // Older ones arrived: hide the loader.
+                  if (_loadingOlder && entries.length > _shown) {
+                    _loadingOlder = false;
+                  }
+                  if (!_loadingOlder) _shown = entries.length;
                   final hasOlder = entries.length >= _limit;
+                  final showBar = hasOlder || _loadingOlder;
                   final rows = buildThreadRows(
                     _item,
                     entries,
-                    hasOlder: hasOlder,
+                    hasOlder: showBar,
                   );
                   if (rows.isEmpty) {
                     // Still loading: show nothing, so it does not flash.
                     if (!snap.hasData) return const SizedBox.expand();
                     return _NoReplies(scroll: _scroll);
                   }
-                  return ListView(
+                  return ThreadChatList(
                     controller: _scroll,
-                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
                     children: [
-                      if (hasOlder) ShowOlderButton(onTap: _showOlder),
+                      if (showBar)
+                        ThreadOlderBar(
+                          loading: _loadingOlder,
+                          onTap: _showOlder,
+                        ),
                       FeedbackTimeline(
                         rows: rows,
                         managementView: true,

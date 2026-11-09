@@ -33,13 +33,18 @@ class _FeedbackThreadScreenState extends State<FeedbackThreadScreen> {
   late Stream<List<ThreadEntry>> _threadStream;
   int _limit = threadPageSize;
   final _keeper = ThreadScrollKeeper();
+  bool _loadingOlder = false;
+  int _shown = 0;
   double _lastInset = 0;
 
   @override
   void initState() {
     super.initState();
     _itemStream = FeedbackService.instance.watchOne(widget.item.id);
-    _threadStream = FeedbackService.instance.watchThread(widget.item.id);
+    _threadStream = FeedbackService.instance.watchThread(
+      widget.item.id,
+      limit: _limit,
+    );
     _text.addListener(() => setState(() {}));
   }
 
@@ -50,14 +55,20 @@ class _FeedbackThreadScreenState extends State<FeedbackThreadScreen> {
     super.dispose();
   }
 
-  /// "Show older messages": load 50 more.
+  /// "Show older messages": load 50 more, with a small loader on top.
   void _showOlder() {
+    if (_loadingOlder) return;
     setState(() {
+      _loadingOlder = true;
       _limit += threadPageSize;
       _threadStream = FeedbackService.instance.watchThread(
         widget.item.id,
         limit: _limit,
       );
+    });
+    // Safety: never spin for ever (for example, no older ones after all).
+    Future<void>.delayed(const Duration(seconds: 4), () {
+      if (mounted && _loadingOlder) setState(() => _loadingOlder = false);
     });
   }
 
@@ -118,15 +129,20 @@ class _FeedbackThreadScreenState extends State<FeedbackThreadScreen> {
                     builder: (context, snap) {
                       final entries = snap.data ?? const <ThreadEntry>[];
                       if (snap.hasData) _keeper.update(_scroll, entries);
+                      // Older ones arrived: hide the loader.
+                      if (_loadingOlder && entries.length > _shown) {
+                        _loadingOlder = false;
+                      }
+                      if (!_loadingOlder) _shown = entries.length;
                       final hasOlder = entries.length >= _limit;
+                      final showBar = hasOlder || _loadingOlder;
                       final rows = buildThreadRows(
                         item,
                         entries,
-                        hasOlder: hasOlder,
+                        hasOlder: showBar,
                       );
-                      return ListView(
+                      return ThreadChatList(
                         controller: _scroll,
-                        padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
                         children: [
                           if (!snap.hasData && !snap.hasError)
                             const Padding(
@@ -154,7 +170,11 @@ class _FeedbackThreadScreenState extends State<FeedbackThreadScreen> {
                               ),
                             )
                           else ...[
-                            if (hasOlder) ShowOlderButton(onTap: _showOlder),
+                            if (showBar)
+                              ThreadOlderBar(
+                                loading: _loadingOlder,
+                                onTap: _showOlder,
+                              ),
                             FeedbackTimeline(rows: rows, managementView: false),
                           ],
                         ],
@@ -271,7 +291,12 @@ double keepLastInView(
   final inset = MediaQuery.viewInsetsOf(context).bottom;
   if (inset > lastInset) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (scroll.hasClients) scroll.jumpTo(scroll.position.maxScrollExtent);
+      if (!scroll.hasClients) return;
+      final p = scroll.position;
+      // Chat list is upside down (newest = 0); other lists: the end.
+      scroll.jumpTo(
+        p.axisDirection == AxisDirection.up ? 0 : p.maxScrollExtent,
+      );
     });
   }
   return inset;
@@ -369,71 +394,109 @@ class _ThreadHeaderCardState extends State<ThreadHeaderCard> {
 }
 
 /// Messages loaded at a time (and per "Show older messages").
-const int threadPageSize = 3;
+const int threadPageSize = 50;
 
-/// Keeps the chat in the right place when the list changes:
-///   first load          – jump to the newest message
-///   a new message       – scroll down to it
-///   older ones loaded   – stay where you are (they appear above)
+/// Keeps the newest message in view. The chat list is upside down
+/// (see [ThreadChatList]), so 0 is the bottom:
+///   older messages added on top – nothing moves
+///   a new message               – slide down to it
 class ThreadScrollKeeper {
   String? _newest;
-  int _count = -1;
 
   void update(ScrollController scroll, List<ThreadEntry> entries) {
     final newest = entries.isEmpty ? '' : entries.last.id;
-    final count = entries.length;
-    if (newest == _newest && count == _count) return;
-    final first = _count < 0;
-    final olderLoaded = !first && newest == _newest && count > _count;
+    if (newest == _newest) return;
+    final first = _newest == null;
     _newest = newest;
-    _count = count;
-    // Distance from the bottom now, to keep it after older ones are added.
-    var fromBottom = 0.0;
-    if (olderLoaded &&
-        scroll.hasClients &&
-        scroll.position.hasContentDimensions) {
-      fromBottom = scroll.position.maxScrollExtent - scroll.position.pixels;
-    }
+    if (first) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!scroll.hasClients) return;
-      final end = scroll.position.maxScrollExtent;
-      if (olderLoaded) {
-        scroll.jumpTo((end - fromBottom).clamp(0.0, end));
-      } else if (first) {
-        scroll.jumpTo(end);
-      } else {
-        scroll.animateTo(
-          end,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOutCubic,
-        );
-      }
+      if (!scroll.hasClients || scroll.offset <= 0) return;
+      scroll.animateTo(
+        0,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOutCubic,
+      );
     });
   }
 }
 
-/// Small "Show older messages" button on top of the conversation.
-class ShowOlderButton extends StatelessWidget {
-  const ShowOlderButton({super.key, required this.onTap});
+/// The conversation, newest at the bottom (like WhatsApp). Inside it is
+/// upside down (reverse), so when older messages are added on top the
+/// messages on screen do not move: smooth, no jump. A short chat still
+/// starts at the top.
+class ThreadChatList extends StatelessWidget {
+  const ThreadChatList({
+    super.key,
+    required this.controller,
+    required this.children,
+  });
 
+  final ScrollController controller;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, box) {
+        return ListView(
+          controller: controller,
+          reverse: true,
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
+          children: [
+            ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight: box.maxHeight > 20 ? box.maxHeight - 20 : 0.0,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: children,
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// On top of the chat: "Show older messages", or a small loader while
+/// they come. Same height for both, so nothing jumps.
+class ThreadOlderBar extends StatelessWidget {
+  const ThreadOlderBar({super.key, required this.loading, required this.onTap});
+
+  final bool loading;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 4, bottom: 2),
+    return SizedBox(
+      height: 48,
       child: Center(
-        child: TextButton.icon(
-          onPressed: onTap,
-          icon: const Icon(
-            Icons.history_rounded,
-            size: 16,
-            color: AppColors.blue,
-          ),
-          label: Text(
-            'Show older messages',
-            style: threadText(13, color: AppColors.blue),
-          ),
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 200),
+          child: loading
+              ? const SizedBox(
+                  key: ValueKey('loading'),
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: AppColors.blue,
+                  ),
+                )
+              : TextButton.icon(
+                  key: const ValueKey('button'),
+                  onPressed: onTap,
+                  icon: const Icon(
+                    Icons.history_rounded,
+                    size: 16,
+                    color: AppColors.blue,
+                  ),
+                  label: Text(
+                    'Show older messages',
+                    style: threadText(13, color: AppColors.blue),
+                  ),
+                ),
         ),
       ),
     );
