@@ -1,5 +1,7 @@
 {
   "projects": {
-    "default": "haystek-pulse"
+    "default": "haystek-pulse-dev",
+    "dev": "haystek-pulse-dev",
+    "prod": "haystek-pulse"
   }
 }
