@@ -64,10 +64,15 @@ android {
         }
     }
 
+    // Which key signs a release build:
+    //   prod -> Play Store upload key (android/key.properties)
+    //   dev  -> normal debug key, NEVER the Play Store key
+    productFlavors.getByName("prod").signingConfig = signingConfigs.getByName("release")
+    productFlavors.getByName("dev").signingConfig = signingConfigs.getByName("debug")
+
     buildTypes {
         release {
-            // Signed with your own release key (android/key.properties).
-            signingConfig = signingConfigs.getByName("release")
+            // Key is chosen per flavor above (prod: upload key, dev: debug key).
 
             // Make the app smaller: remove unused code and resources.
             isMinifyEnabled = true

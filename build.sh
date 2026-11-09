@@ -19,4 +19,5 @@ case "$KIND" in
   ios)       flutter build ipa --flavor "$ENV" --release ;;
   *) echo "Unknown: $KIND (use apk, appbundle or ios)"; exit 1 ;;
 esac
+if [ "$KIND" != "ios" ]; then ./check_signing.sh "$ENV" "$KIND"; fi
 echo "Built: $KIND ($ENV)"
