@@ -7,6 +7,7 @@ import 'firebase_options_dev.dart';
 import 'package:flutter/services.dart' show appFlavor;
 import 'screens/auth_gate.dart';
 import 'screens/update_gate.dart';
+import 'services/error_log.dart';
 import 'services/notification_service.dart';
 import 'theme/app_theme.dart';
 import 'services/schedule_service.dart';
@@ -18,6 +19,8 @@ Future<void> main() async {
         ? DevFirebaseOptions.currentPlatform
         : DefaultFirebaseOptions.currentPlatform,
   );
+  // If something breaks: save only the error and app version (no phone details).
+  await ErrorLog.start();
   await ScheduleService.start();
   runApp(const HaystekApp());
 }

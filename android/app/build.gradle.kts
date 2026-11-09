@@ -46,7 +46,7 @@ android {
     productFlavors {
         create("dev") {
             dimension = "env"
-            resValue("string", "app_name", "Pulse DEV")
+            resValue("string", "app_name", "Haystek Pulse Dev")
             versionNameSuffix = "-dev"
         }
         create("prod") {

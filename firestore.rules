@@ -471,6 +471,29 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // ---------------------------------------------------------------
+    // errors/{id}: a short note when something breaks in the app, so we
+    // can fix it. Only the error, where in the code, app version and
+    // android/ios. Nothing about the person or the phone. Write-only:
+    // read in the Firebase console.
+    // ---------------------------------------------------------------
+    match /errors/{id} {
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['error', 'where', 'version', 'platform', 'at', 'expireAt'])
+        && request.resource.data.error is string
+        && request.resource.data.error.size() <= 1000
+        && request.resource.data.where is string
+        && request.resource.data.where.size() <= 3000
+        && request.resource.data.version is string
+        && request.resource.data.version.size() <= 30
+        && request.resource.data.platform in ['android', 'ios']
+        && request.resource.data.at == request.time
+        && request.resource.data.expireAt is timestamp
+        && request.resource.data.expireAt > request.time
+        && request.resource.data.expireAt < request.time + duration.value(40, 'd');
+      allow read, update, delete: if false;
+    }
+
     // Everything else stays closed.
     match /{document=**} {
       allow read, write: if false;
