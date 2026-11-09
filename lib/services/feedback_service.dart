@@ -97,18 +97,20 @@ class FeedbackService {
     await VaultService.instance.addPost(ref.id);
 
     try {
-      await ref.set(<String, dynamic>{
-        'source': 'box',
-        'text': TextCrypto.encrypt(text.trim()),
-        'anonymous': anonymous,
-        // [name]: typed by the employee (no name in the app).
-        if (!anonymous) 'authorName': (name ?? employee.name).trim(),
-        if (!anonymous) 'authorEmployeeId': employee.employeeId,
-        'status': FeedbackStatus.newItem,
-        'managementMessage': '',
-        'createdAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-      }).timeout(sendLimit);
+      await ref
+          .set(<String, dynamic>{
+            'source': 'box',
+            'text': TextCrypto.encrypt(text.trim()),
+            'anonymous': anonymous,
+            // [name]: typed by the employee (no name in the app).
+            if (!anonymous) 'authorName': (name ?? employee.name).trim(),
+            if (!anonymous) 'authorEmployeeId': employee.employeeId,
+            'status': FeedbackStatus.newItem,
+            'managementMessage': '',
+            'createdAt': FieldValue.serverTimestamp(),
+            'updatedAt': FieldValue.serverTimestamp(),
+          })
+          .timeout(sendLimit);
     } catch (error) {
       // Send tapped again after a try that reached the server late: it
       // is already saved, so that is a success, not an error.
@@ -117,7 +119,8 @@ class FeedbackService {
       } else {
         throw SendError.from(
           error,
-          notAllowed: 'This could not be sent. Please sign in again '
+          notAllowed:
+              'This could not be sent. Please sign in again '
               'and try once more.',
         );
       }
@@ -144,7 +147,9 @@ class FeedbackService {
   }
 
   /// True if this suggestion is already on the server.
-  Future<bool> _alreadySaved(DocumentReference<Map<String, dynamic>> ref) async {
+  Future<bool> _alreadySaved(
+    DocumentReference<Map<String, dynamic>> ref,
+  ) async {
     try {
       final doc = await ref
           .get(const GetOptions(source: Source.server))
@@ -182,21 +187,18 @@ class FeedbackService {
       final fallback = DateTime.now();
       controller.add(
         [...items, ...DemoData.all()]..sort(
-              (a, b) => (b.createdAt ?? fallback)
-              .compareTo(a.createdAt ?? fallback),
+          (a, b) =>
+              (b.createdAt ?? fallback).compareTo(a.createdAt ?? fallback),
         ),
       );
     }
 
     controller = StreamController<List<FeedbackItem>>(
       onListen: () {
-        realSub = real.listen(
-              (items) {
-            last = items;
-            emit();
-          },
-          onError: controller.addError,
-        );
+        realSub = real.listen((items) {
+          last = items;
+          emit();
+        }, onError: controller.addError);
         demoSub = DemoData.changes.listen((_) => emit());
       },
       onCancel: () async {
@@ -292,7 +294,7 @@ class FeedbackService {
 
   /// The conversation of one entry, oldest first, updating live.
   /// A message still on its way shows as [ThreadEntry.pending].
-  Stream<List<ThreadEntry>> watchThread(String id) {
+  Stream<List<ThreadEntry>> watchThread(String id, {int limit = 50}) {
     if (id.startsWith(DemoData.idPrefix)) {
       return Stream.value(const <ThreadEntry>[]);
     }
@@ -300,6 +302,8 @@ class FeedbackService {
         .doc(id)
         .collection('messages')
         .orderBy('createdAt')
+        // Only the newest [limit] messages (older: "Show older messages").
+        .limitToLast(limit)
         .snapshots(includeMetadataChanges: true)
         .map((snap) => snap.docs.map(ThreadEntry.fromDoc).toList());
   }
@@ -320,8 +324,10 @@ class FeedbackService {
     final t = text.trim();
     if (t.isEmpty) return;
     if (item.id.startsWith(DemoData.idPrefix)) {
-      throw const SendError('This is a sample item. Replies work on real '
-          'feedback only.');
+      throw const SendError(
+        'This is a sample item. Replies work on real '
+        'feedback only.',
+      );
     }
     final ref = _feedback.doc(item.id);
     final batch = _db.batch();
@@ -341,7 +347,8 @@ class FeedbackService {
     } catch (error) {
       throw SendError.from(
         error,
-        notAllowed: 'This reply could not be sent. Please sign in again '
+        notAllowed:
+            'This reply could not be sent. Please sign in again '
             'and try once more.',
       );
     }
@@ -392,7 +399,7 @@ class FeedbackService {
     late final StreamController<List<FeedbackItem>> controller;
     VoidCallback? vaultListener;
     final docSubs =
-    <String, StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>>{};
+        <String, StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>>{};
     final items = <String, FeedbackItem>{};
     final waiting = <String>{};
 
@@ -402,13 +409,11 @@ class FeedbackService {
       // build up one row at a time.
       if (waiting.isNotEmpty) return;
       final fallback = DateTime.now();
-      final list = [
-        ...items.values,
-        if (DemoData.on) ...DemoData.mine(),
-      ]..sort(
-            (a, b) =>
-            (b.createdAt ?? fallback).compareTo(a.createdAt ?? fallback),
-      );
+      final list = [...items.values, if (DemoData.on) ...DemoData.mine()]
+        ..sort(
+          (a, b) =>
+              (b.createdAt ?? fallback).compareTo(a.createdAt ?? fallback),
+        );
       controller.add(list);
     }
 
@@ -427,29 +432,32 @@ class FeedbackService {
     // fails, Firestore stops it for good, and later status changes and
     // replies would never show. So on an error, try again a few times.
     void listenDoc(String id, [int attempt = 0]) {
-      docSubs[id] = _feedback.doc(id).snapshots().listen(
+      docSubs[id] = _feedback
+          .doc(id)
+          .snapshots()
+          .listen(
             (doc) {
-          waiting.remove(id);
-          if (doc.exists) {
-            items[id] = FeedbackItem.fromDoc(doc);
-          } else {
-            items.remove(id);
-          }
-          emit();
-        },
-        onError: (Object error) {
-          debugPrint('[MyFeedback] $id: $error (try ${attempt + 1})');
-          waiting.remove(id);
-          emit();
-          if (attempt >= 5 || controller.isClosed) return;
-          Future<void>.delayed(Duration(seconds: 2 * (attempt + 1)), () {
-            // Still wanted, and not replaced meanwhile.
-            if (controller.isClosed || !docSubs.containsKey(id)) return;
-            docSubs[id]?.cancel();
-            listenDoc(id, attempt + 1);
-          });
-        },
-      );
+              waiting.remove(id);
+              if (doc.exists) {
+                items[id] = FeedbackItem.fromDoc(doc);
+              } else {
+                items.remove(id);
+              }
+              emit();
+            },
+            onError: (Object error) {
+              debugPrint('[MyFeedback] $id: $error (try ${attempt + 1})');
+              waiting.remove(id);
+              emit();
+              if (attempt >= 5 || controller.isClosed) return;
+              Future<void>.delayed(Duration(seconds: 2 * (attempt + 1)), () {
+                // Still wanted, and not replaced meanwhile.
+                if (controller.isClosed || !docSubs.containsKey(id)) return;
+                docSubs[id]?.cancel();
+                listenDoc(id, attempt + 1);
+              });
+            },
+          );
     }
 
     controller = StreamController<List<FeedbackItem>>(
@@ -518,6 +526,7 @@ class ThreadEntry {
       status: d['status'] as String?,
       at: (d['createdAt'] as Timestamp?)?.toDate(),
       pending: doc.metadata.hasPendingWrites,
+
     );
   }
 }

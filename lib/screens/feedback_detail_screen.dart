@@ -23,18 +23,17 @@ Widget _withInter(BuildContext context, Widget child) {
 }
 
 TextStyle _t(
-    double size, {
-      FontWeight weight = FontWeight.w500,
-      Color color = AppColors.ink,
-      double? height,
-    }) =>
-    GoogleFonts.inter(
-      fontSize: size,
-      fontWeight: weight,
-      color: color,
-      height: height,
-      letterSpacing: size >= 18 ? -0.3 : -0.1,
-    );
+  double size, {
+  FontWeight weight = FontWeight.w500,
+  Color color = AppColors.ink,
+  double? height,
+}) => GoogleFonts.inter(
+  fontSize: size,
+  fontWeight: weight,
+  color: color,
+  height: height,
+  letterSpacing: size >= 18 ? -0.3 : -0.1,
+);
 
 /// A short line that says what each status means.
 String _hint(String status) {
@@ -81,8 +80,9 @@ class _FeedbackDetailScreenState extends State<FeedbackDetailScreen> {
 
   /// Sample items are not in Firestore, so they update from DemoData.
   StreamSubscription<void>? _demoSub;
-  late final Stream<List<ThreadEntry>> _thread;
-  int _lastCount = -1;
+  late Stream<List<ThreadEntry>> _thread;
+  int _limit = threadPageSize;
+  final _keeper = ThreadScrollKeeper();
   double _lastInset = 0;
 
   /// First name of the author, or null when anonymous or unknown.
@@ -122,23 +122,14 @@ class _FeedbackDetailScreenState extends State<FeedbackDetailScreen> {
     super.dispose();
   }
 
-  /// New line in the conversation: scroll down to it.
-  void _scrollDownIfNew(int count) {
-    if (count == _lastCount) return;
-    final first = _lastCount < 0;
-    _lastCount = count;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!_scroll.hasClients) return;
-      final end = _scroll.position.maxScrollExtent;
-      if (first) {
-        _scroll.jumpTo(end);
-      } else {
-        _scroll.animateTo(
-          end,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOutCubic,
-        );
-      }
+  /// "Show older messages": load 50 more.
+  void _showOlder() {
+    setState(() {
+      _limit += threadPageSize;
+      _thread = FeedbackService.instance.watchThread(
+        widget.item.id,
+        limit: _limit,
+      );
     });
   }
 
@@ -152,9 +143,9 @@ class _FeedbackDetailScreenState extends State<FeedbackDetailScreen> {
       FeedbackService.instance
           .sendMessage(item: _item, fromManagement: true, text: text)
           .catchError((Object e) {
-        messenger.showSnackBar(SnackBar(content: Text('$e')));
-        if (mounted && _reply.text.isEmpty) _reply.text = text;
-      }),
+            messenger.showSnackBar(SnackBar(content: Text('$e')));
+            if (mounted && _reply.text.isEmpty) _reply.text = text;
+          }),
     );
   }
 
@@ -198,13 +189,13 @@ class _FeedbackDetailScreenState extends State<FeedbackDetailScreen> {
       barrierLabel: 'Mark as Implemented',
       barrierColor: Colors.black54,
       transitionDuration: const Duration(milliseconds: 260),
-      pageBuilder: (_, __, ___) => _withInter(
-        context,
-        _ShareDialog(item: _item, message: message),
-      ),
+      pageBuilder: (_, __, ___) =>
+          _withInter(context, _ShareDialog(item: _item, message: message)),
       transitionBuilder: (_, anim, __, child) {
-        final curved =
-        CurvedAnimation(parent: anim, curve: Curves.easeOutCubic);
+        final curved = CurvedAnimation(
+          parent: anim,
+          curve: Curves.easeOutCubic,
+        );
         return FadeTransition(
           opacity: curved,
           child: ScaleTransition(
@@ -219,8 +210,18 @@ class _FeedbackDetailScreenState extends State<FeedbackDetailScreen> {
   String _date(DateTime? d) {
     if (d == null) return '';
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return '${d.day} ${months[d.month - 1]}';
   }
@@ -269,8 +270,13 @@ class _FeedbackDetailScreenState extends State<FeedbackDetailScreen> {
                 stream: _thread,
                 builder: (context, snap) {
                   final entries = snap.data ?? const <ThreadEntry>[];
-                  if (snap.hasData) _scrollDownIfNew(entries.length);
-                  final rows = buildThreadRows(_item, entries);
+                  if (snap.hasData) _keeper.update(_scroll, entries);
+                  final hasOlder = entries.length >= _limit;
+                  final rows = buildThreadRows(
+                    _item,
+                    entries,
+                    hasOlder: hasOlder,
+                  );
                   if (rows.isEmpty) {
                     // Still loading: show nothing, so it does not flash.
                     if (!snap.hasData) return const SizedBox.expand();
@@ -280,6 +286,7 @@ class _FeedbackDetailScreenState extends State<FeedbackDetailScreen> {
                     controller: _scroll,
                     padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
                     children: [
+                      if (hasOlder) ShowOlderButton(onTap: _showOlder),
                       FeedbackTimeline(
                         rows: rows,
                         managementView: true,
@@ -350,8 +357,9 @@ class _ShareDialogState extends State<_ShareDialog> {
   static const _titleMax = 120;
 
   bool _everyone = false;
-  late final _title =
-  TextEditingController(text: _shortTitle(widget.item.text));
+  late final _title = TextEditingController(
+    text: _shortTitle(widget.item.text),
+  );
   late final _body = TextEditingController(text: widget.message);
   bool _busy = false;
   String? _error;
@@ -375,9 +383,12 @@ class _ShareDialogState extends State<_ShareDialog> {
     super.dispose();
   }
 
-  TextStyle _s(double size,
-      {FontWeight w = FontWeight.w400, Color c = AppColors.ink, double? h}) =>
-      GoogleFonts.inter(fontSize: size, fontWeight: w, color: c, height: h);
+  TextStyle _s(
+    double size, {
+    FontWeight w = FontWeight.w400,
+    Color c = AppColors.ink,
+    double? h,
+  }) => GoogleFonts.inter(fontSize: size, fontWeight: w, color: c, height: h);
 
   void _choose(bool everyone) {
     if (_busy || _statusSaved || everyone == _everyone) return;
@@ -433,7 +444,8 @@ class _ShareDialogState extends State<_ShareDialog> {
         if (!mounted) return;
         setState(() {
           _busy = false;
-          _error = 'Sent to the employee, but could not share with everyone. '
+          _error =
+              'Sent to the employee, but could not share with everyone. '
               'Tap Send to try again.';
         });
         return;
@@ -473,9 +485,11 @@ class _ShareDialogState extends State<_ShareDialog> {
           child: AnimatedDefaultTextStyle(
             duration: const Duration(milliseconds: 220),
             curve: Curves.easeOutCubic,
-            style: _s(13.5,
-                w: on ? FontWeight.w600 : FontWeight.w400,
-                c: on ? AppColors.blue : _muted),
+            style: _s(
+              13.5,
+              w: on ? FontWeight.w600 : FontWeight.w400,
+              c: on ? AppColors.blue : _muted,
+            ),
             child: Text(text, maxLines: 1),
           ),
         ),
@@ -493,8 +507,7 @@ class _ShareDialogState extends State<_ShareDialog> {
           AnimatedAlign(
             duration: const Duration(milliseconds: 240),
             curve: Curves.easeOutCubic,
-            alignment:
-            _everyone ? Alignment.centerRight : Alignment.centerLeft,
+            alignment: _everyone ? Alignment.centerRight : Alignment.centerLeft,
             child: FractionallySizedBox(
               widthFactor: 0.5,
               heightFactor: 1,
@@ -544,8 +557,10 @@ class _ShareDialogState extends State<_ShareDialog> {
       _label('Message to the employee'),
       _messageField(),
       const SizedBox(height: 8),
-      Text('Only the employee who sent it will see this.',
-          style: _s(12.5, c: _soft)),
+      Text(
+        'Only the employee who sent it will see this.',
+        style: _s(12.5, c: _soft),
+      ),
     ],
   );
 
@@ -571,7 +586,7 @@ class _ShareDialogState extends State<_ShareDialog> {
       const SizedBox(height: 8),
       Text(
         'The employee gets this message. Everyone else sees it as a '
-            'broadcast, without the sender’s name.',
+        'broadcast, without the sender’s name.',
         style: _s(12.5, c: _soft, h: 1.4),
       ),
     ],
@@ -611,17 +626,25 @@ class _ShareDialogState extends State<_ShareDialog> {
                     color: Color(0xFFE7F6EC),
                     shape: BoxShape.circle,
                   ),
-                  child:
-                  const Icon(Icons.check_rounded, color: _green, size: 28),
+                  child: const Icon(
+                    Icons.check_rounded,
+                    color: _green,
+                    size: 28,
+                  ),
                 ),
               ),
               const SizedBox(height: 10),
-              Text('Mark as Implemented',
-                  textAlign: TextAlign.center,
-                  style: _s(19.5, w: FontWeight.w600)),
+              Text(
+                'Mark as Implemented',
+                textAlign: TextAlign.center,
+                style: _s(19.5, w: FontWeight.w600),
+              ),
               const SizedBox(height: 4),
-              Text('Who should get your message?',
-                  textAlign: TextAlign.center, style: _s(14, c: _muted)),
+              Text(
+                'Who should get your message?',
+                textAlign: TextAlign.center,
+                style: _s(14, c: _muted),
+              ),
               const SizedBox(height: 16),
               _switch(),
               const SizedBox(height: 16),
@@ -643,9 +666,14 @@ class _ShareDialogState extends State<_ShareDialog> {
               ),
               if (_error != null) ...[
                 const SizedBox(height: 10),
-                Text(_error!,
-                    style: _s(13.5,
-                        c: Theme.of(context).colorScheme.error, h: 1.4)),
+                Text(
+                  _error!,
+                  style: _s(
+                    13.5,
+                    c: Theme.of(context).colorScheme.error,
+                    h: 1.4,
+                  ),
+                ),
               ],
               const SizedBox(height: 18),
               FilledButton.icon(
@@ -655,18 +683,22 @@ class _ShareDialogState extends State<_ShareDialog> {
                     : const Icon(Icons.send_rounded, size: 18),
                 label: _busy
                     ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                      strokeWidth: 2, color: Colors.white),
-                )
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
                     : AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 180),
-                  child: Text(
-                    _everyone ? 'Send to employee + everyone' : 'Send to employee',
-                    key: ValueKey(_everyone),
-                  ),
-                ),
+                        duration: const Duration(milliseconds: 180),
+                        child: Text(
+                          _everyone
+                              ? 'Send to employee + everyone'
+                              : 'Send to employee',
+                          key: ValueKey(_everyone),
+                        ),
+                      ),
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.blue,
                   minimumSize: const Size.fromHeight(52),
@@ -839,7 +871,8 @@ class _StatusSheetState extends State<_StatusSheet> {
       if (!mounted) return;
       setState(() {
         _busy = false;
-        _error = 'Could not update. Please check your internet '
+        _error =
+            'Could not update. Please check your internet '
             'connection and try again.';
       });
     }
@@ -872,11 +905,18 @@ class _StatusSheetState extends State<_StatusSheet> {
               Row(
                 children: [
                   Expanded(
-                    child: Text('Change status', style: _t(17, weight: FontWeight.w400)),
+                    child: Text(
+                      'Change status',
+                      style: _t(17, weight: FontWeight.w400),
+                    ),
                   ),
                   Text(
                     'Now: ',
-                    style: _t(12.5, weight: FontWeight.w400, color: const Color(0xFF8E97AB)),
+                    style: _t(
+                      12.5,
+                      weight: FontWeight.w400,
+                      color: const Color(0xFF8E97AB),
+                    ),
                   ),
                   _Pill(status: widget.item.status),
                 ],
@@ -888,9 +928,9 @@ class _StatusSheetState extends State<_StatusSheet> {
                 onTap: _busy
                     ? null
                     : (s) => setState(() {
-                  _chosen = s == _chosen ? null : s;
-                  _error = null;
-                }),
+                        _chosen = s == _chosen ? null : s;
+                        _error = null;
+                      }),
               ),
               const SizedBox(height: 14),
               TextField(
@@ -907,7 +947,11 @@ class _StatusSheetState extends State<_StatusSheet> {
                   hintText: _implemented
                       ? 'Tell ${widget.employeeName ?? 'them'} what has been done (needed)'
                       : 'Add a message (optional)',
-                  hintStyle: _t(14.5, weight: FontWeight.w400, color: const Color(0xFF9AA3B8)),
+                  hintStyle: _t(
+                    14.5,
+                    weight: FontWeight.w400,
+                    color: const Color(0xFF9AA3B8),
+                  ),
                   contentPadding: const EdgeInsets.all(14),
                   border: border(const Color(0xFFE3E8F1)),
                   enabledBorder: border(const Color(0xFFE3E8F1)),
@@ -918,7 +962,11 @@ class _StatusSheetState extends State<_StatusSheet> {
                 const SizedBox(height: 4),
                 Text(
                   _error!,
-                  style: _t(13.5, weight: FontWeight.w400, color: theme.colorScheme.error),
+                  style: _t(
+                    13.5,
+                    weight: FontWeight.w400,
+                    color: theme.colorScheme.error,
+                  ),
                 ),
               ],
               const SizedBox(height: 10),
@@ -934,20 +982,20 @@ class _StatusSheetState extends State<_StatusSheet> {
                 ),
                 child: _busy
                     ? const SizedBox(
-                  height: 20,
-                  width: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white,
-                  ),
-                )
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
                     : Text(
-                  _chosen == null
-                      ? 'Choose a status'
-                      : _implemented
-                      ? 'Next'
-                      : 'Change to ${FeedbackStatus.label(_chosen!)}',
-                ),
+                        _chosen == null
+                            ? 'Choose a status'
+                            : _implemented
+                            ? 'Next'
+                            : 'Change to ${FeedbackStatus.label(_chosen!)}',
+                      ),
               ),
             ],
           ),
@@ -995,14 +1043,14 @@ class _MessageCard extends StatelessWidget {
             ),
             child: anonymous
                 ? const Icon(
-              Icons.lock_outline_rounded,
-              size: 17,
-              color: Color(0xFF8E97AB),
-            )
+                    Icons.lock_outline_rounded,
+                    size: 17,
+                    color: Color(0xFF8E97AB),
+                  )
                 : Text(
-              name[0].toUpperCase(),
-              style: _t(14, color: AppColors.blue),
-            ),
+                    name[0].toUpperCase(),
+                    style: _t(14, color: AppColors.blue),
+                  ),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -1060,10 +1108,7 @@ class _Pill extends StatelessWidget {
             decoration: BoxDecoration(color: color, shape: BoxShape.circle),
           ),
           const SizedBox(width: 6),
-          Text(
-            FeedbackStatus.label(status),
-            style: _t(11.5, color: color),
-          ),
+          Text(FeedbackStatus.label(status), style: _t(11.5, color: color)),
         ],
       ),
     );
@@ -1140,8 +1185,10 @@ class _StatusRow extends StatelessWidget {
                 Container(
                   width: 8,
                   height: 8,
-                  decoration:
-                  BoxDecoration(color: color, shape: BoxShape.circle),
+                  decoration: BoxDecoration(
+                    color: color,
+                    shape: BoxShape.circle,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(

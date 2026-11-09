@@ -30,8 +30,9 @@ class _FeedbackThreadScreenState extends State<FeedbackThreadScreen> {
   final _text = TextEditingController();
   final _scroll = ScrollController();
   late final Stream<FeedbackItem?> _itemStream;
-  late final Stream<List<ThreadEntry>> _threadStream;
-  int _lastCount = -1;
+  late Stream<List<ThreadEntry>> _threadStream;
+  int _limit = threadPageSize;
+  final _keeper = ThreadScrollKeeper();
   double _lastInset = 0;
 
   @override
@@ -49,23 +50,14 @@ class _FeedbackThreadScreenState extends State<FeedbackThreadScreen> {
     super.dispose();
   }
 
-  /// New message in the list: scroll down to it.
-  void _scrollDownIfNew(int count) {
-    if (count == _lastCount) return;
-    final first = _lastCount < 0;
-    _lastCount = count;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!_scroll.hasClients) return;
-      final end = _scroll.position.maxScrollExtent;
-      if (first) {
-        _scroll.jumpTo(end);
-      } else {
-        _scroll.animateTo(
-          end,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOutCubic,
-        );
-      }
+  /// "Show older messages": load 50 more.
+  void _showOlder() {
+    setState(() {
+      _limit += threadPageSize;
+      _threadStream = FeedbackService.instance.watchThread(
+        widget.item.id,
+        limit: _limit,
+      );
     });
   }
 
@@ -79,10 +71,10 @@ class _FeedbackThreadScreenState extends State<FeedbackThreadScreen> {
       FeedbackService.instance
           .sendMessage(item: item, fromManagement: false, text: text)
           .catchError((Object e) {
-        messenger.showSnackBar(SnackBar(content: Text('$e')));
-        // Put the text back so nothing is lost.
-        if (mounted && _text.text.isEmpty) _text.text = text;
-      }),
+            messenger.showSnackBar(SnackBar(content: Text('$e')));
+            // Put the text back so nothing is lost.
+            if (mounted && _text.text.isEmpty) _text.text = text;
+          }),
     );
   }
 
@@ -125,8 +117,13 @@ class _FeedbackThreadScreenState extends State<FeedbackThreadScreen> {
                     stream: _threadStream,
                     builder: (context, snap) {
                       final entries = snap.data ?? const <ThreadEntry>[];
-                      if (snap.hasData) _scrollDownIfNew(entries.length);
-                      final rows = buildThreadRows(item, entries);
+                      if (snap.hasData) _keeper.update(_scroll, entries);
+                      final hasOlder = entries.length >= _limit;
+                      final rows = buildThreadRows(
+                        item,
+                        entries,
+                        hasOlder: hasOlder,
+                      );
                       return ListView(
                         controller: _scroll,
                         padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
@@ -156,8 +153,10 @@ class _FeedbackThreadScreenState extends State<FeedbackThreadScreen> {
                                 height: 1.45,
                               ),
                             )
-                          else
+                          else ...[
+                            if (hasOlder) ShowOlderButton(onTap: _showOlder),
                             FeedbackTimeline(rows: rows, managementView: false),
+                          ],
                         ],
                       );
                     },
@@ -232,17 +231,26 @@ TextStyle threadText(
   FontWeight weight = FontWeight.w400,
   Color color = AppColors.ink,
   double? height,
-}) =>
-    GoogleFonts.inter(
-      fontSize: size,
-      fontWeight: weight,
-      color: color,
-      height: height,
-    );
+}) => GoogleFonts.inter(
+  fontSize: size,
+  fontWeight: weight,
+  color: color,
+  height: height,
+);
 
 const List<String> _months = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
 ];
 
 /// "22 Oct, 2:40 PM".
@@ -360,6 +368,78 @@ class _ThreadHeaderCardState extends State<ThreadHeaderCard> {
   }
 }
 
+/// Messages loaded at a time (and per "Show older messages").
+const int threadPageSize = 3;
+
+/// Keeps the chat in the right place when the list changes:
+///   first load          – jump to the newest message
+///   a new message       – scroll down to it
+///   older ones loaded   – stay where you are (they appear above)
+class ThreadScrollKeeper {
+  String? _newest;
+  int _count = -1;
+
+  void update(ScrollController scroll, List<ThreadEntry> entries) {
+    final newest = entries.isEmpty ? '' : entries.last.id;
+    final count = entries.length;
+    if (newest == _newest && count == _count) return;
+    final first = _count < 0;
+    final olderLoaded = !first && newest == _newest && count > _count;
+    _newest = newest;
+    _count = count;
+    // Distance from the bottom now, to keep it after older ones are added.
+    var fromBottom = 0.0;
+    if (olderLoaded &&
+        scroll.hasClients &&
+        scroll.position.hasContentDimensions) {
+      fromBottom = scroll.position.maxScrollExtent - scroll.position.pixels;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!scroll.hasClients) return;
+      final end = scroll.position.maxScrollExtent;
+      if (olderLoaded) {
+        scroll.jumpTo((end - fromBottom).clamp(0.0, end));
+      } else if (first) {
+        scroll.jumpTo(end);
+      } else {
+        scroll.animateTo(
+          end,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOutCubic,
+        );
+      }
+    });
+  }
+}
+
+/// Small "Show older messages" button on top of the conversation.
+class ShowOlderButton extends StatelessWidget {
+  const ShowOlderButton({super.key, required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 4, bottom: 2),
+      child: Center(
+        child: TextButton.icon(
+          onPressed: onTap,
+          icon: const Icon(
+            Icons.history_rounded,
+            size: 16,
+            color: AppColors.blue,
+          ),
+          label: Text(
+            'Show older messages',
+            style: threadText(13, color: AppColors.blue),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// One line of the timeline.
 class ThreadRow {
   const ThreadRow.message({
@@ -370,9 +450,9 @@ class ThreadRow {
   }) : status = null;
 
   const ThreadRow.status({required String this.status, this.at})
-      : fromManagement = true,
-        text = '',
-        pending = false;
+    : fromManagement = true,
+      text = '',
+      pending = false;
 
   final bool fromManagement;
   final String text;
@@ -387,10 +467,16 @@ class ThreadRow {
 /// with a message becomes two lines: "Moved to …", then the message.
 /// Older entries (before conversations existed) only have one reply in
 /// the entry itself: it is shown as the first management message.
-List<ThreadRow> buildThreadRows(FeedbackItem item, List<ThreadEntry> entries) {
+/// [hasOlder]: older messages are not loaded yet, so the old single
+/// reply is not shown (it may be in the older part).
+List<ThreadRow> buildThreadRows(
+  FeedbackItem item,
+  List<ThreadEntry> entries, {
+  bool hasOlder = false,
+}) {
   final rows = <ThreadRow>[];
   final anyFromManagement = entries.any((e) => e.fromManagement);
-  if (!anyFromManagement && item.hasReply) {
+  if (!hasOlder && !anyFromManagement && item.hasReply) {
     rows.add(
       ThreadRow.message(
         fromManagement: true,
@@ -472,9 +558,7 @@ class FeedbackTimeline extends StatelessWidget {
             mine: mine,
             name: mine
                 ? null
-                : (row.fromManagement
-                    ? 'Admin'
-                    : (employeeName ?? 'Employee')),
+                : (row.fromManagement ? 'Admin' : (employeeName ?? 'Employee')),
           ),
         );
       }
@@ -589,8 +673,9 @@ class _Bubble extends StatelessWidget {
               ),
             ),
             child: Column(
-              crossAxisAlignment:
-                  mine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+              crossAxisAlignment: mine
+                  ? CrossAxisAlignment.end
+                  : CrossAxisAlignment.start,
               children: [
                 if (name != null) ...[
                   Text(
@@ -669,10 +754,7 @@ class ThreadComposer extends StatelessWidget {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  if (leading != null) ...[
-                    leading!,
-                    const SizedBox(width: 10),
-                  ],
+                  if (leading != null) ...[leading!, const SizedBox(width: 10)],
                   Expanded(
                     child: TextField(
                       controller: controller,
@@ -683,8 +765,10 @@ class ThreadComposer extends StatelessWidget {
                       style: threadText(15, height: 1.4),
                       decoration: InputDecoration(
                         hintText: hint,
-                        hintStyle:
-                            threadText(15, color: const Color(0xFF9AA3B8)),
+                        hintStyle: threadText(
+                          15,
+                          color: const Color(0xFF9AA3B8),
+                        ),
                         filled: true,
                         fillColor: const Color(0xFFF6F8FB),
                         isDense: true,
@@ -700,7 +784,9 @@ class ThreadComposer extends StatelessWidget {
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(22),
-                          borderSide: const BorderSide(color: Color(0xFFE9EDF4)),
+                          borderSide: const BorderSide(
+                            color: Color(0xFFE9EDF4),
+                          ),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(22),
