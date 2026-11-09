@@ -41,6 +41,20 @@ android {
         versionName = flutter.versionName
     }
 
+    // dev -> haystek-pulse-dev, prod -> haystek-pulse (live). Same package.
+    flavorDimensions += "env"
+    productFlavors {
+        create("dev") {
+            dimension = "env"
+            resValue("string", "app_name", "Pulse DEV")
+            versionNameSuffix = "-dev"
+        }
+        create("prod") {
+            dimension = "env"
+            resValue("string", "app_name", "Haystek Pulse")
+        }
+    }
+
     signingConfigs {
         create("release") {
             keyAlias = keystoreProperties["keyAlias"] as String?
