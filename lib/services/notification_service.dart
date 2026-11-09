@@ -453,6 +453,9 @@ class NotificationService {
       case PushSender.typePulseReminder:
       case 'pulse_soon':
         return !e.isManagement;
+      // Broadcasts: employees only (the admin who sent it doesn't need it).
+      case typeBroadcast:
+        return !e.isManagement;
       default:
         return true;
     }

@@ -1,12 +1,16 @@
 import 'dart:convert';
 
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart' show rootBundle;
+import 'package:flutter/services.dart' show appFlavor, rootBundle;
 import 'package:googleapis_auth/auth_io.dart' as gauth;
 
 /// The notification-only service account key, bundled with the app.
 /// Create it in the Google Cloud console and save it at this path.
-const String _assetPath = 'assets/fcm_sender.json';
+/// DEV build: the dev project's key. Otherwise: the live key.
+final String _assetPath = appFlavor == 'dev'
+    ? 'assets/fcm_sender_dev.json'
+    : 'assets/fcm_sender.json';
 const String _scope = 'https://www.googleapis.com/auth/firebase.messaging';
 
 /// Android notification channel. Must be the same id as the channel the
@@ -34,6 +38,14 @@ Future<bool> sendPush({
         gauth.ServiceAccountCredentials.fromJson(json),
         [_scope],
       );
+    }
+
+    // Safety: send only through the project this app is using, so a
+    // test build never reaches live phones (and the other way round).
+    final appProject = Firebase.app().options.projectId;
+    if (_projectId != appProject) {
+      debugPrint('Push blocked: key is for $_projectId, app uses $appProject');
+      return false;
     }
 
     final response = await _client!.post(

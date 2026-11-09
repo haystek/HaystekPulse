@@ -34,7 +34,12 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - assets/fcm_sender.json
+    - path: assets/fcm_sender.json
+      flavors:
+        - prod
+    - path: assets/fcm_sender_dev.json
+      flavors:
+        - dev
     - assets/haystek_pulse_logo.png
     - assets/haystek_pulse_logo_big.png
     - assets/haystek_pulse_logo_on_blue.png
