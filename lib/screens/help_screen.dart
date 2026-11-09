@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../theme/app_theme.dart';
 import '../widgets/ui.dart';
@@ -19,6 +20,9 @@ TextStyle _t(
 
 const Color _soft = Color(0xFF8E97AB);
 const Color _line = Color(0xFFE3E8F1);
+
+/// Full privacy policy (also given to the App Store and Play Store).
+const String _privacyUrl = 'https://haystek-pulse.web.app/privacy.html';
 
 /// One question and its answer.
 class _Qa {
@@ -96,7 +100,8 @@ const List<_Qa> _questions = [
         'phone or a reinstall.\n\n'
         'Profile → Delete my account. Your personal code stops working and '
         'your history in the app is removed. Messages you sent stay with '
-        'admin, without your name.',
+        'admin exactly as you sent them: anonymous ones stay anonymous, and '
+        'ones sent “With my name” keep that name.',
   ),
 ];
 
@@ -156,6 +161,8 @@ class HelpScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 18),
                   for (final qa in _questions) _QaTile(qa: qa),
+                  const SizedBox(height: 10),
+                  const _PrivacyLink(),
                 ],
               ),
             ),
@@ -219,6 +226,76 @@ class _QaTileState extends State<_QaTile> {
         children: [
           Text(qa.a, style: _t(14, color: AppColors.muted, height: 1.5)),
         ],
+      ),
+    );
+  }
+}
+
+/// Opens the full privacy policy (inside the app when possible).
+class _PrivacyLink extends StatelessWidget {
+  const _PrivacyLink();
+
+  Future<void> _open(BuildContext context) async {
+    final uri = Uri.parse(_privacyUrl);
+    final messenger = ScaffoldMessenger.of(context);
+    var ok = false;
+    try {
+      ok = await launchUrl(uri, mode: LaunchMode.inAppBrowserView);
+    } catch (_) {}
+    if (!ok) {
+      try {
+        ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } catch (_) {}
+    }
+    if (!ok) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Could not open the page. Please try again.')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: const BorderSide(color: _line, width: 1.2),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => _open(context),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
+          child: Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: AppColors.blueTint,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.description_outlined,
+                    size: 20, color: AppColors.blue),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Privacy Policy',
+                        style: _t(15, weight: FontWeight.w500)),
+                    const SizedBox(height: 2),
+                    Text('Read the full policy',
+                        style: _t(13, color: AppColors.muted)),
+                  ],
+                ),
+              ),
+              const Icon(Icons.open_in_new_rounded, size: 18, color: _soft),
+            ],
+          ),
+        ),
       ),
     );
   }

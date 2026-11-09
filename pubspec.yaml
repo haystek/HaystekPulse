@@ -23,6 +23,7 @@ dependencies:
   # iPhone Keychain). Deleted on sign out.
   flutter_secure_storage: ^9.2.4
   android_id: ^0.5.2
+  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:
