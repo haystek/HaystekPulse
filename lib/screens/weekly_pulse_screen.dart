@@ -13,6 +13,7 @@ import '../theme/app_theme.dart';
 import '../widgets/ui.dart';
 import 'help_screen.dart';
 import 'typed_name_field.dart';
+import '../services/notification_service.dart';
 
 enum _Stage { loading, loadError, closed, alreadyDone, pick, done }
 
@@ -83,6 +84,7 @@ class _WeeklyPulseScreenState extends State<WeeklyPulseScreen>
   @override
   void initState() {
     super.initState();
+    NotificationService.instance.pulseScreenOpen = true;
     _rating = widget.initialRating;
     if (_needsName) {
       TypedName.load().then((n) {
@@ -101,6 +103,7 @@ class _WeeklyPulseScreenState extends State<WeeklyPulseScreen>
 
   @override
   void dispose() {
+    NotificationService.instance.pulseScreenOpen = false;
     _text.dispose();
     _scroll.dispose();
     _textFocus.dispose();
@@ -116,11 +119,12 @@ class _WeeklyPulseScreenState extends State<WeeklyPulseScreen>
       return;
     }
     try {
-      final existing =
-      await PulseService.instance.myRatingThisWeek(widget.employee.uid);
+      final existing = await PulseService.instance.myRatingThisWeek(
+        widget.employee.uid,
+      );
       if (!mounted) return;
       setState(
-            () => _stage = existing == null ? _Stage.pick : _Stage.alreadyDone,
+        () => _stage = existing == null ? _Stage.pick : _Stage.alreadyDone,
       );
     } catch (_) {
       if (!mounted) return;
@@ -180,8 +184,7 @@ class _WeeklyPulseScreenState extends State<WeeklyPulseScreen>
   Future<void> _submit() async {
     final rating = _rating;
     if (rating == null) return;
-    if (PulseRating.needsText(rating) &&
-        !_formKey.currentState!.validate()) {
+    if (PulseRating.needsText(rating) && !_formKey.currentState!.validate()) {
       return;
     }
     final named = PulseRating.needsText(rating) && _needsName && !_anonymous;
@@ -214,10 +217,10 @@ class _WeeklyPulseScreenState extends State<WeeklyPulseScreen>
         return;
       }
       setState(
-            () => _error = error is SendError
+        () => _error = error is SendError
             ? error.message
             : 'Could not send. Please check your internet connection '
-            'and try again.',
+                  'and try again.',
       );
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -250,13 +253,13 @@ class _WeeklyPulseScreenState extends State<WeeklyPulseScreen>
           body: _stage == _Stage.pick
               ? _buildPick(context)
               : SafeArea(
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 480),
-                child: _body(context),
-              ),
-            ),
-          ),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 480),
+                      child: _body(context),
+                    ),
+                  ),
+                ),
         ),
       ),
     );
@@ -282,9 +285,9 @@ class _WeeklyPulseScreenState extends State<WeeklyPulseScreen>
           title: beforeOpen ? 'Opens $next' : 'This week is closed',
           text: beforeOpen
               ? 'Please come back then.\n'
-              'The Suggestion Box is open every day.'
+                    'The Suggestion Box is open every day.'
               : 'The next Weekly Pulse opens $next.\n'
-              'The Suggestion Box is open every day.',
+                    'The Suggestion Box is open every day.',
           buttonLabel: 'Back',
           onPressed: () => Navigator.of(context).pop(),
         );
@@ -336,9 +339,9 @@ class _WeeklyPulseScreenState extends State<WeeklyPulseScreen>
                         child: typing
                             ? const SizedBox(width: double.infinity)
                             : Padding(
-                          padding: const EdgeInsets.only(bottom: 18),
-                          child: _header(),
-                        ),
+                                padding: const EdgeInsets.only(bottom: 18),
+                                child: _header(),
+                              ),
                       ),
                       _tiles(rating),
                       if (needsText) ...[
@@ -391,36 +394,34 @@ class _WeeklyPulseScreenState extends State<WeeklyPulseScreen>
                       ),
                       child: _busy
                           ? const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          SizedBox(
-                            height: 18,
-                            width: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          ),
-                          SizedBox(width: 10),
-                          Text('Sending…'),
-                        ],
-                      )
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SizedBox(
+                                  height: 18,
+                                  width: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                SizedBox(width: 10),
+                                Text('Sending…'),
+                              ],
+                            )
                           : Text(
-                        rating == null
-                            ? 'Pick one to send'
-                            : needsText
-                            ? 'Send feedback'
-                            : 'Send',
-                      ),
+                              rating == null
+                                  ? 'Pick one to send'
+                                  : needsText
+                                  ? 'Send feedback'
+                                  : 'Send',
+                            ),
                     ),
                     // Only Okay / Difficult send words (with a name or not).
                     if (needsText) ...[
                       const SizedBox(height: 8),
                       SentAsLine(
                         named: !_anonymous,
-                        name: _needsName
-                            ? _name.text
-                            : widget.employee.name,
+                        name: _needsName ? _name.text : widget.employee.name,
                       ),
                     ],
                   ],
@@ -593,9 +594,9 @@ class _WeeklyPulseScreenState extends State<WeeklyPulseScreen>
     return Align(
       alignment: Alignment.centerLeft,
       child: TextButton.icon(
-        onPressed: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(builder: (_) => const HelpScreen()),
-        ),
+        onPressed: () => Navigator.of(
+          context,
+        ).push(MaterialPageRoute<void>(builder: (_) => const HelpScreen())),
         icon: const Icon(Icons.help_outline_rounded, size: 16),
         label: const Text('How is my name hidden?'),
         style: TextButton.styleFrom(
@@ -606,30 +607,38 @@ class _WeeklyPulseScreenState extends State<WeeklyPulseScreen>
       ),
     );
   }
-
 }
 
 /// One font for this screen: Inter.
 TextStyle _inter(
-    double size, {
-      FontWeight weight = FontWeight.w400,
-      Color color = AppColors.ink,
-      double? height,
-      double? letterSpacing,
-    }) =>
-    GoogleFonts.inter(
-      fontSize: size,
-      fontWeight: weight,
-      color: color,
-      height: height,
-      letterSpacing: letterSpacing,
-    );
+  double size, {
+  FontWeight weight = FontWeight.w400,
+  Color color = AppColors.ink,
+  double? height,
+  double? letterSpacing,
+}) => GoogleFonts.inter(
+  fontSize: size,
+  fontWeight: weight,
+  color: color,
+  height: height,
+  letterSpacing: letterSpacing,
+);
 
 /// "Mon 12 – Fri 16 Oct" (or "Mon 28 Sep – Fri 2 Oct").
 String _weekDates(String weekId) {
   const months = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
   ];
   final p = weekId.split('-').map(int.parse).toList();
   final d = DateTime(p[0], p[1], p[2]);
@@ -710,12 +719,12 @@ class _RatingTile extends StatelessWidget {
           borderRadius: BorderRadius.circular(22),
           boxShadow: selected
               ? [
-            BoxShadow(
-              color: color.withValues(alpha: 0.18),
-              blurRadius: 18,
-              offset: const Offset(0, 8),
-            ),
-          ]
+                  BoxShadow(
+                    color: color.withValues(alpha: 0.18),
+                    blurRadius: 18,
+                    offset: const Offset(0, 8),
+                  ),
+                ]
               : null,
         ),
         child: Material(

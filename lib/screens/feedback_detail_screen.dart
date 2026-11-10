@@ -12,6 +12,7 @@ import '../theme/app_theme.dart';
 import '../widgets/ui.dart';
 import 'broadcast_screens.dart';
 import 'feedback_thread_screen.dart';
+import '../services/notification_service.dart';
 
 /// Inter font for everything on this screen (same as the other screens).
 Widget _withInter(BuildContext context, Widget child) {
@@ -101,6 +102,7 @@ class _FeedbackDetailScreenState extends State<FeedbackDetailScreen> {
   void initState() {
     super.initState();
     _item = widget.item;
+    NotificationService.instance.openThreadId = widget.item.id;
     _reply.addListener(() => setState(() {}));
     _thread = FeedbackService.instance.watchThread(
       widget.item.id,
@@ -121,6 +123,9 @@ class _FeedbackDetailScreenState extends State<FeedbackDetailScreen> {
 
   @override
   void dispose() {
+    if (NotificationService.instance.openThreadId == widget.item.id) {
+      NotificationService.instance.openThreadId = null;
+    }
     _itemSub?.cancel();
     _demoSub?.cancel();
     _reply.dispose();

@@ -33,11 +33,11 @@ class NotificationService {
   /// Lets a notification that arrives while the app is open be shown
   /// as a message at the bottom of whichever screen is visible.
   static final GlobalKey<ScaffoldMessengerState> messengerKey =
-  GlobalKey<ScaffoldMessengerState>();
+      GlobalKey<ScaffoldMessengerState>();
 
   /// Lets a tapped notification open a screen from anywhere in the app.
   static final GlobalKey<NavigatorState> navigatorKey =
-  GlobalKey<NavigatorState>();
+      GlobalKey<NavigatorState>();
 
   /// Every management phone is in this group.
   static const String topicManagement = 'management';
@@ -68,7 +68,7 @@ class NotificationService {
 
   /// Shows a normal phone notification while the app is open (Android).
   final FlutterLocalNotificationsPlugin _local =
-  FlutterLocalNotificationsPlugin();
+      FlutterLocalNotificationsPlugin();
   bool _localReady = false;
 
   /// The same channel the notifications from Firebase use (see
@@ -102,10 +102,12 @@ class NotificationService {
     );
     await _local
         .resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin>()
+          AndroidFlutterLocalNotificationsPlugin
+        >()
         ?.createNotificationChannel(_channel);
     _localReady = true;
   }
+
   bool _checkedLaunchMessage = false;
   StreamSubscription<RemoteMessage>? _foregroundSub;
   StreamSubscription<RemoteMessage>? _tappedSub;
@@ -167,7 +169,6 @@ class NotificationService {
       debugPrint('No notification token yet: $error');
     }
     try {
-
       // A notification tapped while the app was fully closed.
       if (!_checkedLaunchMessage) {
         _checkedLaunchMessage = true;
@@ -228,7 +229,7 @@ class NotificationService {
     if (e == null || e.isManagement) return;
     unawaited(
       _syncPendingTopics(e.uid).catchError(
-            (Object error) => debugPrint('Could not rejoin the groups: $error'),
+        (Object error) => debugPrint('Could not rejoin the groups: $error'),
       ),
     );
   }
@@ -262,8 +263,7 @@ class NotificationService {
   Future<void> _syncPendingTopics(String uid) async {
     _lastPendingSync = DateTime.now();
     final now = DateTime.now();
-    final answered =
-        await PulseService.instance.myRatingThisWeek(uid) != null;
+    final answered = await PulseService.instance.myRatingThisWeek(uid) != null;
     for (var i = 0; i <= AppConfig.pendingTopicWeeksAhead; i++) {
       final weekId = PulseService.currentWeekId(
         DateTime(now.year, now.month, now.day + 7 * i),
@@ -384,6 +384,12 @@ class NotificationService {
       return;
     }
 
+    // Already looking at it: no banner (the screen updates by itself).
+    if (_isOnScreen(type, message.data['feedbackId'] as String?)) {
+      debugPrint('[Notify] skipped "$type": already on that screen');
+      return;
+    }
+
     // App is open: show only our banner. Use the phone's notification
     // bar only if the banner cannot be shown, so nothing is lost.
     final overlay = navigatorKey.currentState?.overlay;
@@ -399,8 +405,8 @@ class NotificationService {
 
     switch (type) {
       case PushSender.typeFeedbackNew:
-        final fromPulse = message.data['source'] == 'pulse' ||
-            title.contains('Weekly Pulse');
+        final fromPulse =
+            message.data['source'] == 'pulse' || title.contains('Weekly Pulse');
         icon = fromPulse ? Icons.chat_bubble_outline : Icons.lightbulb_outline;
         color = fromPulse ? const Color(0xFFE2583E) : const Color(0xFFD08A00);
         tint = fromPulse ? const Color(0xFFFCE8E4) : const Color(0xFFFDF3DF);
@@ -437,6 +443,27 @@ class NotificationService {
       actionLabel: action,
       onAction: action == null ? null : () => _open(message),
     );
+  }
+
+  /// The chat open on screen right now (its feedback id), if any.
+  String? openThreadId;
+
+  /// True while the Weekly Pulse screen is open.
+  bool pulseScreenOpen = false;
+
+  /// Already looking at what this notification is about?
+  bool _isOnScreen(String? type, String? feedbackId) {
+    switch (type) {
+      case PushSender.typeFeedbackNew:
+      case PushSender.typeFeedbackReply:
+        return feedbackId != null && feedbackId == openThreadId;
+      case PushSender.typePulseOpen:
+      case PushSender.typePulseReminder:
+      case 'pulse_soon':
+        return pulseScreenOpen;
+      default:
+        return false;
+    }
   }
 
   /// Whether a notification of this type is meant for the person signed

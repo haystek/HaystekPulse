@@ -9,6 +9,7 @@ import '../models/pulse_rating.dart';
 import '../services/feedback_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/ui.dart';
+import '../services/notification_service.dart';
 
 /// Employee: one suggestion or Weekly Pulse comment, with the whole
 /// conversation and a reply box.
@@ -41,6 +42,7 @@ class _FeedbackThreadScreenState extends State<FeedbackThreadScreen> {
   void initState() {
     super.initState();
     _itemStream = FeedbackService.instance.watchOne(widget.item.id);
+    NotificationService.instance.openThreadId = widget.item.id;
     _threadStream = FeedbackService.instance.watchThread(
       widget.item.id,
       limit: _limit,
@@ -50,6 +52,9 @@ class _FeedbackThreadScreenState extends State<FeedbackThreadScreen> {
 
   @override
   void dispose() {
+    if (NotificationService.instance.openThreadId == widget.item.id) {
+      NotificationService.instance.openThreadId = null;
+    }
     _text.dispose();
     _scroll.dispose();
     super.dispose();
@@ -159,16 +164,7 @@ class _FeedbackThreadScreenState extends State<FeedbackThreadScreen> {
                               ),
                             )
                           else if (rows.isEmpty)
-                            Text(
-                              'No reply yet. You’ll get a notification when '
-                              'admin replies. You can add more here '
-                              'any time.',
-                              style: threadText(
-                                13.5,
-                                color: AppColors.muted,
-                                height: 1.45,
-                              ),
-                            )
+                            ThreadNextSteps(item: item)
                           else ...[
                             if (showBar)
                               ThreadOlderBar(
@@ -566,12 +562,180 @@ List<ThreadRow> buildThreadRows(
   return rows;
 }
 
-/// The conversation as chat bubbles, like WhatsApp:
-///   my messages      – blue, on the right
-///   their messages   – light grey, on the left, with the name
-///   status changes   – a small grey note in the middle
-///   a day label ("Today", "Yesterday", "27 Oct") when the day changes
-/// "Mine" is the employee on the employee screen, and management on the
+/// No reply yet (employee screen, design A "Track"): what happens next,
+/// as 4 steps. Done steps get a green tick, the current one is blue.
+class ThreadNextSteps extends StatelessWidget {
+  const ThreadNextSteps({super.key, required this.item});
+
+  final FeedbackItem item;
+
+  static const Color _green = Color(0xFF16A34A);
+
+  @override
+  Widget build(BuildContext context) {
+    final s = item.status;
+    final done = s == FeedbackStatus.implemented || s == FeedbackStatus.noted;
+    final started =
+        s == FeedbackStatus.underReview ||
+        s == FeedbackStatus.planned ||
+        s == FeedbackStatus.inProgress;
+    // 0 = Sent, 1 = Admin reads it, 2 = Reply and status, 3 = Done.
+    final current = done ? 4 : (started ? 2 : 1);
+    final sentWhen = item.createdAt == null
+        ? ''
+        : '${threadDate(item.createdAt!)} · ';
+    final steps = <List<String>>[
+      [
+        'Sent to admin',
+        '$sentWhen${item.anonymous ? 'without your name' : 'with your name'}',
+      ],
+      ['Admin reads it', 'You’ll get a notification when they reply'],
+      ['Reply and status update', 'Under review, Planned or In progress'],
+      ['Done', 'Implemented or Noted'],
+    ];
+
+    Widget step(int i) {
+      final isDone = i < current;
+      final isNow = i == current;
+      final last = i == steps.length - 1;
+      final Widget dot;
+      if (isDone) {
+        dot = Container(
+          width: 28,
+          height: 28,
+          decoration: const BoxDecoration(
+            color: _green,
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(Icons.check_rounded, size: 16, color: Colors.white),
+        );
+      } else if (isNow) {
+        dot = Container(
+          width: 28,
+          height: 28,
+          decoration: BoxDecoration(
+            color: AppColors.blueTint,
+            shape: BoxShape.circle,
+            border: Border.all(color: AppColors.blue, width: 2),
+          ),
+          child: Center(
+            child: Container(
+              width: 8,
+              height: 8,
+              decoration: const BoxDecoration(
+                color: AppColors.blue,
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+        );
+      } else {
+        dot = Container(
+          width: 28,
+          height: 28,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: const Color(0xFFD0D5DD), width: 2),
+          ),
+        );
+      }
+      return IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SizedBox(
+              width: 28,
+              child: Column(
+                children: [
+                  dot,
+                  if (!last)
+                    Expanded(
+                      child: Center(
+                        child: Container(
+                          width: 2,
+                          margin: const EdgeInsets.symmetric(vertical: 4),
+                          color: isDone ? _green : threadLine,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Padding(
+                padding: EdgeInsets.only(top: 4, bottom: last ? 0 : 22),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      steps[i][0],
+                      style: threadText(
+                        15,
+                        weight: isDone || isNow
+                            ? FontWeight.w600
+                            : FontWeight.w500,
+                        color: isNow
+                            ? AppColors.blue
+                            : (isDone
+                                  ? AppColors.ink
+                                  : const Color(0xFF475467)),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      steps[i][1],
+                      style: threadText(13, color: const Color(0xFF667085)),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 12, left: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'WHAT HAPPENS NEXT',
+            style: threadText(
+              12,
+              weight: FontWeight.w600,
+              color: const Color(0xFF5F6A84),
+            ).copyWith(letterSpacing: 0.9),
+          ),
+          const SizedBox(height: 16),
+          for (var i = 0; i < steps.length; i++) step(i),
+        ],
+      ),
+    );
+  }
+}
+
+/// One block of the timeline: a day label, a status change, or messages
+/// from one side in a row.
+class _Block {
+  _Block.day(this.day) : status = null, messages = null;
+  _Block.status(this.status) : day = null, messages = null;
+  _Block.messages(this.messages) : day = null, status = null;
+
+  final String? day;
+  final ThreadRow? status;
+  final List<ThreadRow>? messages;
+}
+
+/// The conversation as a timeline (design A, "Track"):
+///   messages: a small avatar, the name and time, then the text;
+///   messages from the same side in a row share one header;
+///   status changes: a coloured dot, "Moved to …";
+///   a thin line joins them, top to bottom;
+///   a day label ("Today", "Yesterday", "27 Oct") when the day changes.
+/// "You" is the employee on the employee screen, and admin on the
 /// management screen.
 class FeedbackTimeline extends StatelessWidget {
   const FeedbackTimeline({
@@ -603,25 +767,48 @@ class FeedbackTimeline extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final children = <Widget>[];
+    final blocks = <_Block>[];
     String? lastDay;
     for (final row in rows) {
       final day = _day(row.at ?? DateTime.now());
       if (day != lastDay) {
         lastDay = day;
-        children.add(_DayLabel(day));
+        blocks.add(_Block.day(day));
       }
       if (row.isStatus) {
-        children.add(_StatusNote(row: row));
+        blocks.add(_Block.status(row));
+        continue;
+      }
+      final prev = blocks.isEmpty ? null : blocks.last;
+      final run = prev?.messages;
+      if (run != null && run.first.fromManagement == row.fromManagement) {
+        run.add(row);
       } else {
-        final mine = row.fromManagement == managementView;
+        blocks.add(_Block.messages([row]));
+      }
+    }
+
+    final children = <Widget>[];
+    for (var i = 0; i < blocks.length; i++) {
+      final b = blocks[i];
+      // The line goes on while anything but a day label follows.
+      final line = blocks.skip(i + 1).any((x) => x.day == null);
+      if (b.day != null) {
+        children.add(_DayLabel(b.day!));
+      } else if (b.status != null) {
+        children.add(_StatusStep(row: b.status!, line: line));
+      } else {
+        final msgs = b.messages!;
+        final fromAdmin = msgs.first.fromManagement;
+        final mine = fromAdmin == managementView;
         children.add(
-          _Bubble(
-            row: row,
-            mine: mine,
+          _MessageGroup(
+            rows: msgs,
+            line: line,
+            fromAdmin: fromAdmin,
             name: mine
-                ? null
-                : (row.fromManagement ? 'Admin' : (employeeName ?? 'Employee')),
+                ? 'You'
+                : (fromAdmin ? 'Admin' : (employeeName ?? 'Employee')),
           ),
         );
       }
@@ -651,130 +838,190 @@ class _DayLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
+      padding: const EdgeInsets.only(top: 6, bottom: 14),
       child: Center(
-        child: Text(text, style: threadText(11.5, color: threadSoft)),
+        child: Text(text, style: threadText(12, color: threadSoft)),
       ),
     );
   }
 }
 
-/// "Status changed to Noted · 9:21 PM" in the middle.
-class _StatusNote extends StatelessWidget {
-  const _StatusNote({required this.row});
+/// The thin line under an avatar or dot, down to the next block.
+Widget _timelineLine() => Expanded(
+  child: Center(
+    child: Container(
+      width: 2,
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      color: threadLine,
+    ),
+  ),
+);
+
+/// "Moved to Under review · 10:20 PM" with a coloured dot.
+class _StatusStep extends StatelessWidget {
+  const _StatusStep({required this.row, required this.line});
 
   final ThreadRow row;
+  final bool line;
 
   @override
   Widget build(BuildContext context) {
     final color = FeedbackStatus.color(row.status!);
     final time = _time(row);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Center(
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF2F4F8),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 6,
-                height: 6,
-                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-              ),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text(
-                  'Status changed to ${FeedbackStatus.label(row.status!)}'
-                  '${time.isEmpty ? '' : ' · $time'}',
-                  style: threadText(12, color: const Color(0xFF5F6A84)),
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            width: 32,
+            child: Column(
+              children: [
+                const SizedBox(height: 2),
+                Container(
+                  width: 14,
+                  height: 14,
+                  decoration: BoxDecoration(
+                    color: color,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: color.withValues(alpha: 0.25),
+                      width: 3,
+                    ),
+                  ),
                 ),
-              ),
-            ],
+                if (line) _timelineLine(),
+              ],
+            ),
           ),
-        ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(bottom: line ? 18 : 4),
+              child: Text.rich(
+                TextSpan(
+                  text: 'Moved to ',
+                  children: [
+                    TextSpan(
+                      text: FeedbackStatus.label(row.status!),
+                      style: threadText(
+                        13,
+                        weight: FontWeight.w600,
+                        color: color,
+                      ),
+                    ),
+                    if (time.isNotEmpty) TextSpan(text: ' · $time'),
+                  ],
+                ),
+                style: threadText(13, color: const Color(0xFF475467)),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-/// One message bubble.
-class _Bubble extends StatelessWidget {
-  const _Bubble({required this.row, required this.mine, this.name});
+/// Messages from one side in a row: avatar, name and time, the texts.
+class _MessageGroup extends StatelessWidget {
+  const _MessageGroup({
+    required this.rows,
+    required this.line,
+    required this.fromAdmin,
+    required this.name,
+  });
 
-  final ThreadRow row;
-  final bool mine;
-
-  /// Shown on top of the other side's bubbles.
-  final String? name;
+  final List<ThreadRow> rows;
+  final bool line;
+  final bool fromAdmin;
+  final String name;
 
   @override
   Widget build(BuildContext context) {
-    final time = _time(row);
-    final maxWidth = MediaQuery.sizeOf(context).width * 0.75;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Align(
-        alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: maxWidth),
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(13, 9, 13, 7),
-            decoration: BoxDecoration(
-              color: mine
-                  ? (row.pending ? const Color(0xFF7D9BEA) : AppColors.blue)
-                  : const Color(0xFFF2F4F8),
-              borderRadius: BorderRadius.only(
-                topLeft: const Radius.circular(18),
-                topRight: const Radius.circular(18),
-                bottomLeft: Radius.circular(mine ? 18 : 4),
-                bottomRight: Radius.circular(mine ? 4 : 18),
-              ),
-            ),
+    final first = rows.first;
+    final headTime = first.pending ? '' : _time(first);
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            width: 32,
             child: Column(
-              crossAxisAlignment: mine
-                  ? CrossAxisAlignment.end
-                  : CrossAxisAlignment.start,
               children: [
-                if (name != null) ...[
-                  Text(
-                    name!,
-                    style: threadText(
-                      12,
-                      weight: FontWeight.w500,
-                      color: name == 'Admin'
-                          ? AppColors.blue
-                          : const Color(0xFF475467),
-                    ),
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: fromAdmin ? AppColors.blue : const Color(0xFFF2F4F7),
+                    shape: BoxShape.circle,
                   ),
-                  const SizedBox(height: 2),
-                ],
-                Text(
-                  row.text.trim(),
-                  style: threadText(
-                    14.5,
-                    height: 1.4,
-                    color: mine ? Colors.white : AppColors.ink,
+                  child: Icon(
+                    fromAdmin
+                        ? Icons.shield_outlined
+                        : Icons.person_outline_rounded,
+                    size: 16,
+                    color: fromAdmin ? Colors.white : const Color(0xFF475467),
                   ),
                 ),
-                if (time.isNotEmpty) ...[
-                  const SizedBox(height: 3),
-                  Text(
-                    time,
-                    style: threadText(
-                      10.5,
-                      color: mine ? const Color(0xFFC9D6FF) : threadSoft,
-                    ),
-                  ),
-                ],
+                if (line) _timelineLine(),
               ],
             ),
           ),
-        ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(top: 5, bottom: line ? 18 : 4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        name,
+                        style: threadText(
+                          14,
+                          weight: FontWeight.w600,
+                          color: fromAdmin ? AppColors.blue : AppColors.ink,
+                        ),
+                      ),
+                      if (headTime.isNotEmpty) ...[
+                        const SizedBox(width: 8),
+                        Text(
+                          headTime,
+                          style: threadText(12, color: threadSoft),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  for (final r in rows)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text.rich(
+                        TextSpan(
+                          text: r.text.trim(),
+                          children: [
+                            if (r.pending)
+                              TextSpan(
+                                text: '  Sending…',
+                                style: threadText(11, color: threadSoft),
+                              ),
+                          ],
+                        ),
+                        style: threadText(
+                          15,
+                          height: 1.5,
+                          color: r.pending
+                              ? threadSoft
+                              : const Color(0xFF344054),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
