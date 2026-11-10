@@ -97,4 +97,14 @@ ul{list-style:none;padding:0;margin:0;display:grid;grid-template-columns:repeat(
   skeleton();load();
 })();
 </script>
+<script>
+// DEV only: orange TESTING bar, so it is easy to see which link Zoho has.
+if (location.hostname.indexOf("haystek-pulse-dev.") === 0) {
+  document.title = "Pulse Codes (DEV)";
+  var bar = document.createElement("div");
+  bar.textContent = "TESTING (DEV): these codes work only in the “Haystek Pulse Dev” app";
+  bar.style.cssText = "background:#E8572A;color:#fff;font:600 15px/1.4 -apple-system,Segoe UI,Arial,sans-serif;text-align:center;padding:10px 16px";
+  document.body.insertBefore(bar, document.body.firstChild);
+}
+</script>
 </body></html>

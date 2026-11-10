@@ -419,6 +419,7 @@ class NotificationService {
         color = const Color(0xFFD08A00);
         tint = const Color(0xFFFDF3DF);
         action = 'Answer now';
+      case 'pulse_soon_admin':
       case PushSender.typePulseResponse:
         icon = Icons.monitor_heart_outlined;
       case typeBroadcast:
@@ -447,6 +448,7 @@ class NotificationService {
     switch (type) {
       case PushSender.typeFeedbackNew:
       case PushSender.typePulseResponse:
+      case 'pulse_soon_admin':
         return e.isManagement;
       case PushSender.typeFeedbackReply:
       case PushSender.typePulseOpen:

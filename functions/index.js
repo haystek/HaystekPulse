@@ -38,6 +38,27 @@ exports.pulseHeadsUp = onSchedule(
     });
 
     console.log("Weekly Pulse heads-up sent to employees.");
+
+    // Admins: their own message (the app shows it only to admins).
+    await admin.messaging().send({
+      topic: "management",
+      notification: {
+        title: "Weekly Pulse opens in 15 minutes",
+        body: "Employees are being reminded now. Responses will show on your dashboard.",
+      },
+      data: { type: "pulse_soon_admin" },
+      android: {
+        priority: "high",
+        notification: {
+          channelId: "haystek_alerts",
+          icon: "ic_notification",
+        },
+      },
+      apns: {
+        payload: { aps: { sound: "default" } },
+      },
+    });
+    console.log("Weekly Pulse heads-up sent to admins.");
   }
 );
 

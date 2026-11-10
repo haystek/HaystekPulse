@@ -131,7 +131,9 @@ class AuthService {
     final uid = _auth.currentUser?.uid;
     if (uid == null) return false;
     try {
-      final d = await _session(uid).get(const GetOptions(source: Source.server));
+      final d = await _session(
+        uid,
+      ).get(const GetOptions(source: Source.server));
       final phone = d.data()?['phone'];
       if (phone is! String) {
         await claimThisPhone();
@@ -307,7 +309,10 @@ class AuthService {
   /// takes the account, any other phone signs out. False when the phone
   /// signs in by itself (reinstall): if the account moved to another phone
   /// meanwhile, this phone is freed and 'account-moved' is thrown.
-  Future<void> signInWithPersonalCode(String personalCode, {bool claim = true}) async {
+  Future<void> signInWithPersonalCode(
+    String personalCode, {
+    bool claim = true,
+  }) async {
     final n = PersonalCode.normalize(personalCode);
     if (!PersonalCode.looksValid(n)) {
       throw FirebaseAuthException(code: 'personal-code-wrong');
@@ -377,7 +382,10 @@ class AuthService {
 
   Future<void> _saveCodeOnPhone(String code) async {
     try {
-      await _codeStore.write(key: _codeKey, value: PersonalCode.normalize(code));
+      await _codeStore.write(
+        key: _codeKey,
+        value: PersonalCode.normalize(code),
+      );
     } catch (e) {
       debugPrint('[Auth] could not keep the personal code: $e');
     }
@@ -402,10 +410,12 @@ class AuthService {
       final ref = _db.collection('devices').doc(await _deviceHash());
       final data = <String, dynamic>{'at': FieldValue.serverTimestamp()};
       if (code != null) {
-        data.addAll(await VaultService.lockWith(
-          'phone:$phoneId',
-          PersonalCode.normalize(code),
-        ));
+        data.addAll(
+          await VaultService.lockWith(
+            'phone:$phoneId',
+            PersonalCode.normalize(code),
+          ),
+        );
       }
       await ref.set(data);
     } catch (e) {
@@ -637,24 +647,53 @@ class AuthService {
 
   /// Passwords that are too easy to guess. The history is locked with
   /// the password, so it must not be one of these.
-  static bool isEasyPassword(String password, {String name = '', String email = ''}) {
+  static bool isEasyPassword(
+    String password, {
+    String name = '',
+    String email = '',
+  }) {
     final p = password.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
     const easy = [
-      'password', 'password1', 'password12', 'password123', 'welcome',
-      'welcome1', 'welcome12', 'welcome123', 'haystek', 'haystek1',
-      'haystek12', 'haystek123', 'haystek2026', 'qwerty', 'qwerty123',
-      'admin', 'admin123', 'abc123', 'abcd1234', 'iloveyou', 'letmein',
-      '12345678', '123456789', '1234567890', '11111111', '00000000',
-      'india123', 'test1234',
+      'password',
+      'password1',
+      'password12',
+      'password123',
+      'welcome',
+      'welcome1',
+      'welcome12',
+      'welcome123',
+      'haystek',
+      'haystek1',
+      'haystek12',
+      'haystek123',
+      'haystek2026',
+      'qwerty',
+      'qwerty123',
+      'admin',
+      'admin123',
+      'abc123',
+      'abcd1234',
+      'iloveyou',
+      'letmein',
+      '12345678',
+      '123456789',
+      '1234567890',
+      '11111111',
+      '00000000',
+      'india123',
+      'test1234',
     ];
     if (easy.contains(p)) return true;
     if (RegExp(r'^(.)\1+$').hasMatch(p)) return true; // aaaaaaaa
     final first = name.trim().split(RegExp(r'\s+')).first.toLowerCase();
-    if (first.length >= 3 &&
-        p.replaceAll(RegExp(r'[0-9]'), '') == first) {
+    if (first.length >= 3 && p.replaceAll(RegExp(r'[0-9]'), '') == first) {
       return true; // shiva123, Shiva@2026
     }
-    final user = email.split('@').first.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+    final user = email
+        .split('@')
+        .first
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9]'), '');
     if (user.length >= 3 && p.startsWith(user)) return true;
     return false;
   }
@@ -680,10 +719,9 @@ class AuthService {
     }
     await user.updatePassword(newPassword);
     pendingPassword = newPassword;
-    await _db
-        .collection('employees')
-        .doc(user.uid)
-        .update({'mustChangePassword': false});
+    await _db.collection('employees').doc(user.uid).update({
+      'mustChangePassword': false,
+    });
   }
 
   /// Signs out at once. The notification cleanup (leaving this phone's
@@ -706,6 +744,14 @@ class AuthService {
     await _auth.signOut();
   }
 
+  /// Delete my account: never wait for ever on slow internet.
+  static const Duration _deleteWait = Duration(seconds: 20);
+  static Future<T> _withWait<T>(Future<T> f) => f.timeout(
+    _deleteWait,
+    onTimeout: () =>
+        throw FirebaseAuthException(code: 'network-request-failed'),
+  );
+
   /// Profile -> Delete my account. Deletes, in this order:
   /// 1. a fresh sign-in (Firebase asks for it before deleting a login):
   ///    with the personal code kept on this phone (or [secret] if typed),
@@ -722,62 +768,74 @@ class AuthService {
     final uid = user.uid;
     final code = isCodeAccount;
     _deleting = true;
+    final watch = Stopwatch()..start();
     try {
-
-    // 1. Fresh sign-in.
-    if (code) {
-      final c = (secret != null && secret.trim().isNotEmpty)
-          ? secret
-          : await savedCode();
-      if (c == null) throw FirebaseAuthException(code: 'personal-code-needed');
-      if (await codeEmail(c) != user.email!.toLowerCase()) {
-        throw FirebaseAuthException(code: 'personal-code-wrong');
-      }
-      await user.reauthenticateWithCredential(
-        EmailAuthProvider.credential(
-          email: user.email!,
-          password: PersonalCode.password(c),
-        ),
-      );
-    } else {
-      if (secret == null || secret.isEmpty) {
-        throw FirebaseAuthException(code: 'password-needed');
-      }
-      try {
-        await user.reauthenticateWithCredential(
-          EmailAuthProvider.credential(email: user.email!, password: secret),
-        );
-      } on FirebaseAuthException catch (e) {
-        if (e.code == 'invalid-credential' || e.code == 'wrong-password') {
-          throw FirebaseAuthException(code: 'wrong-password');
+      // 1. Fresh sign-in.
+      if (code) {
+        final c = (secret != null && secret.trim().isNotEmpty)
+            ? secret
+            : await savedCode();
+        if (c == null)
+          throw FirebaseAuthException(code: 'personal-code-needed');
+        if (await codeEmail(c) != user.email!.toLowerCase()) {
+          throw FirebaseAuthException(code: 'personal-code-wrong');
         }
-        rethrow;
-      }
-    }
-
-    // 2. Data. Leave notification groups first (not awaited for long).
-    await NotificationService.instance.stop().timeout(
-          const Duration(seconds: 5),
-          onTimeout: () {},
+        await _withWait(
+          user.reauthenticateWithCredential(
+            EmailAuthProvider.credential(
+              email: user.email!,
+              password: PersonalCode.password(c),
+            ),
+          ),
         );
-    final batch = _db.batch()
-      ..delete(_db.collection('vaults').doc(uid))
-      ..delete(_db.collection('user_state').doc(uid))
-      ..delete(_db.collection('sessions').doc(uid))
-      ..delete(_db.collection('employees').doc(uid));
-    if (code) {
-      batch.delete(_db.collection('devices').doc(await _deviceHash()));
-    }
-    await batch.commit();
+      } else {
+        if (secret == null || secret.isEmpty) {
+          throw FirebaseAuthException(code: 'password-needed');
+        }
+        try {
+          await _withWait(
+            user.reauthenticateWithCredential(
+              EmailAuthProvider.credential(
+                email: user.email!,
+                password: secret,
+              ),
+            ),
+          );
+        } on FirebaseAuthException catch (e) {
+          if (e.code == 'invalid-credential' || e.code == 'wrong-password') {
+            throw FirebaseAuthException(code: 'wrong-password');
+          }
+          rethrow;
+        }
+      }
 
-    // 3. The login. Then forget everything on this phone.
-    await user.delete();
-    if (code) await _forgetCodeOnPhone();
-    pendingCode = null;
-    newPersonalCode = null;
-    pendingEntryCode = null;
-    pendingPassword = null;
-    await VaultService.instance.close();
+      // 2. Data. Leave notification groups first (not awaited for long).
+      debugPrint('[Delete] signed in again: ${watch.elapsedMilliseconds} ms');
+      final leaving = NotificationService.instance.stop().timeout(
+        const Duration(seconds: 3),
+        onTimeout: () {},
+      );
+      final batch = _db.batch()
+        ..delete(_db.collection('vaults').doc(uid))
+        ..delete(_db.collection('user_state').doc(uid))
+        ..delete(_db.collection('sessions').doc(uid))
+        ..delete(_db.collection('employees').doc(uid));
+      if (code) {
+        batch.delete(_db.collection('devices').doc(await _deviceHash()));
+      }
+      await _withWait(batch.commit());
+      await leaving;
+      debugPrint('[Delete] data removed: ${watch.elapsedMilliseconds} ms');
+
+      // 3. The login. Then forget everything on this phone.
+      await _withWait(user.delete());
+      debugPrint('[Delete] login removed: ${watch.elapsedMilliseconds} ms');
+      if (code) await _forgetCodeOnPhone();
+      pendingCode = null;
+      newPersonalCode = null;
+      pendingEntryCode = null;
+      pendingPassword = null;
+      await VaultService.instance.close();
     } finally {
       _deleting = false;
     }
