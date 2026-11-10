@@ -302,10 +302,10 @@ double keepLastInView(
 /// Long text shows 3 lines with "More"; 2 lines while typing, so the
 /// chat keeps its space.
 class ThreadHeaderCard extends StatefulWidget {
-  const ThreadHeaderCard({super.key, required this.top, required this.text});
+  const ThreadHeaderCard({super.key, this.top, required this.text});
 
   /// Name / date / status row.
-  final Widget top;
+  final Widget? top;
   final String text;
 
   @override
@@ -348,8 +348,10 @@ class _ThreadHeaderCardState extends State<ThreadHeaderCard> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               mainAxisSize: MainAxisSize.min,
               children: [
-                widget.top,
-                const SizedBox(height: 8),
+                if (widget.top != null) ...[
+                  widget.top!,
+                  const SizedBox(height: 8),
+                ],
                 if (open)
                   ConstrainedBox(
                     constraints: BoxConstraints(
@@ -437,11 +439,11 @@ class ThreadChatList extends StatelessWidget {
         return ListView(
           controller: controller,
           reverse: true,
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
           children: [
             ConstrainedBox(
               constraints: BoxConstraints(
-                minHeight: box.maxHeight > 20 ? box.maxHeight - 20 : 0.0,
+                minHeight: box.maxHeight > 32 ? box.maxHeight - 32 : 0.0,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,

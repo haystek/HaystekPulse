@@ -224,25 +224,6 @@ class _FeedbackDetailScreenState extends State<FeedbackDetailScreen> {
     );
   }
 
-  String _date(DateTime? d) {
-    if (d == null) return '';
-    const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    return '${d.day} ${months[d.month - 1]}';
-  }
-
   @override
   Widget build(BuildContext context) {
     final name = _firstName;
@@ -261,27 +242,40 @@ class _FeedbackDetailScreenState extends State<FeedbackDetailScreen> {
           title: const SizedBox.shrink(),
           actions: [
             // Share an update about this with everyone (no name).
-            IconButton(
-              tooltip: 'Broadcast to everyone',
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => NewBroadcastScreen(quote: _item.text),
+            Tooltip(
+              message: 'Broadcast to everyone',
+              child: Material(
+                color: Colors.white,
+                shape: const CircleBorder(
+                  side: BorderSide(color: Color(0xFFE3E8F1)),
+                ),
+                child: InkWell(
+                  customBorder: const CircleBorder(),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => NewBroadcastScreen(quote: _item.text),
+                    ),
+                  ),
+                  child: const SizedBox(
+                    width: 44,
+                    height: 44,
+                    child: Icon(
+                      Icons.campaign_outlined,
+                      size: 20,
+                      color: AppColors.blue,
+                    ),
+                  ),
                 ),
               ),
-              icon: const Icon(Icons.campaign_outlined, color: AppColors.blue),
             ),
-            _TitlePill(
-              _item.isFromBox ? 'Suggestion' : 'Weekly Pulse',
-              icon: _item.isFromBox
-                  ? Icons.lightbulb_outline
-                  : Icons.monitor_heart_outlined,
-            ),
+            const SizedBox(width: 16),
           ],
         ),
         body: Column(
           children: [
             // Sticky: the employee's message stays on top.
-            _MessageCard(item: _item, date: _date(_item.createdAt)),
+            _TitleBlock(item: _item),
+            _MessageCard(item: _item),
             Expanded(
               child: StreamBuilder<List<ThreadEntry>>(
                 stream: _thread,
@@ -1031,15 +1025,12 @@ class _StatusSheetState extends State<_StatusSheet> {
   }
 }
 
-/// The employee's message, sticky on top (grey card):
-///   [R]  Ravi Kumar               [● Under review]
-///        HST1065 · 21 Oct
-///   The pantry wasn't cleaned last week…
-class _MessageCard extends StatelessWidget {
-  const _MessageCard({required this.item, required this.date});
+/// Header 1 "Big title": the type as a big title with the status tag,
+/// then who sent it and when.
+class _TitleBlock extends StatelessWidget {
+  const _TitleBlock({required this.item});
 
   final FeedbackItem item;
-  final String date;
 
   @override
   Widget build(BuildContext context) {
@@ -1047,66 +1038,95 @@ class _MessageCard extends StatelessWidget {
     final anonymous = item.anonymous || name.isEmpty;
     final id = (item.authorEmployeeId ?? '').trim();
     final rating = item.rating;
-    final sub = [
+    final meta = [
+      anonymous ? 'Name hidden' : name,
       if (!anonymous && id.isNotEmpty) id,
       // Joined with an entry code: the name was typed, not checked.
-      if (!anonymous && id.isEmpty) 'Name typed by sender',
-      if (date.isNotEmpty) date,
+      if (!anonymous && id.isEmpty) 'name typed',
+      if (item.createdAt != null) threadDate(item.createdAt!),
       if (!item.isFromBox && rating != null) PulseRating.label(rating),
     ].join(' · ');
-
-    return ThreadHeaderCard(
-      text: item.text,
-      top: Row(
+    final color = FeedbackStatus.color(item.status);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 6, 24, 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 32,
-            height: 32,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: anonymous ? Colors.white : AppColors.blueTint,
-              borderRadius: BorderRadius.circular(11),
-            ),
-            child: anonymous
-                ? const Icon(
-                    Icons.lock_outline_rounded,
-                    size: 17,
-                    color: Color(0xFF8E97AB),
-                  )
-                : Text(
-                    name[0].toUpperCase(),
-                    style: _t(14, color: AppColors.blue),
-                  ),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  item.isFromBox ? 'Suggestion' : 'Weekly Pulse',
+                  style: _t(28, weight: FontWeight.w700),
+                ),
+              ),
+              Container(
+                height: 28,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 7,
+                      height: 7,
+                      decoration: BoxDecoration(
+                        color: color,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      FeedbackStatus.label(item.status),
+                      style: _t(13, weight: FontWeight.w600, color: color),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  anonymous ? 'Name hidden' : name,
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Icon(
+                anonymous
+                    ? Icons.lock_outline_rounded
+                    : Icons.person_outline_rounded,
+                size: 14,
+                color: const Color(0xFF5F6A84),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  meta,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: _t(14),
-                ),
-                if (sub.isNotEmpty)
-                  Text(
-                    sub,
-                    style: _t(
-                      12,
-                      weight: FontWeight.w400,
-                      color: const Color(0xFF8E97AB),
-                    ),
+                  style: _t(
+                    13,
+                    weight: FontWeight.w400,
+                    color: const Color(0xFF5F6A84),
                   ),
-              ],
-            ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 8),
-          _Pill(status: item.status),
         ],
       ),
     );
   }
+}
+
+/// The employee's message in a grey card (sticky on top).
+class _MessageCard extends StatelessWidget {
+  const _MessageCard({required this.item});
+
+  final FeedbackItem item;
+
+  @override
+  Widget build(BuildContext context) => ThreadHeaderCard(text: item.text);
 }
 
 /// Small coloured status tag.
@@ -1256,54 +1276,6 @@ class _StatusRow extends StatelessWidget {
               ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Screen name on the right of the AppBar: a rounded pill with a blue
-/// icon circle (same as the other screens).
-class _TitlePill extends StatelessWidget {
-  const _TitlePill(this.text, {required this.icon});
-
-  final String text;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 16),
-      child: Container(
-        height: 42,
-        padding: const EdgeInsets.fromLTRB(5, 5, 16, 5),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(21),
-          border: Border.all(color: AppColors.blue.withValues(alpha: 0.35)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: const BoxDecoration(
-                color: AppColors.blue,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, size: 17, color: Colors.white),
-            ),
-            const SizedBox(width: 9),
-            Text(
-              text,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w400,
-                color: AppColors.ink,
-                letterSpacing: -0.4,
-              ),
-            ),
-          ],
         ),
       ),
     );
