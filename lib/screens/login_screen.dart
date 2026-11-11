@@ -10,6 +10,7 @@ import '../services/auth_service.dart';
 import '../services/personal_code.dart';
 import '../theme/app_theme.dart';
 import '../widgets/pulse_loading.dart';
+import '../widgets/app_tour.dart';
 
 /// Which part of the sign-in screen shows.
 /// welcome:  Join with entry code / I have my personal code / Admin
@@ -25,29 +26,33 @@ enum _Entry { welcome, join, personal, admin, found, moved }
 Widget _withInter(BuildContext context, Widget child) {
   final t = Theme.of(context);
   return Theme(
-    data: t.copyWith(textTheme: GoogleFonts.plusJakartaSansTextTheme(t.textTheme)),
+    data: t.copyWith(
+      textTheme: GoogleFonts.plusJakartaSansTextTheme(t.textTheme),
+    ),
     child: child,
   );
 }
 
 /// Titles and big numbers in Inter.
 TextStyle _h(
-    double size, {
-      FontWeight weight = FontWeight.w700,
-      Color color = AppColors.ink,
-      double? height,
-    }) =>
-    GoogleFonts.plusJakartaSans(
-      fontSize: size,
-      fontWeight: weight,
-      color: color,
-      height: height,
-      letterSpacing: size >= 22 ? -0.5 : -0.2,
-    );
+  double size, {
+  FontWeight weight = FontWeight.w700,
+  Color color = AppColors.ink,
+  double? height,
+}) => GoogleFonts.plusJakartaSans(
+  fontSize: size,
+  fontWeight: weight,
+  color: color,
+  height: height,
+  letterSpacing: size >= 22 ? -0.5 : -0.2,
+);
 
 /// The small blue text buttons.
 final ButtonStyle _linkButton = TextButton.styleFrom(
-  textStyle: GoogleFonts.plusJakartaSans(fontSize: 14.5, fontWeight: FontWeight.w500),
+  textStyle: GoogleFonts.plusJakartaSans(
+    fontSize: 14.5,
+    fontWeight: FontWeight.w500,
+  ),
 );
 
 /// The small grey line under a title.
@@ -197,7 +202,9 @@ class _LoginScreenState extends State<LoginScreen> {
         AlertDialog(
           backgroundColor: Colors.white,
           surfaceTintColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
           icon: Container(
             width: 56,
             height: 56,
@@ -205,7 +212,11 @@ class _LoginScreenState extends State<LoginScreen> {
               color: AppColors.blueTint,
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.swap_horiz_rounded, color: AppColors.blue, size: 28),
+            child: const Icon(
+              Icons.swap_horiz_rounded,
+              color: AppColors.blue,
+              size: 28,
+            ),
           ),
           title: Text(
             'Switch account?',
@@ -214,9 +225,13 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           content: Text(
             'This phone already has another account. If you switch, you’ll '
-                'need that account’s personal code to open it again.',
+            'need that account’s personal code to open it again.',
             textAlign: TextAlign.center,
-            style: GoogleFonts.plusJakartaSans(fontSize: 14.5, height: 1.45, color: AppColors.muted),
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 14.5,
+              height: 1.45,
+              color: AppColors.muted,
+            ),
           ),
           actionsPadding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
           actions: [
@@ -235,7 +250,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 8),
                 TextButton(
                   onPressed: () => Navigator.pop(c, true),
-                  style: TextButton.styleFrom(minimumSize: const Size.fromHeight(46)),
+                  style: TextButton.styleFrom(
+                    minimumSize: const Size.fromHeight(46),
+                  ),
                   child: const Text('Yes, switch'),
                 ),
               ],
@@ -299,7 +316,8 @@ class _LoginScreenState extends State<LoginScreen> {
     final other = await auth.savedCode() ?? await auth.codeOnThisPhone();
     if (!mounted) return;
     if (other != null &&
-        PersonalCode.normalize(other) != PersonalCode.normalize(_personalCode.text)) {
+        PersonalCode.normalize(other) !=
+            PersonalCode.normalize(_personalCode.text)) {
       if (await _askSwitch() != true || !mounted) return;
     }
     setState(() {
@@ -468,10 +486,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _busyDot() => const SizedBox(
     height: 20,
     width: 20,
-    child: CircularProgressIndicator(
-      strokeWidth: 2,
-      color: Colors.white,
-    ),
+    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
   );
 
   /// One row of the grouped card: an icon and a field without a box.
@@ -522,7 +537,9 @@ class _LoginScreenState extends State<LoginScreen> {
   static InputDecoration _plain(String label) => InputDecoration(
     labelText: label,
     labelStyle: GoogleFonts.plusJakartaSans(color: const Color(0xFF8E97AB)),
-    floatingLabelStyle: GoogleFonts.plusJakartaSans(color: const Color(0xFF8E97AB)),
+    floatingLabelStyle: GoogleFonts.plusJakartaSans(
+      color: const Color(0xFF8E97AB),
+    ),
     border: InputBorder.none,
     enabledBorder: InputBorder.none,
     focusedBorder: InputBorder.none,
@@ -574,8 +591,9 @@ class _LoginScreenState extends State<LoginScreen> {
           textCapitalization: capitals
               ? TextCapitalization.characters
               : TextCapitalization.none,
-          keyboardType:
-          capitals ? TextInputType.text : TextInputType.visiblePassword,
+          keyboardType: capitals
+              ? TextInputType.text
+              : TextInputType.visiblePassword,
           textInputAction: TextInputAction.done,
           onChanged: (_) => _clearError(),
           onSubmitted: (_) => onDone(),
@@ -605,7 +623,10 @@ class _LoginScreenState extends State<LoginScreen> {
         minimumSize: const Size.fromHeight(54),
         side: const BorderSide(color: Color(0xFFE3E8F1), width: 1.5),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        textStyle: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w600),
+        textStyle: GoogleFonts.plusJakartaSans(
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+        ),
       ),
       child: Text(label),
     );
@@ -616,14 +637,14 @@ class _LoginScreenState extends State<LoginScreen> {
     final error = _error == null
         ? const <Widget>[]
         : [
-      const SizedBox(height: 12),
-      _ErrorBox(
-        message: _error!,
-        actions: _errorCode == 'device-has-account'
-            ? [('Use personal code', () => _go(_Entry.personal))]
-            : const [],
-      ),
-    ];
+            const SizedBox(height: 12),
+            _ErrorBox(
+              message: _error!,
+              actions: _errorCode == 'device-has-account'
+                  ? [('Use personal code', () => _go(_Entry.personal))]
+                  : const [],
+            ),
+          ];
 
     switch (_entry) {
       case _Entry.found:
@@ -646,7 +667,10 @@ class _LoginScreenState extends State<LoginScreen> {
             const SizedBox(height: 12),
             Center(
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 5,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.blueTint,
                   borderRadius: BorderRadius.circular(999),
@@ -654,8 +678,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.lock_outline_rounded,
-                        size: 14, color: AppColors.blue),
+                    const Icon(
+                      Icons.lock_outline_rounded,
+                      size: 14,
+                      color: AppColors.blue,
+                    ),
                     const SizedBox(width: 6),
                     Text(
                       'Anonymous account',
@@ -684,7 +711,7 @@ class _LoginScreenState extends State<LoginScreen> {
             const SizedBox(height: 4),
             const Text(
               'Pick any code from Pulse Codes in Zoho. It only shows you are '
-                  'from Haystek, not who you are.',
+              'from Haystek, not who you are.',
               style: _sub,
             ),
             const SizedBox(height: 18),
@@ -754,17 +781,34 @@ class _LoginScreenState extends State<LoginScreen> {
               style: _sub,
             ),
             const SizedBox(height: 22),
-            _GradientButton(
-              onPressed: () => _go(_Entry.join),
-              child: const Text('Join with entry code'),
+            TourStarter(
+              id: 'welcome_tour_seen_v4',
+              steps: _WelcomeTour.steps,
+              child: KeyedSubtree(
+                key: _WelcomeTour.join,
+                child: _GradientButton(
+                  onPressed: () => _go(_Entry.join),
+                  child: const Text('Join with entry code'),
+                ),
+              ),
             ),
             const SizedBox(height: 12),
-            _lightButton(
-              'I have my personal code',
-                  () => _go(_Entry.personal),
+            KeyedSubtree(
+              key: _WelcomeTour.personal,
+              child: _lightButton(
+                'I have my personal code',
+                () => _go(_Entry.personal),
+              ),
             ),
             const SizedBox(height: 14),
-            _helpLine('Admin?', 'Sign in with email', () => _go(_Entry.admin)),
+            KeyedSubtree(
+              key: _WelcomeTour.admin,
+              child: _helpLine(
+                'Admin?',
+                'Sign in with email',
+                () => _go(_Entry.admin),
+              ),
+            ),
           ],
         );
     }
@@ -776,30 +820,29 @@ class _LoginScreenState extends State<LoginScreen> {
     final error = _error == null
         ? const <Widget>[]
         : [
-      const SizedBox(height: 12),
-      _ErrorBox(
-        message: _error!,
-        // Wrong email or password on Sign in: offer the two ways out.
-        actions: _signUpMode || _resetMode
-            ? const []
-            : _error == AuthService.noAccount
-            ? [('Create account', () => _toggleSignUp(true))]
-            : _error == AuthService.wrongPassword
-            ? [('Reset password', _openReset)]
-            : _error == AuthService.wrongLogin
-            ? [
-          ('Create account', () => _toggleSignUp(true)),
-          ('Reset password', _openReset),
-        ]
-            : const [],
-      ),
-    ];
+            const SizedBox(height: 12),
+            _ErrorBox(
+              message: _error!,
+              // Wrong email or password on Sign in: offer the two ways out.
+              actions: _signUpMode || _resetMode
+                  ? const []
+                  : _error == AuthService.noAccount
+                  ? [('Create account', () => _toggleSignUp(true))]
+                  : _error == AuthService.wrongPassword
+                  ? [('Reset password', _openReset)]
+                  : _error == AuthService.wrongLogin
+                  ? [
+                      ('Create account', () => _toggleSignUp(true)),
+                      ('Reset password', _openReset),
+                    ]
+                  : const [],
+            ),
+          ];
 
     final emailField = TextFormField(
       controller: _email,
       keyboardType: TextInputType.emailAddress,
-      textInputAction:
-      _resetMode ? TextInputAction.done : TextInputAction.next,
+      textInputAction: _resetMode ? TextInputAction.done : TextInputAction.next,
       autocorrect: false,
       autofillHints: const [AutofillHints.email],
       onFieldSubmitted: _resetMode ? (_) => _sendReset() : null,
@@ -832,12 +875,15 @@ class _LoginScreenState extends State<LoginScreen> {
           const SizedBox(height: 8),
           Text(
             'If ${_email.text.trim()} is registered, we have sent a link to '
-                'set a new password. Please check your inbox and spam folder.',
+            'set a new password. Please check your inbox and spam folder.',
             textAlign: TextAlign.center,
             style: _sub,
           ),
           const SizedBox(height: 26),
-          _GradientButton(onPressed: _closeReset, child: const Text('Back to sign in')),
+          _GradientButton(
+            onPressed: _closeReset,
+            child: const Text('Back to sign in'),
+          ),
           const SizedBox(height: 8),
           _helpLine('No email?', 'Send it again', _busy ? null : _sendReset),
         ],
@@ -853,7 +899,7 @@ class _LoginScreenState extends State<LoginScreen> {
           const SizedBox(height: 4),
           const Text(
             'Enter your office email. We will send you a link to set a new '
-                'password.',
+            'password.',
             style: _sub,
           ),
           const SizedBox(height: 18),
@@ -883,7 +929,10 @@ class _LoginScreenState extends State<LoginScreen> {
           _signUpMode ? AutofillHints.newPassword : AutofillHints.password,
         ],
         onFieldSubmitted: (_) => _signUpMode ? _signUp() : _signIn(),
-        style: GoogleFonts.plusJakartaSans(fontSize: 15.5, color: AppColors.ink),
+        style: GoogleFonts.plusJakartaSans(
+          fontSize: 15.5,
+          color: AppColors.ink,
+        ),
         decoration: _plain('Password'),
         validator: (v) {
           if (v == null || v.isEmpty) return 'Enter your password';
@@ -902,20 +951,20 @@ class _LoginScreenState extends State<LoginScreen> {
     // each field in its own rounded box, with a short hint under it.
     if (_signUpMode) {
       Widget section(String t) => Padding(
-            padding: const EdgeInsets.fromLTRB(4, 14, 4, 8),
-            child: Text(
-              t,
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 12,
-                letterSpacing: 0.7,
-                color: const Color(0xFF8E97AB),
-              ),
-            ),
-          );
+        padding: const EdgeInsets.fromLTRB(4, 14, 4, 8),
+        child: Text(
+          t,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 12,
+            letterSpacing: 0.7,
+            color: const Color(0xFF8E97AB),
+          ),
+        ),
+      );
       Widget hint(String t) => Padding(
-            padding: const EdgeInsets.fromLTRB(6, 6, 6, 0),
-            child: Text(t, style: _sub),
-          );
+        padding: const EdgeInsets.fromLTRB(6, 6, 6, 0),
+        child: Text(t, style: _sub),
+      );
       Widget gap() => const SizedBox(height: 10);
 
       return Form(
@@ -931,7 +980,10 @@ class _LoginScreenState extends State<LoginScreen> {
             const SizedBox(height: 4),
             Text(
               'Only for managers and HR.',
-              style: GoogleFonts.plusJakartaSans(fontSize: 14, color: AppColors.muted),
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 14,
+                color: AppColors.muted,
+              ),
             ),
             section('ABOUT YOU'),
             _card([
@@ -942,7 +994,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   textCapitalization: TextCapitalization.words,
                   textInputAction: TextInputAction.next,
                   autofillHints: const [AutofillHints.name],
-                  style: GoogleFonts.plusJakartaSans(fontSize: 15.5, color: AppColors.ink),
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 15.5,
+                    color: AppColors.ink,
+                  ),
                   decoration: _plain('Full name'),
                   validator: (v) => (v == null || v.trim().length < 2)
                       ? 'Enter your name'
@@ -982,20 +1037,28 @@ class _LoginScreenState extends State<LoginScreen> {
                           textCapitalization: TextCapitalization.characters,
                           // Admin codes are 6 letters or numbers, like HSTADM.
                           inputFormatters: [
-                            FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]')),
+                            FilteringTextInputFormatter.allow(
+                              RegExp(r'[A-Za-z0-9]'),
+                            ),
                             LengthLimitingTextInputFormatter(6),
                             TextInputFormatter.withFunction(
-                              (old, now) => now.copyWith(text: now.text.toUpperCase()),
+                              (old, now) =>
+                                  now.copyWith(text: now.text.toUpperCase()),
                             ),
                           ],
-                          style: GoogleFonts.plusJakartaSans(fontSize: 15.5, color: AppColors.ink),
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 15.5,
+                            color: AppColors.ink,
+                          ),
                           decoration: _plain('Admin code (6 letters)'),
-                          validator: (v) => (_admin && (v == null || v.trim().isEmpty))
+                          validator: (v) =>
+                              (_admin && (v == null || v.trim().isEmpty))
                               ? 'Enter the admin code'
                               : null,
                         ),
                         trailing: TextButton(
-                          onPressed: () => setState(() => _hideCode = !_hideCode),
+                          onPressed: () =>
+                              setState(() => _hideCode = !_hideCode),
                           style: _linkButton,
                           child: Text(_hideCode ? 'Show' : 'Hide'),
                         ),
@@ -1049,10 +1112,7 @@ class _LoginScreenState extends State<LoginScreen> {
           const SizedBox(height: 2),
           const Text('Use your office email.', style: _sub),
           const SizedBox(height: 18),
-          _card([
-            emailRow,
-            passwordRow,
-          ]),
+          _card([emailRow, passwordRow]),
           ...error,
           const SizedBox(height: 20),
           _GradientButton(
@@ -1118,11 +1178,7 @@ class _LoginScreenState extends State<LoginScreen> {
         },
         child: _withInter(
           context,
-          _FoundView(
-            busy: _busy,
-            error: _error,
-            onContinue: _continueFound,
-          ),
+          _FoundView(busy: _busy, error: _error, onContinue: _continueFound),
         ),
       );
     }
@@ -1145,14 +1201,14 @@ class _LoginScreenState extends State<LoginScreen> {
             error: _error == null
                 ? const []
                 : [
-              const SizedBox(height: 12),
-              _ErrorBox(
-                message: _error!,
-                actions: _errorCode == 'device-has-account'
-                    ? [('Use personal code', () => _go(_Entry.personal))]
-                    : const [],
-              ),
-            ],
+                    const SizedBox(height: 12),
+                    _ErrorBox(
+                      message: _error!,
+                      actions: _errorCode == 'device-has-account'
+                          ? [('Use personal code', () => _go(_Entry.personal))]
+                          : const [],
+                    ),
+                  ],
             onJoin: personal ? _signInWithCode : _join,
             onBack: () => _go(_Entry.welcome),
             onPersonal: () => _go(personal ? _Entry.join : _Entry.personal),
@@ -1206,7 +1262,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: LayoutBuilder(
                         builder: (context, box) => SingleChildScrollView(
                           child: ConstrainedBox(
-                            constraints: BoxConstraints(minHeight: box.maxHeight),
+                            constraints: BoxConstraints(
+                              minHeight: box.maxHeight,
+                            ),
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1214,22 +1272,36 @@ class _LoginScreenState extends State<LoginScreen> {
                                 Align(
                                   alignment: Alignment.topCenter,
                                   child: ConstrainedBox(
-                                    constraints: const BoxConstraints(maxWidth: 480),
+                                    constraints: const BoxConstraints(
+                                      maxWidth: 480,
+                                    ),
                                     child: Padding(
-                                      padding: const EdgeInsets.fromLTRB(22, 12, 22, 0),
+                                      padding: const EdgeInsets.fromLTRB(
+                                        22,
+                                        12,
+                                        22,
+                                        0,
+                                      ),
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.stretch,
                                         children: [
                                           AnimatedSize(
-                                            duration: const Duration(milliseconds: 220),
+                                            duration: const Duration(
+                                              milliseconds: 220,
+                                            ),
                                             curve: Curves.easeOutCubic,
                                             alignment: Alignment.topCenter,
                                             child: compact
-                                                ? const SizedBox(width: double.infinity)
+                                                ? const SizedBox(
+                                                    width: double.infinity,
+                                                  )
                                                 : const Padding(
-                                              padding: EdgeInsets.only(bottom: 22),
-                                              child: _AdminPicture(),
-                                            ),
+                                                    padding: EdgeInsets.only(
+                                                      bottom: 22,
+                                                    ),
+                                                    child: _AdminPicture(),
+                                                  ),
                                           ),
                                           _form(theme),
                                         ],
@@ -1239,7 +1311,12 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                                 if (!typing)
                                   const Padding(
-                                    padding: EdgeInsets.fromLTRB(24, 20, 24, 16),
+                                    padding: EdgeInsets.fromLTRB(
+                                      24,
+                                      20,
+                                      24,
+                                      16,
+                                    ),
                                     child: _Footer(),
                                   ),
                               ],
@@ -1261,7 +1338,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
 /// Back button on the left, a rounded title pill on the right.
 class _TopBar extends StatelessWidget {
-  const _TopBar({required this.label, required this.icon, required this.onBack});
+  const _TopBar({
+    required this.label,
+    required this.icon,
+    required this.onBack,
+  });
 
   final String label;
   final IconData icon;
@@ -1275,14 +1356,20 @@ class _TopBar extends StatelessWidget {
         children: [
           Material(
             color: Colors.white,
-            shape: const CircleBorder(side: BorderSide(color: Color(0xFFE3E8F1))),
+            shape: const CircleBorder(
+              side: BorderSide(color: Color(0xFFE3E8F1)),
+            ),
             clipBehavior: Clip.antiAlias,
             child: InkWell(
               onTap: onBack,
               child: const SizedBox(
                 width: 44,
                 height: 44,
-                child: Icon(Icons.chevron_left_rounded, color: AppColors.ink, size: 26),
+                child: Icon(
+                  Icons.chevron_left_rounded,
+                  color: AppColors.ink,
+                  size: 26,
+                ),
               ),
             ),
           ),
@@ -1307,7 +1394,13 @@ class _TopBar extends StatelessWidget {
                   child: Icon(icon, size: 17, color: Colors.white),
                 ),
                 const SizedBox(width: 9),
-                Text(label, style: GoogleFonts.plusJakartaSans(fontSize: 16, color: AppColors.ink)),
+                Text(
+                  label,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 16,
+                    color: AppColors.ink,
+                  ),
+                ),
               ],
             ),
           ),
@@ -1347,7 +1440,13 @@ class _AdminPicture extends StatelessWidget {
           children: [
             Text(emoji, style: const TextStyle(fontSize: 13)),
             const SizedBox(width: 6),
-            Text(text, style: GoogleFonts.plusJakartaSans(fontSize: 12, color: AppColors.ink)),
+            Text(
+              text,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 12,
+                color: AppColors.ink,
+              ),
+            ),
           ],
         ),
       ),
@@ -1396,10 +1495,18 @@ class _AdminPicture extends StatelessWidget {
                 ),
               ],
             ),
-            child: const Icon(Icons.shield_outlined, color: Colors.white, size: 36),
+            child: const Icon(
+              Icons.shield_outlined,
+              color: Colors.white,
+              size: 36,
+            ),
           ),
           Positioned(left: 14, top: 22, child: tag('🏢', 'Office email', -0.1)),
-          Positioned(right: 10, bottom: 26, child: tag('💬', 'Reply to your team', 0.08)),
+          Positioned(
+            right: 10,
+            bottom: 26,
+            child: tag('💬', 'Reply to your team', 0.08),
+          ),
         ],
       ),
     );
@@ -1426,7 +1533,10 @@ class _GradientButton extends StatelessWidget {
           foregroundColor: Colors.white,
           disabledForegroundColor: Colors.white,
           shape: const StadiumBorder(),
-          textStyle: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w600),
+          textStyle: GoogleFonts.plusJakartaSans(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
         ),
         child: child,
       ),
@@ -1504,7 +1614,11 @@ class _ErrorBox extends StatelessWidget {
               Expanded(
                 child: Text(
                   message,
-                  style: GoogleFonts.plusJakartaSans(fontSize: 13.5, color: red, height: 1.4),
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 13.5,
+                    color: red,
+                    height: 1.4,
+                  ),
                 ),
               ),
             ],
@@ -1525,10 +1639,16 @@ class _ErrorBox extends StatelessWidget {
                     child: InkWell(
                       onTap: a.$2,
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
                         child: Text(
                           a.$1,
-                          style: GoogleFonts.plusJakartaSans(fontSize: 13, color: AppColors.blue),
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 13,
+                            color: AppColors.blue,
+                          ),
                         ),
                       ),
                     ),
@@ -1541,7 +1661,6 @@ class _ErrorBox extends StatelessWidget {
     );
   }
 }
-
 
 /// Person in a blue circle with a green tick: "your account is here".
 class _FoundBadge extends StatelessWidget {
@@ -1587,7 +1706,11 @@ class _FoundBadge extends StatelessWidget {
                 shape: BoxShape.circle,
                 border: Border.all(color: Colors.white, width: 3),
               ),
-              child: const Icon(Icons.check_rounded, color: Colors.white, size: 14),
+              child: const Icon(
+                Icons.check_rounded,
+                color: Colors.white,
+                size: 14,
+              ),
             ),
           ),
         ],
@@ -1595,7 +1718,6 @@ class _FoundBadge extends StatelessWidget {
     );
   }
 }
-
 
 /// First screen for a new phone: white, a soft blue card with a small
 /// preview of the app (an anonymous message, admin's reply, the Weekly
@@ -1619,12 +1741,27 @@ class _WelcomeView extends StatefulWidget {
 class _WelcomeViewState extends State<_WelcomeView> {
   /// Example message and admin's reply. Real-life, simple office things.
   static const _examples = [
-    ('Please keep the pantry stocked with snacks.', 'Done, it’s refilled every week now ☕'),
-    ('The washroom needs cleaning more often.', 'Cleaning is now twice a day. Thanks!'),
-    ('Can we have flexible timings on Fridays?', 'Yes, from this month you can leave at 5.'),
-    ('New joiners need a proper onboarding guide.', 'Good point! HR is writing one now 📘'),
+    (
+      'Please keep the pantry stocked with snacks.',
+      'Done, it’s refilled every week now ☕',
+    ),
+    (
+      'The washroom needs cleaning more often.',
+      'Cleaning is now twice a day. Thanks!',
+    ),
+    (
+      'Can we have flexible timings on Fridays?',
+      'Yes, from this month you can leave at 5.',
+    ),
+    (
+      'New joiners need a proper onboarding guide.',
+      'Good point! HR is writing one now 📘',
+    ),
     ('The parking area is full by 12 pm.', 'We booked 10 more spots nearby 🚗'),
-    ('Can we have a short learning session weekly?', 'Starting Thursdays at 4 pm, 30 minutes.'),
+    (
+      'Can we have a short learning session weekly?',
+      'Starting Thursdays at 4 pm, 30 minutes.',
+    ),
   ];
 
   int _i = 0;
@@ -1648,8 +1785,17 @@ class _WelcomeViewState extends State<_WelcomeView> {
   static const _soft = Color(0xFF8E97AB);
   static const _line = Color(0xFFE3E8F1);
 
-  TextStyle _s(double size, {FontWeight w = FontWeight.w400, Color c = _ink, double? h}) =>
-      GoogleFonts.plusJakartaSans(fontSize: size, fontWeight: w, color: c, height: h);
+  TextStyle _s(
+    double size, {
+    FontWeight w = FontWeight.w400,
+    Color c = _ink,
+    double? h,
+  }) => GoogleFonts.plusJakartaSans(
+    fontSize: size,
+    fontWeight: w,
+    color: c,
+    height: h,
+  );
 
   Widget _card({required Widget child, double angle = 0}) => Transform.rotate(
     angle: angle,
@@ -1673,7 +1819,11 @@ class _WelcomeViewState extends State<_WelcomeView> {
     ),
   );
 
-  Widget _msg({required bool admin, required String who, required String text}) {
+  Widget _msg({
+    required bool admin,
+    required String who,
+    required String text,
+  }) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1686,8 +1836,15 @@ class _WelcomeViewState extends State<_WelcomeView> {
             borderRadius: BorderRadius.circular(9),
           ),
           child: admin
-              ? Text('A', style: _s(12, w: FontWeight.w600, c: Colors.white))
-              : const Icon(Icons.lock_outline_rounded, size: 14, color: AppColors.blue),
+              ? Text(
+                  'A',
+                  style: _s(12, w: FontWeight.w600, c: Colors.white),
+                )
+              : const Icon(
+                  Icons.lock_outline_rounded,
+                  size: 14,
+                  color: AppColors.blue,
+                ),
         ),
         const SizedBox(width: 9),
         Expanded(
@@ -1713,7 +1870,10 @@ class _WelcomeViewState extends State<_WelcomeView> {
       transitionBuilder: (c, a) => FadeTransition(
         opacity: a,
         child: SlideTransition(
-          position: Tween(begin: const Offset(0, 0.12), end: Offset.zero).animate(a),
+          position: Tween(
+            begin: const Offset(0, 0.12),
+            end: Offset.zero,
+          ).animate(a),
           child: c,
         ),
       ),
@@ -1732,7 +1892,12 @@ class _WelcomeViewState extends State<_WelcomeView> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const SizedBox(height: 12),
-                  Center(child: Image.asset('assets/haystek_pulse_logo.png', height: 28)),
+                  Center(
+                    child: Image.asset(
+                      'assets/haystek_pulse_logo.png',
+                      height: 28,
+                    ),
+                  ),
                   const SizedBox(height: 12),
                   // The preview card.
                   Expanded(
@@ -1773,8 +1938,11 @@ class _WelcomeViewState extends State<_WelcomeView> {
                                       color: AppColors.blue,
                                       borderRadius: BorderRadius.circular(14),
                                     ),
-                                    child: const Icon(Icons.lock_outline_rounded,
-                                        color: Colors.white, size: 20),
+                                    child: const Icon(
+                                      Icons.lock_outline_rounded,
+                                      color: Colors.white,
+                                      size: 20,
+                                    ),
                                   ),
                                 ),
                                 Positioned(
@@ -1783,7 +1951,11 @@ class _WelcomeViewState extends State<_WelcomeView> {
                                   child: swap(
                                     _card(
                                       angle: -0.05,
-                                      child: _msg(admin: false, who: 'Name hidden', text: ex.$1),
+                                      child: _msg(
+                                        admin: false,
+                                        who: 'Name hidden',
+                                        text: ex.$1,
+                                      ),
                                     ),
                                     'q$_i',
                                   ),
@@ -1794,7 +1966,11 @@ class _WelcomeViewState extends State<_WelcomeView> {
                                   child: swap(
                                     _card(
                                       angle: 0.035,
-                                      child: _msg(admin: true, who: 'Admin', text: ex.$2),
+                                      child: _msg(
+                                        admin: true,
+                                        who: 'Admin',
+                                        text: ex.$2,
+                                      ),
                                     ),
                                     'a$_i',
                                   ),
@@ -1805,23 +1981,45 @@ class _WelcomeViewState extends State<_WelcomeView> {
                                   child: _card(
                                     angle: -0.015,
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
-                                        Text('How was your week?', style: _s(12, c: _soft)),
+                                        Text(
+                                          'How was your week?',
+                                          style: _s(12, c: _soft),
+                                        ),
                                         const SizedBox(height: 6),
                                         Row(
                                           children: [
-                                            for (final e in ['😄', '🙂', '😐', '😟'])
+                                            for (final e in [
+                                              '😄',
+                                              '🙂',
+                                              '😐',
+                                              '😟',
+                                            ])
                                               Expanded(
                                                 child: Container(
                                                   height: 32,
-                                                  margin: const EdgeInsets.symmetric(horizontal: 2),
+                                                  margin:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 2,
+                                                      ),
                                                   alignment: Alignment.center,
                                                   decoration: BoxDecoration(
-                                                    color: const Color(0xFFF6F8FB),
-                                                    borderRadius: BorderRadius.circular(10),
+                                                    color: const Color(
+                                                      0xFFF6F8FB,
+                                                    ),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          10,
+                                                        ),
                                                   ),
-                                                  child: Text(e, style: const TextStyle(fontSize: 16)),
+                                                  child: Text(
+                                                    e,
+                                                    style: const TextStyle(
+                                                      fontSize: 16,
+                                                    ),
+                                                  ),
                                                 ),
                                               ),
                                           ],
@@ -1855,30 +2053,43 @@ class _WelcomeViewState extends State<_WelcomeView> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        SizedBox(
-                          height: 56,
-                          child: FilledButton(
-                            onPressed: widget.onJoin,
-                            style: FilledButton.styleFrom(
-                              backgroundColor: AppColors.blue,
-                              shape: const StadiumBorder(),
-                              textStyle: _s(16, w: FontWeight.w600),
+                        TourStarter(
+                          id: 'welcome_tour_seen_v4',
+                          steps: _WelcomeTour.steps,
+                          child: KeyedSubtree(
+                            key: _WelcomeTour.join2,
+                            child: SizedBox(
+                              height: 56,
+                              child: FilledButton(
+                                onPressed: widget.onJoin,
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: AppColors.blue,
+                                  shape: const StadiumBorder(),
+                                  textStyle: _s(16, w: FontWeight.w600),
+                                ),
+                                child: const Text('Join with entry code'),
+                              ),
                             ),
-                            child: const Text('Join with entry code'),
                           ),
                         ),
                         const SizedBox(height: 10),
-                        SizedBox(
-                          height: 56,
-                          child: OutlinedButton(
-                            onPressed: widget.onPersonal,
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: AppColors.blue,
-                              side: const BorderSide(color: _line, width: 1.5),
-                              shape: const StadiumBorder(),
-                              textStyle: _s(16, w: FontWeight.w600),
+                        KeyedSubtree(
+                          key: _WelcomeTour.personal2,
+                          child: SizedBox(
+                            height: 56,
+                            child: OutlinedButton(
+                              onPressed: widget.onPersonal,
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: AppColors.blue,
+                                side: const BorderSide(
+                                  color: _line,
+                                  width: 1.5,
+                                ),
+                                shape: const StadiumBorder(),
+                                textStyle: _s(16, w: FontWeight.w600),
+                              ),
+                              child: const Text('I have my personal code'),
                             ),
-                            child: const Text('I have my personal code'),
                           ),
                         ),
                         const SizedBox(height: 6),
@@ -1886,10 +2097,15 @@ class _WelcomeViewState extends State<_WelcomeView> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Text('Admin?', style: _s(13, c: _soft)),
-                            TextButton(
-                              onPressed: widget.onAdmin,
-                              child: Text('Sign in with email',
-                                  style: _s(13, c: AppColors.blue)),
+                            KeyedSubtree(
+                              key: _WelcomeTour.admin2,
+                              child: TextButton(
+                                onPressed: widget.onAdmin,
+                                child: Text(
+                                  'Sign in with email',
+                                  style: _s(13, c: AppColors.blue),
+                                ),
+                              ),
                             ),
                           ],
                         ),
@@ -1915,7 +2131,6 @@ class _WelcomeViewState extends State<_WelcomeView> {
     ),
   );
 }
-
 
 /// Join screen (design G, "Unlock"): white, back button and "Join" pill
 /// on top, a soft blue card with a big lock that opens when the code is
@@ -1955,6 +2170,7 @@ class _JoinViewState extends State<_JoinView> {
   static const _ink = AppColors.ink;
   static const _soft = Color(0xFF8E97AB);
   static const _line = Color(0xFFE3E8F1);
+
   /// Entry codes are always 6 letters or numbers (like HSTEMP).
   static const _min = 6;
   static const _max = 6;
@@ -1977,8 +2193,17 @@ class _JoinViewState extends State<_JoinView> {
     if (mounted) setState(() {});
   }
 
-  TextStyle _s(double size, {FontWeight w = FontWeight.w400, Color c = _ink, double? h}) =>
-      GoogleFonts.plusJakartaSans(fontSize: size, fontWeight: w, color: c, height: h);
+  TextStyle _s(
+    double size, {
+    FontWeight w = FontWeight.w400,
+    Color c = _ink,
+    double? h,
+  }) => GoogleFonts.plusJakartaSans(
+    fontSize: size,
+    fontWeight: w,
+    color: c,
+    height: h,
+  );
 
   String get _code => widget.controller.text;
 
@@ -2019,14 +2244,20 @@ class _JoinViewState extends State<_JoinView> {
                         builder: (context, box) => box.maxHeight < 130
                             ? const SizedBox.shrink()
                             : Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          child: _picture(box.maxHeight > 300 ? 300 : box.maxHeight),
-                        ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                ),
+                                child: _picture(
+                                  box.maxHeight > 300 ? 300 : box.maxHeight,
+                                ),
+                              ),
                       ),
                     ),
                     const SizedBox(height: 20),
                     Text(
-                      widget.personal ? 'Use your personal code' : 'Unlock Haystek Pulse',
+                      widget.personal
+                          ? 'Use your personal code'
+                          : 'Unlock Haystek Pulse',
                       textAlign: TextAlign.center,
                       style: _s(24, w: FontWeight.w600),
                     ),
@@ -2036,9 +2267,9 @@ class _JoinViewState extends State<_JoinView> {
                       child: Text(
                         widget.personal
                             ? 'Enter your personal code to get your account back on this phone.\n'
-                            'Don’t have it? Find it on your old phone in Profile → My personal code.'
+                                  'Don’t have it? Find it on your old phone in Profile → My personal code.'
                             : 'Pick any code from Pulse Codes in Zoho.\n'
-                            'Each code works only once.',
+                                  'Each code works only once.',
                         textAlign: TextAlign.center,
                         style: _s(14, c: AppColors.muted, h: 1.45),
                       ),
@@ -2065,19 +2296,21 @@ class _JoinViewState extends State<_JoinView> {
                           onPressed: widget.busy ? null : widget.onJoin,
                           style: FilledButton.styleFrom(
                             backgroundColor: AppColors.blue,
-                            disabledBackgroundColor: AppColors.blue.withValues(alpha: 0.6),
+                            disabledBackgroundColor: AppColors.blue.withValues(
+                              alpha: 0.6,
+                            ),
                             shape: const StadiumBorder(),
                             textStyle: _s(16, w: FontWeight.w600),
                           ),
                           child: widget.busy
                               ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
                               : Text(widget.personal ? 'Sign in' : 'Join'),
                         ),
                       ),
@@ -2085,13 +2318,18 @@ class _JoinViewState extends State<_JoinView> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text(widget.personal ? 'New here?' : 'Already joined?',
-                            style: _s(13.5, c: AppColors.muted)),
+                        Text(
+                          widget.personal ? 'New here?' : 'Already joined?',
+                          style: _s(13.5, c: AppColors.muted),
+                        ),
                         TextButton(
                           onPressed: widget.busy ? null : widget.onPersonal,
                           child: Text(
-                              widget.personal ? 'Join with entry code' : 'Use personal code',
-                              style: _s(13.5, c: AppColors.blue)),
+                            widget.personal
+                                ? 'Join with entry code'
+                                : 'Use personal code',
+                            style: _s(13.5, c: AppColors.blue),
+                          ),
                         ),
                       ],
                     ),
@@ -2144,9 +2382,12 @@ class _JoinViewState extends State<_JoinView> {
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
-                      widget.personal ? Icons.phone_iphone_rounded : Icons.key_outlined,
-                      size: 17,
-                      color: Colors.white),
+                    widget.personal
+                        ? Icons.phone_iphone_rounded
+                        : Icons.key_outlined,
+                    size: 17,
+                    color: Colors.white,
+                  ),
                 ),
                 const SizedBox(width: 9),
                 Text(widget.personal ? 'Sign in' : 'Join', style: _s(16)),
@@ -2193,7 +2434,11 @@ class _JoinViewState extends State<_JoinView> {
                     gradient: const LinearGradient(
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
-                      colors: [Color(0xFF0B1B4D), Color(0xFF14328F), AppColors.blue],
+                      colors: [
+                        Color(0xFF0B1B4D),
+                        Color(0xFF14328F),
+                        AppColors.blue,
+                      ],
                       stops: [0, 0.55, 1],
                     ),
                     boxShadow: const [
@@ -2210,7 +2455,9 @@ class _JoinViewState extends State<_JoinView> {
                     child: Icon(
                       widget.personal
                           ? (_full ? Icons.check_rounded : Icons.key_rounded)
-                          : (_full ? Icons.lock_open_rounded : Icons.lock_outline_rounded),
+                          : (_full
+                                ? Icons.lock_open_rounded
+                                : Icons.lock_outline_rounded),
                       key: ValueKey(_full),
                       color: Colors.white,
                       size: h * 0.18,
@@ -2220,7 +2467,10 @@ class _JoinViewState extends State<_JoinView> {
               ),
               SizedBox(height: h * 0.08),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 9,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(999),
@@ -2230,7 +2480,11 @@ class _JoinViewState extends State<_JoinView> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    for (var i = 0; i < (widget.personal ? 2 : _boxes); i++) ...[
+                    for (
+                      var i = 0;
+                      i < (widget.personal ? 2 : _boxes);
+                      i++
+                    ) ...[
                       if (i > 0) const SizedBox(width: 8),
                       AnimatedContainer(
                         duration: const Duration(milliseconds: 180),
@@ -2323,7 +2577,14 @@ class _JoinViewState extends State<_JoinView> {
             children: [
               for (var i = 0; i < n; i++) ...[
                 if (i > 0) SizedBox(width: gap),
-                Expanded(child: _box(i < code.length ? code[i] : '', focused && i == code.length.clamp(0, n - 1) && code.length < _max)),
+                Expanded(
+                  child: _box(
+                    i < code.length ? code[i] : '',
+                    focused &&
+                        i == code.length.clamp(0, n - 1) &&
+                        code.length < _max,
+                  ),
+                ),
               ],
             ],
           ),
@@ -2343,7 +2604,7 @@ class _JoinViewState extends State<_JoinView> {
                 FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]')),
                 LengthLimitingTextInputFormatter(_max),
                 TextInputFormatter.withFunction(
-                      (old, now) => now.copyWith(text: now.text.toUpperCase()),
+                  (old, now) => now.copyWith(text: now.text.toUpperCase()),
                 ),
               ],
               onChanged: (_) => widget.onChanged(),
@@ -2373,12 +2634,11 @@ class _JoinViewState extends State<_JoinView> {
       height: 58,
       padding: const EdgeInsets.only(left: 16, right: 6),
       decoration: BoxDecoration(
-        color: focused || _code.isNotEmpty ? Colors.white : const Color(0xFFF6F8FB),
+        color: focused || _code.isNotEmpty
+            ? Colors.white
+            : const Color(0xFFF6F8FB),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          width: 2,
-          color: focused ? AppColors.blue : _line,
-        ),
+        border: Border.all(width: 2, color: focused ? AppColors.blue : _line),
       ),
       alignment: Alignment.center,
       child: Row(
@@ -2395,7 +2655,7 @@ class _JoinViewState extends State<_JoinView> {
               // Always in capitals, like the code on the screen.
               inputFormatters: [
                 TextInputFormatter.withFunction(
-                      (old, now) => now.copyWith(text: now.text.toUpperCase()),
+                  (old, now) => now.copyWith(text: now.text.toUpperCase()),
                 ),
               ],
               onChanged: (_) => widget.onChanged(),
@@ -2404,7 +2664,10 @@ class _JoinViewState extends State<_JoinView> {
               cursorColor: AppColors.blue,
               decoration: InputDecoration(
                 hintText: 'XXXXX-XXXXX',
-                hintStyle: _s(19, c: const Color(0xFFC3C9D6)).copyWith(letterSpacing: 1.5),
+                hintStyle: _s(
+                  19,
+                  c: const Color(0xFFC3C9D6),
+                ).copyWith(letterSpacing: 1.5),
                 border: InputBorder.none,
                 enabledBorder: InputBorder.none,
                 focusedBorder: InputBorder.none,
@@ -2492,7 +2755,6 @@ class _BlinkCursorState extends State<_BlinkCursor>
   }
 }
 
-
 /// "Welcome back": this phone already has an account. White, the logo on
 /// top, a soft blue card with the person and a green tick, a short line,
 /// the "Anonymous account" chip and Continue at the bottom.
@@ -2509,8 +2771,17 @@ class _FoundView extends StatelessWidget {
 
   static const _line = Color(0xFFE3E8F1);
 
-  TextStyle _s(double size, {FontWeight w = FontWeight.w400, Color c = AppColors.ink, double? h}) =>
-      GoogleFonts.plusJakartaSans(fontSize: size, fontWeight: w, color: c, height: h);
+  TextStyle _s(
+    double size, {
+    FontWeight w = FontWeight.w400,
+    Color c = AppColors.ink,
+    double? h,
+  }) => GoogleFonts.plusJakartaSans(
+    fontSize: size,
+    fontWeight: w,
+    color: c,
+    height: h,
+  );
 
   Widget _tag(String emoji, String text, double angle) => Transform.rotate(
     angle: angle,
@@ -2563,7 +2834,12 @@ class _FoundView extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const SizedBox(height: 12),
-                  Center(child: Image.asset('assets/haystek_pulse_logo.png', height: 28)),
+                  Center(
+                    child: Image.asset(
+                      'assets/haystek_pulse_logo.png',
+                      height: 28,
+                    ),
+                  ),
                   const SizedBox(height: 12),
                   // The picture card.
                   Expanded(
@@ -2586,8 +2862,16 @@ class _FoundView extends StatelessWidget {
                             return Stack(
                               alignment: Alignment.center,
                               children: [
-                                Positioned(left: -60, top: -70, child: _blob(220)),
-                                Positioned(right: -40, bottom: -50, child: _blob(160)),
+                                Positioned(
+                                  left: -60,
+                                  top: -70,
+                                  child: _blob(220),
+                                ),
+                                Positioned(
+                                  right: -40,
+                                  bottom: -50,
+                                  child: _blob(160),
+                                ),
                                 Transform.scale(
                                   scale: (h / 220).clamp(0.8, 1.4),
                                   child: const _FoundBadge(),
@@ -2624,7 +2908,10 @@ class _FoundView extends StatelessWidget {
                   const SizedBox(height: 14),
                   Center(
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.blueTint,
                         borderRadius: BorderRadius.circular(999),
@@ -2632,9 +2919,16 @@ class _FoundView extends StatelessWidget {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.lock_outline_rounded, size: 14, color: AppColors.blue),
+                          const Icon(
+                            Icons.lock_outline_rounded,
+                            size: 14,
+                            color: AppColors.blue,
+                          ),
                           const SizedBox(width: 6),
-                          Text('Anonymous account', style: _s(12.5, c: AppColors.blue)),
+                          Text(
+                            'Anonymous account',
+                            style: _s(12.5, c: AppColors.blue),
+                          ),
                         ],
                       ),
                     ),
@@ -2653,19 +2947,21 @@ class _FoundView extends StatelessWidget {
                         onPressed: busy ? null : onContinue,
                         style: FilledButton.styleFrom(
                           backgroundColor: AppColors.blue,
-                          disabledBackgroundColor: AppColors.blue.withValues(alpha: 0.6),
+                          disabledBackgroundColor: AppColors.blue.withValues(
+                            alpha: 0.6,
+                          ),
                           shape: const StadiumBorder(),
                           textStyle: _s(16, w: FontWeight.w600),
                         ),
                         child: busy
                             ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
                             : const Text('Continue'),
                       ),
                     ),
@@ -2680,7 +2976,6 @@ class _FoundView extends StatelessWidget {
   }
 }
 
-
 /// "Your account moved to another phone": shown on the old phone after
 /// the personal code was used on a new one. This phone is signed out and
 /// freed.
@@ -2692,8 +2987,17 @@ class _MovedView extends StatelessWidget {
 
   static const _line = Color(0xFFE3E8F1);
 
-  TextStyle _s(double size, {FontWeight w = FontWeight.w400, Color c = AppColors.ink, double? h}) =>
-      GoogleFonts.plusJakartaSans(fontSize: size, fontWeight: w, color: c, height: h);
+  TextStyle _s(
+    double size, {
+    FontWeight w = FontWeight.w400,
+    Color c = AppColors.ink,
+    double? h,
+  }) => GoogleFonts.plusJakartaSans(
+    fontSize: size,
+    fontWeight: w,
+    color: c,
+    height: h,
+  );
 
   Widget _phone(String label, bool isNew) => Opacity(
     opacity: isNew ? 1 : 0.55,
@@ -2703,7 +3007,10 @@ class _MovedView extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: isNew ? const Color(0xFFC9D6FF) : _line, width: 2),
+        border: Border.all(
+          color: isNew ? const Color(0xFFC9D6FF) : _line,
+          width: 2,
+        ),
         boxShadow: const [
           BoxShadow(
             color: Color(0x332453D6),
@@ -2751,7 +3058,12 @@ class _MovedView extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Center(child: Image.asset('assets/haystek_pulse_logo.png', height: 28)),
+                    Center(
+                      child: Image.asset(
+                        'assets/haystek_pulse_logo.png',
+                        height: 28,
+                      ),
+                    ),
                     const SizedBox(height: 16),
                     Container(
                       height: 230,
@@ -2769,8 +3081,11 @@ class _MovedView extends StatelessWidget {
                           _phone('This phone', false),
                           const Padding(
                             padding: EdgeInsets.symmetric(horizontal: 14),
-                            child: Icon(Icons.arrow_forward_rounded,
-                                color: AppColors.blue, size: 28),
+                            child: Icon(
+                              Icons.arrow_forward_rounded,
+                              color: AppColors.blue,
+                              size: 28,
+                            ),
                           ),
                           _phone('Other phone', true),
                         ],
@@ -2785,8 +3100,8 @@ class _MovedView extends StatelessWidget {
                     const SizedBox(height: 8),
                     Text(
                       'Your personal code was used on another phone, so this '
-                          'phone was signed out. One account works on one phone '
-                          'at a time.',
+                      'phone was signed out. One account works on one phone '
+                      'at a time.',
                       textAlign: TextAlign.center,
                       style: _s(14.5, c: AppColors.muted, h: 1.5),
                     ),
@@ -2799,7 +3114,7 @@ class _MovedView extends StatelessWidget {
                       ),
                       child: Text(
                         'Wasn’t you? Sign in again with your personal code to '
-                            'bring it back here, and keep the code private.',
+                        'bring it back here, and keep the code private.',
                         textAlign: TextAlign.center,
                         style: _s(13, c: AppColors.muted, h: 1.45),
                       ),
@@ -2820,8 +3135,10 @@ class _MovedView extends StatelessWidget {
                     const SizedBox(height: 6),
                     TextButton(
                       onPressed: onPersonal,
-                      child: Text('Sign in with personal code',
-                          style: _s(14, c: AppColors.blue)),
+                      child: Text(
+                        'Sign in with personal code',
+                        style: _s(14, c: AppColors.blue),
+                      ),
                     ),
                   ],
                 ),
@@ -2832,4 +3149,35 @@ class _MovedView extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Welcome screen tour: what each button is for (shown once).
+class _WelcomeTour {
+  static final join = GlobalKey(debugLabel: 'tourJoin');
+  static final personal = GlobalKey(debugLabel: 'tourPersonal');
+  static final admin = GlobalKey(debugLabel: 'tourAdmin');
+  static final join2 = GlobalKey(debugLabel: 'tourJoin2');
+  static final personal2 = GlobalKey(debugLabel: 'tourPersonal2');
+  static final admin2 = GlobalKey(debugLabel: 'tourAdmin2');
+
+  static List<TourStep> steps() => [
+    for (final k in [join, join2])
+      TourStep(
+        k,
+        'New here?',
+        'Tap Join with entry code and enter the code you find on Zoho.',
+      ),
+    for (final k in [personal, personal2])
+      TourStep(
+        k,
+        'Changed your phone?',
+        'Enter the personal code you saved when you joined. Do not have it? Open Profile on your old phone to see it. Enter it here and your account moves to this phone.',
+      ),
+    for (final k in [admin, admin2])
+      TourStep(
+        k,
+        'Only for admins',
+        'Admins sign in with email. Employees do not need email.',
+      ),
+  ];
 }

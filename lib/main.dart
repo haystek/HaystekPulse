@@ -24,6 +24,7 @@ Future<void> main() async {
   await ScheduleService.start();
   runApp(const HaystekApp());
 
+
 }
 
 class HaystekApp extends StatelessWidget {

@@ -19,14 +19,13 @@ TextStyle _t(
   Color color = AppColors.ink,
   double? height,
   double? letterSpacing,
-}) =>
-    GoogleFonts.plusJakartaSans(
-      fontSize: size,
-      fontWeight: weight,
-      color: color,
-      height: height,
-      letterSpacing: letterSpacing,
-    );
+}) => GoogleFonts.plusJakartaSans(
+  fontSize: size,
+  fontWeight: weight,
+  color: color,
+  height: height,
+  letterSpacing: letterSpacing,
+);
 
 const Color _soft = Color(0xFF8E97AB);
 const Color _line = Color(0xFFE3E8F1);
@@ -206,11 +205,14 @@ class _VaultGateState extends State<VaultGate> {
       await AuthService.instance.checkPassword(password);
     } catch (e) {
       if (!mounted) return;
-      final wrong = e is FirebaseAuthException &&
+      final wrong =
+          e is FirebaseAuthException &&
           (e.code == 'wrong-password' || e.code == 'invalid-credential');
       setState(() {
         _step = _Step.askPassword;
-        _error = wrong ? 'This password is not correct.' : AuthService.messageFor(e);
+        _error = wrong
+            ? 'This password is not correct.'
+            : AuthService.messageFor(e);
       });
       return;
     }
@@ -306,7 +308,8 @@ class _VaultGateState extends State<VaultGate> {
           key: const ValueKey('ask-code'),
           icon: Icons.key_outlined,
           title: 'Enter your personal code',
-          text: 'Your history is locked with your personal code. Enter it '
+          text:
+              'Your history is locked with your personal code. Enter it '
               'to open it on this phone.',
           label: 'Personal code',
           hint: 'XXXXX-XXXXX',
@@ -326,7 +329,8 @@ class _VaultGateState extends State<VaultGate> {
           key: const ValueKey('ask-password'),
           icon: Icons.lock_outline_rounded,
           title: 'Unlock your history',
-          text: 'Your posts are locked with your password. Enter it to '
+          text:
+              'Your posts are locked with your password. Enter it to '
               'open them on this phone.',
           label: 'Password',
           obscure: true,
@@ -339,7 +343,8 @@ class _VaultGateState extends State<VaultGate> {
           key: const ValueKey('ask-backup'),
           icon: Icons.key_outlined,
           title: 'Enter your backup code',
-          text: 'Your password was reset, so your history needs your '
+          text:
+              'Your password was reset, so your history needs your '
               'backup code (the one you saved at sign-up).',
           label: 'Backup code',
           hint: 'XXXX-XXXX-XXXX-XXXX',
@@ -383,8 +388,7 @@ class _Busy extends StatelessWidget {
   const _Busy();
 
   @override
-  Widget build(BuildContext context) =>
-      const PulseLoadingScreen();
+  Widget build(BuildContext context) => const PulseLoadingScreen();
 }
 
 /// A simple screen with one field (or none) and one button.
@@ -512,7 +516,10 @@ class _AskScreenState extends State<_AskScreen> {
                     Text(
                       widget.error!,
                       textAlign: TextAlign.center,
-                      style: _t(13.5, color: Theme.of(context).colorScheme.error),
+                      style: _t(
+                        13.5,
+                        color: Theme.of(context).colorScheme.error,
+                      ),
                     ),
                   ],
                   const SizedBox(height: 20),
@@ -530,14 +537,19 @@ class _AskScreenState extends State<_AskScreen> {
                     const SizedBox(height: 8),
                     TextButton(
                       onPressed: widget.onSecondary,
-                      child: Text(widget.secondary!, textAlign: TextAlign.center),
+                      child: Text(
+                        widget.secondary!,
+                        textAlign: TextAlign.center,
+                      ),
                     ),
                   ],
                   const SizedBox(height: 4),
                   TextButton(
                     onPressed: widget.onCancel ?? AuthService.instance.signOut,
                     style: TextButton.styleFrom(foregroundColor: _soft),
-                    child: Text(widget.onCancel != null ? 'Cancel' : 'Sign out'),
+                    child: Text(
+                      widget.onCancel != null ? 'Cancel' : 'Sign out',
+                    ),
                   ),
                 ],
               ),
@@ -583,11 +595,24 @@ class _BackupCodeScreenState extends State<BackupCodeScreen> {
     super.dispose();
   }
 
+  /// Personal code: the Copy button says "Copied" for 2 seconds.
+  bool _copied = false;
+
   void _copy() {
     Clipboard.setData(ClipboardData(text: widget.code));
+    if (widget.personal) {
+      HapticFeedback.lightImpact();
+      setState(() => _copied = true);
+      Future<void>.delayed(const Duration(seconds: 2), () {
+        if (mounted) setState(() => _copied = false);
+      });
+      return;
+    }
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(widget.personal ? 'Personal code copied' : 'Backup code copied'),
+        content: Text(
+          widget.personal ? 'Personal code copied' : 'Backup code copied',
+        ),
       ),
     );
   }
@@ -623,7 +648,8 @@ class _BackupCodeScreenState extends State<BackupCodeScreen> {
   }
 
   bool get _matches =>
-      PersonalCode.normalize(_last4.text) == PersonalCode.normalize(widget.code);
+      PersonalCode.normalize(_last4.text) ==
+      PersonalCode.normalize(widget.code);
 
   @override
   Widget build(BuildContext context) {
@@ -658,7 +684,9 @@ class _BackupCodeScreenState extends State<BackupCodeScreen> {
                     ),
                     const SizedBox(height: 18),
                     Text(
-                      widget.personal ? 'Your personal code' : 'Your backup code',
+                      widget.personal
+                          ? 'Your personal code'
+                          : 'Your backup code',
                       textAlign: TextAlign.center,
                       style: _t(22, weight: FontWeight.w500),
                     ),
@@ -666,13 +694,13 @@ class _BackupCodeScreenState extends State<BackupCodeScreen> {
                     Text(
                       widget.personal
                           ? 'You need this code only if you change to a new '
-                              'phone. On this phone the app opens by itself, '
-                              'even after reinstalling. Only you have it: we '
-                              'can’t see it or send it again.'
+                                'phone. On this phone the app opens by itself, '
+                                'even after reinstalling. Only you have it: we '
+                                'can’t see it or send it again.'
                           : widget.firstTime
                           ? 'Your history is locked with your password. If you '
-                              'ever forget your password, this code is the only '
-                              'way to get your history back.'
+                                'ever forget your password, this code is the only '
+                                'way to get your history back.'
                           : 'Your old code no longer works. Save this new one.',
                       textAlign: TextAlign.center,
                       style: _t(14.5, color: AppColors.muted, height: 1.5),
@@ -717,13 +745,17 @@ class _BackupCodeScreenState extends State<BackupCodeScreen> {
                       child: Text(
                         widget.personal
                             ? 'Save it now: take a screenshot, write it down, '
-                                'or save it in your notes. Without it, your '
-                                'account can’t move to a new phone. Not by '
-                                'admin, not by the developer.'
+                                  'or save it in your notes. Without it, your '
+                                  'account can’t move to a new phone. Not by '
+                                  'admin, not by the developer.'
                             : 'Save it somewhere safe: a screenshot, your notes, or '
-                                'paper. We can’t recover your history without it — '
-                                'not admin, not the developer.',
-                        style: _t(13, color: const Color(0xFF8A5A00), height: 1.45),
+                                  'paper. We can’t recover your history without it — '
+                                  'not admin, not the developer.',
+                        style: _t(
+                          13,
+                          color: const Color(0xFF8A5A00),
+                          height: 1.45,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 18),
@@ -751,7 +783,10 @@ class _BackupCodeScreenState extends State<BackupCodeScreen> {
                       const SizedBox(height: 6),
                       Text(
                         _error!,
-                        style: _t(13.5, color: Theme.of(context).colorScheme.error),
+                        style: _t(
+                          13.5,
+                          color: Theme.of(context).colorScheme.error,
+                        ),
                       ),
                     ],
                     const SizedBox(height: 16),
@@ -775,7 +810,6 @@ class _BackupCodeScreenState extends State<BackupCodeScreen> {
     );
   }
 
-
   /// Personal code, right after joining (design D): "Your code" pill,
   /// the code first (one line) with Copy, a small animation of the key
   /// moving the account from the old phone to a new one, 3 clear steps,
@@ -789,103 +823,115 @@ class _BackupCodeScreenState extends State<BackupCodeScreen> {
     final typing = MediaQuery.viewInsetsOf(context).bottom > 0;
 
     Widget block(String t) => Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          decoration: BoxDecoration(
-            color: AppColors.blueTint,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Text(
-            t,
-            maxLines: 1,
-            softWrap: false,
-            style: GoogleFonts.robotoMono(
-              fontSize: 24,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 2.5,
-              color: AppColors.blue,
-            ),
-          ),
-        );
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.blueTint,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        t,
+        maxLines: 1,
+        softWrap: false,
+        style: GoogleFonts.robotoMono(
+          fontSize: 24,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 2.5,
+          color: AppColors.blue,
+        ),
+      ),
+    );
 
     // The code on one line (it gets a little smaller on narrow phones,
     // never split), and Copy.
-    final codeCard = Container(
-      padding: const EdgeInsets.fromLTRB(12, 16, 12, 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _line, width: 1.5),
-      ),
-      child: Column(
-        children: [
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                for (var i = 0; i < groups.length; i++) ...[
-                  if (i > 0)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      child: Text('–', style: _t(22, color: _soft)),
-                    ),
-                  block(groups[i]),
-                ],
-              ],
+    final codeCard = GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: _copy,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(12, 16, 12, 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: _line, width: 1.5),
+        ),
+        child: Column(
+          children: [
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [block(groups.join('-'))],
+              ),
             ),
-          ),
-          const SizedBox(height: 12),
-          Material(
-            color: Colors.white,
-            shape: const StadiumBorder(side: BorderSide(color: _line, width: 1.5)),
-            clipBehavior: Clip.antiAlias,
-            child: InkWell(
-              onTap: _copy,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.copy_rounded, size: 16, color: AppColors.blue),
-                    const SizedBox(width: 6),
-                    Text('Copy code',
-                        style: _t(14, weight: FontWeight.w500, color: AppColors.blue)),
-                  ],
+            const SizedBox(height: 12),
+            Material(
+              color: Colors.white,
+              shape: const StadiumBorder(
+                side: BorderSide(color: _line, width: 1.5),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: _copy,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _copied ? Icons.check_rounded : Icons.copy_rounded,
+                        size: 16,
+                        color: AppColors.blue,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        _copied ? 'Copied' : 'Copy code',
+                        style: _t(
+                          14,
+                          weight: FontWeight.w500,
+                          color: AppColors.blue,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
 
     Widget step(int n, String title, String sub) => Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 26,
-              height: 26,
-              alignment: Alignment.center,
-              decoration: const BoxDecoration(
-                color: AppColors.blueTint,
-                shape: BoxShape.circle,
-              ),
-              child: Text('$n',
-                  style: _t(13, weight: FontWeight.w600, color: AppColors.blue)),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: _t(14.5, weight: FontWeight.w500)),
-                  const SizedBox(height: 1),
-                  Text(sub, style: _t(13, color: AppColors.muted, height: 1.4)),
-                ],
-              ),
-            ),
-          ],
-        );
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 26,
+          height: 26,
+          alignment: Alignment.center,
+          decoration: const BoxDecoration(
+            color: AppColors.blueTint,
+            shape: BoxShape.circle,
+          ),
+          child: Text(
+            '$n',
+            style: _t(13, weight: FontWeight.w600, color: AppColors.blue),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: _t(14.5, weight: FontWeight.w500)),
+              const SizedBox(height: 1),
+              Text(sub, style: _t(13, color: AppColors.muted, height: 1.4)),
+            ],
+          ),
+        ),
+      ],
+    );
 
     return PopScope(
       canPop: false,
@@ -913,7 +959,9 @@ class _BackupCodeScreenState extends State<BackupCodeScreen> {
                             padding: const EdgeInsets.fromLTRB(5, 5, 16, 5),
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(21),
-                              border: Border.all(color: AppColors.blue.withValues(alpha: 0.35)),
+                              border: Border.all(
+                                color: AppColors.blue.withValues(alpha: 0.35),
+                              ),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
@@ -925,7 +973,11 @@ class _BackupCodeScreenState extends State<BackupCodeScreen> {
                                     color: AppColors.blue,
                                     shape: BoxShape.circle,
                                   ),
-                                  child: const Icon(Icons.key_outlined, size: 17, color: Colors.white),
+                                  child: const Icon(
+                                    Icons.key_outlined,
+                                    size: 17,
+                                    color: Colors.white,
+                                  ),
                                 ),
                                 const SizedBox(width: 9),
                                 Text('Your code', style: _t(16)),
@@ -956,24 +1008,36 @@ class _BackupCodeScreenState extends State<BackupCodeScreen> {
                           child: typing
                               ? const SizedBox(width: double.infinity)
                               : Column(
-                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
                                   children: [
                                     const SizedBox(height: 12),
                                     const _MovePhones(),
                                     const SizedBox(height: 16),
                                     Padding(
-                                      padding: const EdgeInsets.symmetric(horizontal: 6),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                      ),
                                       child: Column(
                                         children: [
-                                          step(1, 'Save it now',
-                                              'Copy it, or take a screenshot.'),
+                                          step(
+                                            1,
+                                            'Save it now',
+                                            'Copy it, or take a screenshot.',
+                                          ),
                                           const SizedBox(height: 12),
-                                        step(2, 'Changing your phone?',
+                                          step(
+                                            2,
+                                            'Changing your phone?',
                                             'Install the app on the new phone, tap “I have my personal code” '
-                                                'and enter this code. Your account comes back there.'),
+                                                'and enter this code. Your account comes back there.',
+                                          ),
                                           const SizedBox(height: 12),
-                                          step(3, 'Forgot it?',
-                                              'Find it anytime in Profile → My personal code.'),
+                                          step(
+                                            3,
+                                            'Forgot it?',
+                                            'Find it anytime in Profile → My personal code.',
+                                          ),
                                         ],
                                       ),
                                     ),
@@ -994,8 +1058,8 @@ class _BackupCodeScreenState extends State<BackupCodeScreen> {
                               color: ok
                                   ? const Color(0xFF16A34A)
                                   : _error != null
-                                      ? const Color(0xFFC0392B)
-                                      : _line,
+                                  ? const Color(0xFFC0392B)
+                                  : _line,
                             ),
                           ),
                           child: Row(
@@ -1006,20 +1070,31 @@ class _BackupCodeScreenState extends State<BackupCodeScreen> {
                                   autocorrect: false,
                                   enableSuggestions: false,
                                   keyboardType: TextInputType.visiblePassword,
-                                  textCapitalization: TextCapitalization.characters,
+                                  textCapitalization:
+                                      TextCapitalization.characters,
                                   textInputAction: TextInputAction.done,
                                   inputFormatters: [
                                     TextInputFormatter.withFunction(
-                                      (old, now) => now.copyWith(text: now.text.toUpperCase()),
+                                      (old, now) => now.copyWith(
+                                        text: now.text.toUpperCase(),
+                                      ),
                                     ),
                                   ],
-                                  onChanged: (_) => setState(() => _error = null),
+                                  onChanged: (_) =>
+                                      setState(() => _error = null),
                                   onSubmitted: (_) => _done(),
-                                  style: _t(17, weight: FontWeight.w600, letterSpacing: 1.2),
+                                  style: _t(
+                                    17,
+                                    weight: FontWeight.w600,
+                                    letterSpacing: 1.2,
+                                  ),
                                   cursorColor: AppColors.blue,
                                   decoration: InputDecoration(
                                     hintText: 'Paste or type it to confirm',
-                                    hintStyle: _t(15, color: const Color(0xFFC3C9D6)),
+                                    hintStyle: _t(
+                                      15,
+                                      color: const Color(0xFFC3C9D6),
+                                    ),
                                     border: InputBorder.none,
                                     enabledBorder: InputBorder.none,
                                     focusedBorder: InputBorder.none,
@@ -1032,13 +1107,19 @@ class _BackupCodeScreenState extends State<BackupCodeScreen> {
                               if (ok)
                                 const Padding(
                                   padding: EdgeInsets.only(right: 10),
-                                  child: Icon(Icons.check_circle_rounded,
-                                      color: Color(0xFF16A34A), size: 24),
+                                  child: Icon(
+                                    Icons.check_circle_rounded,
+                                    color: Color(0xFF16A34A),
+                                    size: 24,
+                                  ),
                                 )
                               else
                                 TextButton.icon(
                                   onPressed: _paste,
-                                  icon: const Icon(Icons.content_paste_rounded, size: 18),
+                                  icon: const Icon(
+                                    Icons.content_paste_rounded,
+                                    size: 18,
+                                  ),
                                   label: const Text('Paste'),
                                   style: TextButton.styleFrom(
                                     foregroundColor: AppColors.blue,
@@ -1106,11 +1187,14 @@ class _NewBackupCodeScreenState extends State<NewBackupCodeScreen> {
       if (mounted) setState(() => _code = code);
     } catch (e) {
       if (!mounted) return;
-      final wrong = e is FirebaseAuthException &&
+      final wrong =
+          e is FirebaseAuthException &&
           (e.code == 'wrong-password' || e.code == 'invalid-credential');
-      setState(() => _error = wrong
-          ? 'This password is not correct.'
-          : 'Could not make a new code. Please check your internet.');
+      setState(
+        () => _error = wrong
+            ? 'This password is not correct.'
+            : 'Could not make a new code. Please check your internet.',
+      );
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -1129,7 +1213,8 @@ class _NewBackupCodeScreenState extends State<NewBackupCodeScreen> {
     return _AskScreen(
       icon: Icons.key_outlined,
       title: 'New backup code',
-      text: 'Enter your password. You’ll get a new code, and the old one '
+      text:
+          'Enter your password. You’ll get a new code, and the old one '
           'stops working.',
       label: 'Password',
       obscure: true,
@@ -1190,7 +1275,8 @@ class _CodeFinishScreenState extends State<CodeFinishScreen> {
       key: const ValueKey('finish-entry'),
       icon: Icons.mark_email_read_outlined,
       title: 'Enter your entry code',
-      text: 'To finish setting up your account, enter a code from '
+      text:
+          'To finish setting up your account, enter a code from '
           'Pulse Codes in Zoho.',
       label: 'Entry code',
       obscure: false,
@@ -1201,10 +1287,9 @@ class _CodeFinishScreenState extends State<CodeFinishScreen> {
   }
 }
 
-
-/// The little animation on the personal code screen: the key slides from
-/// the old phone to the new phone, the old phone fades, the new one lights
-/// up. Again and again.
+/// The little animation on the personal code screen: small data blocks
+/// fly from the old phone to the new phone, the new phone's bar fills up
+/// and a green tick pops. Again and again.
 class _MovePhones extends StatefulWidget {
   const _MovePhones();
 
@@ -1216,7 +1301,7 @@ class _MovePhonesState extends State<_MovePhones>
     with SingleTickerProviderStateMixin {
   late final AnimationController _c = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 3200),
+    duration: const Duration(milliseconds: 3600),
   )..repeat();
 
   @override
@@ -1229,43 +1314,110 @@ class _MovePhonesState extends State<_MovePhones>
   double _part(double t, double from, double to) =>
       Curves.easeInOut.transform(((t - from) / (to - from)).clamp(0.0, 1.0));
 
-  Widget _phone(String label, {required double lit, required double fade}) {
-    final bg = Color.lerp(AppColors.blueTint, AppColors.blue, lit)!;
-    final icon = Color.lerp(AppColors.blue, Colors.white, lit)!;
-    final border = Color.lerp(_line, const Color(0xFF9DB4F5), lit)!;
-    return Opacity(
-      opacity: fade,
-      child: Container(
-        width: 74,
-        height: 110,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: border, width: 2),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.blue.withValues(alpha: 0.12 * lit),
-              blurRadius: 0,
-              spreadRadius: 6 * lit,
-            ),
-          ],
+  Widget _phone(
+    String label, {
+    required double fill,
+    required double done,
+    required bool target,
+  }) {
+    final lit = target ? fill : 0.0;
+    final avatarBg = Color.lerp(AppColors.blueTint, AppColors.blue, lit)!;
+    final avatarIcon = Color.lerp(AppColors.blue, Colors.white, lit)!;
+    return Container(
+      width: 62,
+      height: 96,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: Color.lerp(_line, const Color(0xFF9DB4F5), done)!,
+          width: 2,
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: bg,
-                borderRadius: BorderRadius.circular(11),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.blue.withValues(alpha: 0.10 * done),
+            spreadRadius: 6 * done,
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          const SizedBox(height: 8),
+          Container(
+            width: 20,
+            height: 4,
+            decoration: BoxDecoration(
+              color: _line,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const Spacer(),
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(
+                  color: avatarBg,
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: Icon(
+                  Icons.person_outline_rounded,
+                  size: 17,
+                  color: avatarIcon,
+                ),
               ),
-              child: Icon(Icons.person_outline_rounded, size: 20, color: icon),
+              if (target)
+                Positioned(
+                  right: -7,
+                  bottom: -7,
+                  child: Transform.scale(
+                    scale: Curves.easeOutBack.transform(done),
+                    child: Container(
+                      width: 18,
+                      height: 18,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF16A34A),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2),
+                      ),
+                      child: const Icon(
+                        Icons.check_rounded,
+                        size: 11,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 5),
+          Text(label, style: _t(10, color: _soft)),
+          const SizedBox(height: 8),
+          // Data bar: empties on the old phone, fills on the new one.
+          Container(
+            width: 36,
+            height: 4,
+            decoration: BoxDecoration(
+              color: const Color(0xFFE5E7EB),
+              borderRadius: BorderRadius.circular(2),
             ),
-            const SizedBox(height: 7),
-            Text(label, style: _t(11, color: _soft)),
-          ],
-        ),
+            alignment: Alignment.centerLeft,
+            child: FractionallySizedBox(
+              widthFactor: target ? fill : 1 - fill * 0.6,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: done > 0.5 && target
+                      ? const Color(0xFF16A34A)
+                      : AppColors.blue,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 9),
+        ],
       ),
     );
   }
@@ -1273,7 +1425,7 @@ class _MovePhonesState extends State<_MovePhones>
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 150,
+      height: 116,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(22),
         gradient: const LinearGradient(
@@ -1287,85 +1439,21 @@ class _MovePhonesState extends State<_MovePhones>
           animation: _c,
           builder: (context, _) {
             final t = _c.value;
-            final move = _part(t, 0.05, 0.65); // key travels
-            final keyOpacity = t < 0.05
-                ? t / 0.05
-                : t > 0.8
-                    ? (1 - (t - 0.8) / 0.15).clamp(0.0, 1.0)
-                    : 1.0;
-            final lit = _part(t, 0.55, 0.75); // new phone lights up
-            final fade = 1 - 0.55 * _part(t, 0.4, 0.7); // old phone fades
+            final reset = t > 0.92 ? 1 - (t - 0.92) / 0.08 : 1.0;
+            final fill = _part(t, 0.02, 0.72) * reset;
+            final done = _part(t, 0.72, 0.82) * reset;
             return Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _phone('Old phone', lit: 0, fade: fade),
+                _phone('Old phone', fill: fill, done: 0, target: false),
                 SizedBox(
-                  width: 110,
-                  height: 110,
-                  child: LayoutBuilder(
-                    builder: (context, box) {
-                      const keySize = 44.0;
-                      final x = (box.maxWidth - keySize) * move;
-                      return Stack(
-                        children: [
-                          // Dashed line between the phones.
-                          Positioned(
-                            left: 4,
-                            right: 4,
-                            top: 54,
-                            child: Row(
-                              children: [
-                                for (var i = 0; i < 9; i++)
-                                  Expanded(
-                                    child: Container(
-                                      height: 2,
-                                      margin: const EdgeInsets.symmetric(horizontal: 2),
-                                      color: const Color(0xFFC9D6FF),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                          Positioned(
-                            left: x,
-                            top: 33,
-                            child: Opacity(
-                              opacity: keyOpacity,
-                              child: Container(
-                                width: keySize,
-                                height: keySize,
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(14),
-                                  gradient: const LinearGradient(
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                    colors: [
-                                      Color(0xFF0B1B4D),
-                                      Color(0xFF14328F),
-                                      AppColors.blue,
-                                    ],
-                                    stops: [0, 0.55, 1],
-                                  ),
-                                  boxShadow: const [
-                                    BoxShadow(
-                                      color: Color(0x662453D6),
-                                      blurRadius: 18,
-                                      offset: Offset(0, 8),
-                                      spreadRadius: -8,
-                                    ),
-                                  ],
-                                ),
-                                child: const Icon(Icons.key_rounded,
-                                    color: Colors.white, size: 21),
-                              ),
-                            ),
-                          ),
-                        ],
-                      );
-                    },
+                  width: 104,
+                  height: 96,
+                  child: CustomPaint(
+                    painter: _DataFlow(t: t, active: t < 0.74),
                   ),
                 ),
-                _phone('New phone', lit: lit, fade: 1),
+                _phone('New phone', fill: fill, done: done, target: true),
               ],
             );
           },
@@ -1373,4 +1461,35 @@ class _MovePhonesState extends State<_MovePhones>
       ),
     );
   }
+}
+
+/// Dotted track with small blue data blocks flying along a low arc.
+class _DataFlow extends CustomPainter {
+  _DataFlow({required this.t, required this.active});
+
+  final double t;
+  final bool active;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final midY = size.height / 2 - 4;
+    if (!active) return; // compact v2
+    for (var i = 0; i < 5; i++) {
+      final p = (t * 2.4 + i / 5) % 1.0;
+      final hump = 4 * p * (1 - p); // 0 at the ends, 1 in the middle
+      final x = 6 + (size.width - 12) * p;
+      final y = midY - hump * 12;
+      final s = 5 + hump * 4;
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromCenter(center: Offset(x, y), width: s, height: s),
+          Radius.circular(s * 0.3),
+        ),
+        Paint()..color = AppColors.blue.withValues(alpha: 0.25 + 0.75 * hump),
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_DataFlow old) => old.t != t || old.active != active;
 }

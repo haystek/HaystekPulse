@@ -8,6 +8,7 @@ import '../models/employee.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/ui.dart';
+import '../widgets/app_tour.dart';
 import 'delete_account_screen.dart';
 import 'help_screen.dart';
 import 'vault_screens.dart';
@@ -17,7 +18,9 @@ import 'vault_screens.dart';
 Widget _inter(BuildContext context, Widget child) {
   final t = Theme.of(context);
   return Theme(
-    data: t.copyWith(textTheme: GoogleFonts.plusJakartaSansTextTheme(t.textTheme)),
+    data: t.copyWith(
+      textTheme: GoogleFonts.plusJakartaSansTextTheme(t.textTheme),
+    ),
     child: child,
   );
 }
@@ -46,7 +49,7 @@ Future<void> confirmSignOut(BuildContext context) async {
       content: Text(
         AuthService.instance.isCodeAccount
             ? 'You’ll need your personal code to sign in again. Make sure '
-            'you saved it.'
+                  'you saved it.'
             : 'You’ll need your email and password to sign in again.',
         style: GoogleFonts.plusJakartaSans(
           fontSize: 15,
@@ -93,6 +96,7 @@ Future<void> confirmSignOut(BuildContext context) async {
   Navigator.of(context, rootNavigator: true).popUntil((r) => r.isFirst);
   await AuthService.instance.signOut();
 }
+
 /// The signed-in person's details, change password and sign out.
 /// Works for admins and employees.
 class ProfileScreen extends StatelessWidget {
@@ -182,24 +186,32 @@ class _AdminProfile extends StatelessWidget {
                       children: [
                         Row(
                           children: [
-                            const Icon(Icons.shield_outlined,
-                                size: 18, color: AppColors.blue),
+                            const Icon(
+                              Icons.shield_outlined,
+                              size: 18,
+                              color: AppColors.blue,
+                            ),
                             const SizedBox(width: 8),
-                            Text('Your promise to the team',
-                                style: _s(14.5, w: FontWeight.w600)),
+                            Text(
+                              'Your promise to the team',
+                              style: _s(14.5, w: FontWeight.w600),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 8),
                         Text.rich(
                           TextSpan(
                             children: [
-                              const TextSpan(text: 'You see every message, but '),
+                              const TextSpan(
+                                text: 'You see every message, but ',
+                              ),
                               TextSpan(
                                 text: 'never who wrote it',
                                 style: _s(13, w: FontWeight.w500),
                               ),
                               const TextSpan(
-                                text: ', unless they choose “With my name”. '
+                                text:
+                                    ', unless they choose “With my name”. '
                                     'This is what makes people speak openly.',
                               ),
                             ],
@@ -286,7 +298,10 @@ class _AdminProfile extends StatelessWidget {
                   style: OutlinedButton.styleFrom(
                     minimumSize: const Size.fromHeight(52),
                     foregroundColor: _red,
-                    side: const BorderSide(color: Color(0xFFF1C9C2), width: 1.5),
+                    side: const BorderSide(
+                      color: Color(0xFFF1C9C2),
+                      width: 1.5,
+                    ),
                     shape: const StadiumBorder(),
                     textStyle: _s(15.5, w: FontWeight.w600),
                   ),
@@ -415,15 +430,21 @@ class _ProfilePicture extends StatelessWidget {
                   ],
                 ),
                 child: isAdmin
-                    ? const Icon(Icons.shield_outlined,
-                    color: Colors.white, size: 54)
+                    ? const Icon(
+                        Icons.shield_outlined,
+                        color: Colors.white,
+                        size: 54,
+                      )
                     : initial == null
-                    ? const Icon(Icons.person_outline_rounded,
-                    color: Colors.white, size: 52)
+                    ? const Icon(
+                        Icons.person_outline_rounded,
+                        color: Colors.white,
+                        size: 52,
+                      )
                     : Text(
-                  initial!,
-                  style: _s(50, w: FontWeight.w600, c: Colors.white),
-                ),
+                        initial!,
+                        style: _s(50, w: FontWeight.w600, c: Colors.white),
+                      ),
               ),
             ),
           ),
@@ -445,8 +466,11 @@ class _ProfilePicture extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.shield_outlined,
-                        size: 15, color: AppColors.blue),
+                    const Icon(
+                      Icons.shield_outlined,
+                      size: 15,
+                      color: AppColors.blue,
+                    ),
                     const SizedBox(width: 6),
                     Text(
                       isAdmin ? 'Admin · Haystek Pulse' : 'Employee',
@@ -494,8 +518,11 @@ class _ListRow extends StatelessWidget {
                 color: danger ? const Color(0xFFFDEFEC) : AppColors.blueTint,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child:
-              Icon(icon, size: 20, color: danger ? _red : AppColors.blue),
+              child: Icon(
+                icon,
+                size: 20,
+                color: danger ? _red : AppColors.blue,
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -504,8 +531,11 @@ class _ListRow extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: _s(15,
-                        w: FontWeight.w500, c: danger ? _red : AppColors.ink),
+                    style: _s(
+                      15,
+                      w: FontWeight.w500,
+                      c: danger ? _red : AppColors.ink,
+                    ),
                   ),
                   const SizedBox(height: 1),
                   Text(sub, style: _s(12.5, c: AppColors.muted)),
@@ -568,11 +598,14 @@ class _ChangeMyPasswordScreenState extends State<ChangeMyPasswordScreen> {
       Navigator.of(context).pop();
     } catch (e) {
       if (!mounted) return;
-      final wrong = e is FirebaseAuthException &&
+      final wrong =
+          e is FirebaseAuthException &&
           (e.code == 'wrong-password' || e.code == 'invalid-credential');
-      setState(() => _error = wrong
-          ? 'Your current password is not correct.'
-          : AuthService.messageFor(e));
+      setState(
+        () => _error = wrong
+            ? 'Your current password is not correct.'
+            : AuthService.messageFor(e),
+      );
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -581,26 +614,23 @@ class _ChangeMyPasswordScreenState extends State<ChangeMyPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     InputDecoration field(
-        String label, {
-          String? helper,
-          required bool hidden,
-          required VoidCallback onEye,
-        }) =>
-        InputDecoration(
-          labelText: label,
-          helperText: helper,
-          suffixIcon: IconButton(
-            tooltip: hidden ? 'Show password' : 'Hide password',
-            icon: Icon(
-              hidden
-                  ? Icons.visibility_outlined
-                  : Icons.visibility_off_outlined,
-              size: 20,
-              color: const Color(0xFF8E97AB),
-            ),
-            onPressed: onEye,
-          ),
-        );
+      String label, {
+      String? helper,
+      required bool hidden,
+      required VoidCallback onEye,
+    }) => InputDecoration(
+      labelText: label,
+      helperText: helper,
+      suffixIcon: IconButton(
+        tooltip: hidden ? 'Show password' : 'Hide password',
+        icon: Icon(
+          hidden ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+          size: 20,
+          color: const Color(0xFF8E97AB),
+        ),
+        onPressed: onEye,
+      ),
+    );
 
     return _inter(
       context,
@@ -691,13 +721,13 @@ class _ChangeMyPasswordScreenState extends State<ChangeMyPasswordScreen> {
                       ),
                       child: _busy
                           ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
                           : const Text('Save new password'),
                     ),
                   ],
@@ -710,6 +740,7 @@ class _ChangeMyPasswordScreenState extends State<ChangeMyPasswordScreen> {
     );
   }
 }
+
 /// Screen name on the right of the AppBar: a rounded pill with a blue
 /// icon circle (same as the other screens).
 class _TitlePill extends StatelessWidget {
@@ -769,8 +800,17 @@ const Color _soft = Color(0xFF8E97AB);
 const Color _red = Color(0xFFC0392B);
 const Color _green = Color(0xFF16A34A);
 
-TextStyle _s(double size, {FontWeight w = FontWeight.w400, Color c = AppColors.ink, double? h}) =>
-    GoogleFonts.plusJakartaSans(fontSize: size, fontWeight: w, color: c, height: h);
+TextStyle _s(
+  double size, {
+  FontWeight w = FontWeight.w400,
+  Color c = AppColors.ink,
+  double? h,
+}) => GoogleFonts.plusJakartaSans(
+  fontSize: size,
+  fontWeight: w,
+  color: c,
+  height: h,
+);
 
 class _CodeProfile extends StatefulWidget {
   const _CodeProfile();
@@ -788,10 +828,11 @@ class _CodeProfileState extends State<_CodeProfile> {
   void initState() {
     super.initState();
     AuthService.instance.savedCode().then((c) {
-      if (mounted) setState(() {
-        _code = c;
-        _loaded = true;
-      });
+      if (mounted)
+        setState(() {
+          _code = c;
+          _loaded = true;
+        });
     });
   }
 
@@ -799,23 +840,23 @@ class _CodeProfileState extends State<_CodeProfile> {
     final c = _code;
     if (c == null) return;
     Clipboard.setData(ClipboardData(text: c));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Personal code copied')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Personal code copied')));
   }
 
   Widget _label(String t) => Padding(
-    padding: const EdgeInsets.only(bottom: 8),
+    padding: const EdgeInsets.only(bottom: 5),
     child: Text(t, style: _s(11.5, c: _soft).copyWith(letterSpacing: 0.7)),
   );
 
   Widget _item(bool hidden, String t) => Padding(
-    padding: const EdgeInsets.only(bottom: 10),
+    padding: const EdgeInsets.only(bottom: 6),
     child: Row(
       children: [
         Container(
-          width: 24,
-          height: 24,
+          width: 20,
+          height: 20,
           decoration: BoxDecoration(
             color: hidden ? Colors.white : const Color(0xFFE7F6EC),
             shape: BoxShape.circle,
@@ -846,7 +887,10 @@ class _CodeProfileState extends State<_CodeProfile> {
           children: [
             Icon(icon, size: 15, color: AppColors.blue),
             const SizedBox(width: 5),
-            Text(t, style: _s(13, w: FontWeight.w500, c: AppColors.blue)),
+            Text(
+              t,
+              style: _s(13, w: FontWeight.w500, c: AppColors.blue),
+            ),
           ],
         ),
       ),
@@ -863,7 +907,7 @@ class _CodeProfileState extends State<_CodeProfile> {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
+        padding: const EdgeInsets.fromLTRB(14, 9, 10, 9),
         child: Row(
           children: [
             Container(
@@ -873,15 +917,25 @@ class _CodeProfileState extends State<_CodeProfile> {
                 color: danger ? const Color(0xFFFDEFEC) : AppColors.blueTint,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(icon, size: 20, color: danger ? _red : AppColors.blue),
+              child: Icon(
+                icon,
+                size: 20,
+                color: danger ? _red : AppColors.blue,
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title,
-                      style: _s(15, w: FontWeight.w500, c: danger ? _red : AppColors.ink)),
+                  Text(
+                    title,
+                    style: _s(
+                      15,
+                      w: FontWeight.w500,
+                      c: danger ? _red : AppColors.ink,
+                    ),
+                  ),
                   const SizedBox(height: 1),
                   Text(sub, style: _s(12.5, c: AppColors.muted)),
                 ],
@@ -913,20 +967,24 @@ class _CodeProfileState extends State<_CodeProfile> {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 560),
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(20, 6, 20, 28),
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
               children: [
                 // Who you are here: nobody.
                 Row(
                   children: [
                     Container(
-                      width: 56,
-                      height: 56,
+                      width: 46,
+                      height: 46,
                       decoration: const BoxDecoration(
                         shape: BoxShape.circle,
                         gradient: LinearGradient(
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
-                          colors: [Color(0xFF0B1B4D), Color(0xFF14328F), AppColors.blue],
+                          colors: [
+                            Color(0xFF0B1B4D),
+                            Color(0xFF14328F),
+                            AppColors.blue,
+                          ],
                           stops: [0, 0.55, 1],
                         ),
                         boxShadow: [
@@ -938,230 +996,284 @@ class _CodeProfileState extends State<_CodeProfile> {
                           ),
                         ],
                       ),
-                      child: const Icon(Icons.person_outline_rounded,
-                          color: Colors.white, size: 26),
+                      child: const Icon(
+                        Icons.person_outline_rounded,
+                        color: Colors.white,
+                        size: 22,
+                      ),
                     ),
                     const SizedBox(width: 14),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Anonymous', style: _s(21, w: FontWeight.w600)),
+                          Text('Anonymous', style: _s(20, w: FontWeight.w600)),
                           const SizedBox(height: 2),
-                          Text('Employee · No email · No name',
-                              style: _s(12.5, c: AppColors.muted)),
+                          Text(
+                            'Employee · No email · No name',
+                            style: _s(12.5, c: AppColors.muted),
+                          ),
                         ],
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 10),
 
                 // Your privacy: hidden from admin / admin sees.
-                Container(
-                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20),
-                    gradient: const LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [AppColors.blueTint, Color(0xFFF7F9FE)],
+                TourStarter(
+                  id: 'profile_tour_seen_v4',
+                  steps: _ProfileTour.steps,
+                  child: KeyedSubtree(
+                    key: _ProfileTour.privacy,
+                    child: Container(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20),
+                        gradient: const LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [AppColors.blueTint, Color(0xFFF7F9FE)],
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.shield_outlined,
+                                size: 19,
+                                color: AppColors.blue,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Your privacy',
+                                style: _s(15, w: FontWeight.w600),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          _label('HIDDEN FROM ADMIN'),
+                          _item(true, 'Your name'),
+                          _item(true, 'Your email and phone number'),
+                          _item(true, 'Who wrote which message'),
+                          const Divider(height: 8, color: Color(0xFFDCE5FA)),
+                          const SizedBox(height: 4),
+                          _label('ADMIN SEES'),
+                          _item(false, 'Your message, without your name'),
+                        ],
+                      ),
                     ),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.shield_outlined, size: 19, color: AppColors.blue),
-                          const SizedBox(width: 8),
-                          Text('Your privacy', style: _s(15, w: FontWeight.w600)),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      _label('HIDDEN FROM ADMIN'),
-                      _item(true, 'Your name'),
-                      _item(true, 'Your email and phone number'),
-                      _item(true, 'Who wrote which message'),
-                      const Divider(height: 12, color: Color(0xFFDCE5FA)),
-                      const SizedBox(height: 6),
-                      _label('ADMIN SEES'),
-                      _item(false, 'Your message, without your name'),
-                    ],
-                  ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
 
                 // Want credit? Name on one message only.
-                Container(
-                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFFC9D6FF), width: 1.5),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('💡', style: TextStyle(fontSize: 18)),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Want credit for a good idea?',
-                                style: _s(14, w: FontWeight.w500)),
-                            const SizedBox(height: 3),
-                            Text.rich(
-                              TextSpan(
-                                children: [
-                                  const TextSpan(text: 'When you send, choose '),
-                                  TextSpan(
-                                    text: '👤 With my name',
-                                    style: _s(12.5, w: FontWeight.w500, c: AppColors.blue),
-                                  ),
-                                  const TextSpan(
-                                    text: '. Your name shows only on that one '
-                                        'message. Everything else stays anonymous.',
-                                  ),
-                                ],
+                KeyedSubtree(
+                  key: _ProfileTour.credit,
+                  child: Container(
+                    padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: const Color(0xFFC9D6FF),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('💡', style: TextStyle(fontSize: 18)),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Want credit for a good idea?',
+                                style: _s(14, w: FontWeight.w500),
                               ),
-                              style: _s(12.5, c: AppColors.muted, h: 1.45),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
-
-                // My personal code: hidden until Show.
-                Container(
-                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: _line),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            width: 34,
-                            height: 34,
-                            decoration: BoxDecoration(
-                              color: AppColors.blueTint,
-                              borderRadius: BorderRadius.circular(11),
-                            ),
-                            child: const Icon(Icons.key_outlined,
-                                size: 18, color: AppColors.blue),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('My personal code', style: _s(15, w: FontWeight.w500)),
-                                Text('Needed only when you change your phone',
-                                    style: _s(12, c: AppColors.muted)),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      if (!_loaded)
-                        const SizedBox(height: 40)
-                      else if (code == null)
-                        Text(
-                          'Your code is not saved on this phone. Use the code '
-                              'you saved when you joined.',
-                          style: _s(13, c: AppColors.muted, h: 1.45),
-                        )
-                      else
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Container(
-                                height: 40,
-                                alignment: Alignment.center,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFF6F8FB),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: FittedBox(
-                                  fit: BoxFit.scaleDown,
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                                    child: Text(
-                                      _show ? code : '•••••–•••••',
-                                      maxLines: 1,
-                                      style: GoogleFonts.robotoMono(
-                                        fontSize: 17,
-                                        fontWeight: FontWeight.w700,
-                                        letterSpacing: 2,
-                                        color: AppColors.blue,
+                              const SizedBox(height: 3),
+                              Text.rich(
+                                TextSpan(
+                                  children: [
+                                    const TextSpan(
+                                      text: 'When you send, choose ',
+                                    ),
+                                    TextSpan(
+                                      text: '👤 With my name',
+                                      style: _s(
+                                        12.5,
+                                        w: FontWeight.w500,
+                                        c: AppColors.blue,
                                       ),
                                     ),
-                                  ),
+                                    const TextSpan(
+                                      text:
+                                          '. Your name shows only on that one '
+                                          'message. Everything else stays anonymous.',
+                                    ),
+                                  ],
                                 ),
+                                style: _s(12.5, c: AppColors.muted, h: 1.45),
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            _smallButton(
-                              _show ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                              _show ? 'Hide' : 'Show',
-                                  () => setState(() => _show = !_show),
-                            ),
-                            const SizedBox(width: 6),
-                            _smallButton(Icons.copy_rounded, 'Copy', _copy),
-                          ],
-                        ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
-
-                // Help & Privacy, Delete my account.
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: _line),
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: Material(
-                    color: Colors.white,
-                    child: Column(
-                      children: [
-                        _row(
-                          icon: Icons.shield_outlined,
-                          title: 'Help & Privacy',
-                          sub: 'Questions and answers about the app',
-                          onTap: () => Navigator.of(context).push(
-                            MaterialPageRoute<void>(builder: (_) => const HelpScreen()),
-                          ),
-                        ),
-                        const Divider(height: 1, color: Color(0xFFEEF1F6)),
-                        _row(
-                          icon: Icons.delete_outline_rounded,
-                          title: 'Delete my account',
-                          sub: 'Only when you leave Haystek',
-                          danger: true,
-                          onTap: () => Navigator.of(context).push(
-                            MaterialPageRoute<void>(
-                              builder: (_) => const DeleteAccountScreen(),
-                            ),
+                            ],
                           ),
                         ),
                       ],
                     ),
                   ),
                 ),
-                const SizedBox(height: 18),
+                const SizedBox(height: 10),
+
+                // My personal code: hidden until Show.
+                KeyedSubtree(
+                  key: _ProfileTour.code,
+                  child: Container(
+                    padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: _line),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              width: 34,
+                              height: 34,
+                              decoration: BoxDecoration(
+                                color: AppColors.blueTint,
+                                borderRadius: BorderRadius.circular(11),
+                              ),
+                              child: const Icon(
+                                Icons.key_outlined,
+                                size: 18,
+                                color: AppColors.blue,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'My personal code',
+                                    style: _s(15, w: FontWeight.w500),
+                                  ),
+                                  Text(
+                                    'Needed only when you change your phone',
+                                    style: _s(12, c: AppColors.muted),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        if (!_loaded)
+                          const SizedBox(height: 40)
+                        else if (code == null)
+                          Text(
+                            'Your code is not saved on this phone. Use the code '
+                            'you saved when you joined.',
+                            style: _s(13, c: AppColors.muted, h: 1.45),
+                          )
+                        else
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Container(
+                                  height: 40,
+                                  alignment: Alignment.center,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF6F8FB),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                      ),
+                                      child: Text(
+                                        _show ? code : '•••••–•••••',
+                                        maxLines: 1,
+                                        style: GoogleFonts.robotoMono(
+                                          fontSize: 17,
+                                          fontWeight: FontWeight.w700,
+                                          letterSpacing: 2,
+                                          color: AppColors.blue,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              _smallButton(
+                                _show
+                                    ? Icons.visibility_off_outlined
+                                    : Icons.visibility_outlined,
+                                _show ? 'Hide' : 'Show',
+                                () => setState(() => _show = !_show),
+                              ),
+                              const SizedBox(width: 6),
+                              _smallButton(Icons.copy_rounded, 'Copy', _copy),
+                            ],
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                // Help & Privacy, Delete my account.
+                KeyedSubtree(
+                  key: _ProfileTour.help,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: _line),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: Material(
+                      color: Colors.white,
+                      child: Column(
+                        children: [
+                          _row(
+                            icon: Icons.shield_outlined,
+                            title: 'Help & Privacy',
+                            sub: 'Questions and answers about the app',
+                            onTap: () => Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => const HelpScreen(),
+                              ),
+                            ),
+                          ),
+                          const Divider(height: 1, color: Color(0xFFEEF1F6)),
+                          _row(
+                            icon: Icons.delete_outline_rounded,
+                            title: 'Delete my account',
+                            sub: 'Only when you leave Haystek',
+                            danger: true,
+                            onTap: () => Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => const DeleteAccountScreen(),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
                 const _VersionLine(),
               ],
             ),
@@ -1187,8 +1299,8 @@ class _VersionLine extends StatelessWidget {
         final text = info == null
             ? 'Haystek Pulse'
             : 'Haystek Pulse · Version '
-                '${info.version.replaceAll('-dev', '')} '
-                '(${info.buildNumber}) · $build';
+                  '${info.version.replaceAll('-dev', '')} '
+                  '(${info.buildNumber}) · $build';
         return Text(
           text,
           textAlign: TextAlign.center,
@@ -1197,4 +1309,39 @@ class _VersionLine extends StatelessWidget {
       },
     );
   }
+}
+
+/// Profile tour: what each part of the employee profile is for (once).
+class _ProfileTour {
+  static final privacy = GlobalKey(debugLabel: 'tourPrivacy');
+  static final credit = GlobalKey(debugLabel: 'tourCredit');
+  static final code = GlobalKey(debugLabel: 'tourCode');
+  static final help = GlobalKey(debugLabel: 'tourHelp');
+
+  static List<TourStep> steps() => [
+    TourStep(
+      privacy,
+      'Your privacy',
+      'Admin never sees your name, email, phone number or who wrote '
+          'a message. Only the message itself.',
+    ),
+    TourStep(
+      credit,
+      'Want credit for an idea?',
+      'When you send, choose With my name. Your name shows only on '
+          'that one message.',
+    ),
+    TourStep(
+      code,
+      'Your personal code',
+      'Tap Show to see it and Copy to save it. You need it only when '
+          'you move to a new phone.',
+    ),
+    TourStep(
+      help,
+      'Help and more',
+      'Answers about the app, and Delete my account '
+          'when you leave Haystek.',
+    ),
+  ];
 }

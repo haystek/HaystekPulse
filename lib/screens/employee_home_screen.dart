@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -36,19 +37,18 @@ const Color _soft = Color(0xFF8E97AB);
 
 /// One font for this whole screen: Inter.
 TextStyle _inter(
-    double size, {
-      FontWeight weight = FontWeight.w400,
-      Color color = AppColors.ink,
-      double? height,
-      double? letterSpacing,
-    }) =>
-    GoogleFonts.plusJakartaSans(
-      fontSize: size,
-      fontWeight: weight,
-      color: color,
-      height: height,
-      letterSpacing: letterSpacing,
-    );
+  double size, {
+  FontWeight weight = FontWeight.w400,
+  Color color = AppColors.ink,
+  double? height,
+  double? letterSpacing,
+}) => GoogleFonts.plusJakartaSans(
+  fontSize: size,
+  fontWeight: weight,
+  color: color,
+  height: height,
+  letterSpacing: letterSpacing,
+);
 
 /// Employee home ("Blue card" design):
 /// - a white top with the logo, the bell and the account button,
@@ -62,9 +62,7 @@ class EmployeeHomeScreen extends StatelessWidget {
   final Employee employee;
 
   void _push(BuildContext context, Widget screen) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => screen),
-    );
+    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => screen));
   }
 
   static String _greeting() {
@@ -76,10 +74,8 @@ class EmployeeHomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    void openFeedback(int tab) => _push(
-      context,
-      MyFeedbackScreen(employee: employee, initialTab: tab),
-    );
+    void openFeedback(int tab) =>
+        _push(context, MyFeedbackScreen(employee: employee, initialTab: tab));
     final name = employee.name.trim().isEmpty ? 'there' : employee.name.trim();
     final pad = MediaQuery.of(context).padding;
 
@@ -92,7 +88,12 @@ class EmployeeHomeScreen extends StatelessWidget {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 480),
             child: ListView(
-              padding: EdgeInsets.fromLTRB(16, pad.top + 10, 16, 28 + pad.bottom),
+              padding: EdgeInsets.fromLTRB(
+                16,
+                pad.top + 10,
+                16,
+                28 + pad.bottom,
+              ),
               children: [
                 // Top: logo, bell, account.
                 Padding(
@@ -105,14 +106,14 @@ class EmployeeHomeScreen extends StatelessWidget {
                         fit: BoxFit.contain,
                       ),
                       const Spacer(),
-                     // NotificationBell(employee: employee),
+                      // NotificationBell(employee: employee),
                       //const SizedBox(width: 10),
                       _AccountButton(
                         name: employee.name,
                         actions: [
                           MenuAction(
                             'Profile',
-                                () => _push(
+                            () => _push(
                               context,
                               ProfileScreen(employee: employee),
                             ),
@@ -123,7 +124,7 @@ class EmployeeHomeScreen extends StatelessWidget {
                           if (!AuthService.instance.isCodeAccount)
                             MenuAction(
                               'Sign out',
-                                  () => confirmSignOut(context),
+                              () => confirmSignOut(context),
                             ),
                         ],
                       ),
@@ -157,31 +158,42 @@ class EmployeeHomeScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 18),
-                _PulseCard(
-                  employee: employee,
-                  onAnswer: () => _push(
-                    context,
-                    WeeklyPulseScreen(employee: employee),
-                  ),
-                  onSeeMine: () => openFeedback(1),
-                ),
-                const SizedBox(height: 12),
-                _SuggestCard(
-                  onTap: () => _push(
-                    context,
-                    SuggestionBoxScreen(employee: employee),
+                _TourHost(
+                  child: KeyedSubtree(
+                    key: _HomeTour.pulse,
+                    child: _PulseCard(
+                      employee: employee,
+                      onAnswer: () =>
+                          _push(context, WeeklyPulseScreen(employee: employee)),
+                      onSeeMine: () => openFeedback(1),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 12),
-                _BroadcastCard(
-                  uid: employee.uid,
-                  onTap: () => _push(
-                    context,
-                    BroadcastListScreen(employee: employee),
+                KeyedSubtree(
+                  key: _HomeTour.suggest,
+                  child: _SuggestCard(
+                    onTap: () =>
+                        _push(context, SuggestionBoxScreen(employee: employee)),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                KeyedSubtree(
+                  key: _HomeTour.broadcast,
+                  child: _BroadcastCard(
+                    uid: employee.uid,
+                    onTap: () =>
+                        _push(context, BroadcastListScreen(employee: employee)),
                   ),
                 ),
                 const SizedBox(height: 22),
-                _RecentActivity(employee: employee, onOpen: openFeedback),
+                KeyedSubtree(
+                  key: _HomeTour.recent,
+                  child: _RecentActivity(
+                    employee: employee,
+                    onOpen: openFeedback,
+                  ),
+                ),
               ],
             ),
           ),
@@ -219,7 +231,11 @@ class _AccountButton extends StatelessWidget {
         ),
         // No name (joined with an entry code): a person icon.
         child: initial.isEmpty
-            ? const Icon(Icons.person_outline_rounded, color: Colors.white, size: 22)
+            ? const Icon(
+                Icons.person_outline_rounded,
+                color: Colors.white,
+                size: 22,
+              )
             : Text(
                 initial,
                 style: _inter(16, weight: FontWeight.w700, color: Colors.white),
@@ -269,12 +285,12 @@ class _PulseCardState extends State<_PulseCard> with WidgetsBindingObserver {
         .snapshots(includeMetadataChanges: true)
         .map(
           (doc) => (
-      // The server only knows "answered" (''). What was chosen is in
-      // the locked history, looked up in build().
-      rating: doc.exists ? '' : null,
-      cached: doc.metadata.isFromCache,
-      ),
-    );
+            // The server only knows "answered" (''). What was chosen is in
+            // the locked history, looked up in build().
+            rating: doc.exists ? '' : null,
+            cached: doc.metadata.isFromCache,
+          ),
+        );
     _stopWaiting = false;
     _waitTimer?.cancel();
     _waitTimer = Timer(const Duration(seconds: 4), () {
@@ -334,72 +350,80 @@ class _PulseCardState extends State<_PulseCard> with WidgetsBindingObserver {
     // there just after sending).
     return ValueListenableBuilder<VaultData?>(
       valueListenable: VaultService.instance.data,
-      builder: (context, vault, _) => StreamBuilder<({String? rating, bool cached})>(
-      stream: _myRating,
-      builder: (context, snap) {
-        final answer = snap.data;
-        final rating = answer?.rating == null
-            ? null
-            : (vault?.pulse[_weekId] ?? '');
-        final now = DateTime.now();
-        // Test mode: open every day, so no dates are shown.
-        const everyDay = AppConfig.pulseOpenEveryDay;
-        final open = PulseService.isOpen(now);
-        final notOpenYet = PulseService.notOpenYet(now);
+      builder: (context, vault, _) =>
+          StreamBuilder<({String? rating, bool cached})>(
+            stream: _myRating,
+            builder: (context, snap) {
+              final answer = snap.data;
+              final rating = answer?.rating == null
+                  ? null
+                  : (vault?.pulse[_weekId] ?? '');
+              final now = DateTime.now();
+              // Test mode: open every day, so no dates are shown.
+              const everyDay = AppConfig.pulseOpenEveryDay;
+              final open = PulseService.isOpen(now);
+              final notOpenYet = PulseService.notOpenYet(now);
 
-        final opensAt = PulseService.opensAt(now);
-        // The window ends at midnight; show it as 11:59 PM of the last day.
-        final closesAt = PulseService.closesAt(now);
-        final closesText = PulseService.dateTimeLabel(
-          closesAt.subtract(const Duration(minutes: 1)),
-        );
-        final next = PulseService.dateTimeLabel(PulseService.nextOpensAt(now));
-        final week = _weekDates(_weekId);
+              final opensAt = PulseService.opensAt(now);
+              // The window ends at midnight; show it as 11:59 PM of the last day.
+              final closesAt = PulseService.closesAt(now);
+              final closesText = PulseService.dateTimeLabel(
+                closesAt.subtract(const Duration(minutes: 1)),
+              );
+              final next = PulseService.dateTimeLabel(
+                PulseService.nextOpensAt(now),
+              );
+              final week = _weekDates(_weekId);
 
-        // Not open yet: always show the timer first, even if an old
-        // answer exists (for example after the open time was changed).
-        if (notOpenYet) {
-          return _SoonCard(
-            week: week,
-            opensAt: opensAt,
-            opensText: PulseService.dateTimeLabel(opensAt),
-            closesText: closesText,
-            onOpened: _refresh,
-          );
-        }
+              // Not open yet: always show the timer first, even if an old
+              // answer exists (for example after the open time was changed).
+              if (notOpenYet) {
+                return _SoonCard(
+                  week: week,
+                  opensAt: opensAt,
+                  opensText: PulseService.dateTimeLabel(opensAt),
+                  closesText: closesText,
+                  onOpened: _refresh,
+                );
+              }
 
-        // Not sure yet whether this week is answered: the phone's saved
-        // copy says "not answered", but it can be old. Wait for the server
-        // (at most 4 seconds), so the card does not show "Rate your week"
-        // first and then jump to "Done".
-        final unsure = answer == null ||
-            (answer.cached && answer.rating == null && !_stopWaiting);
-        if (unsure) return const _LoadingCard();
+              // Not sure yet whether this week is answered: the phone's saved
+              // copy says "not answered", but it can be old. Wait for the server
+              // (at most 4 seconds), so the card does not show "Rate your week"
+              // first and then jump to "Done".
+              final unsure =
+                  answer == null ||
+                  (answer.cached && answer.rating == null && !_stopWaiting);
+              if (unsure) return const _LoadingCard();
 
-        if (rating != null) {
-          return _DoneCard(
-            week: week,
-            rating: rating,
-            // Always show the next one (also while this week is open).
-            nextAt: everyDay ? null : PulseService.nextOpensAt(now),
-            onSeeMine: widget.onSeeMine,
-          );
-        }
-        if (open) {
-          return _OpenCard(
-            week: week,
-            everyDay: everyDay,
-            opensAt: opensAt,
-            closesAt: closesAt,
-            closesText: closesText,
-            onAnswer: widget.onAnswer,
-            onClosed: _refresh,
-          );
-        }
+              if (rating != null) {
+                return _DoneCard(
+                  week: week,
+                  rating: rating,
+                  // Always show the next one (also while this week is open).
+                  nextAt: everyDay ? null : PulseService.nextOpensAt(now),
+                  onSeeMine: widget.onSeeMine,
+                );
+              }
+              if (open) {
+                return _OpenCard(
+                  week: week,
+                  everyDay: everyDay,
+                  opensAt: opensAt,
+                  closesAt: closesAt,
+                  closesText: closesText,
+                  onAnswer: widget.onAnswer,
+                  onClosed: _refresh,
+                );
+              }
 
-        return _MissedCard(week: week, closesText: closesText, next: next);
-      },
-      ),
+              return _MissedCard(
+                week: week,
+                closesText: closesText,
+                next: next,
+              );
+            },
+          ),
     );
   }
 }
@@ -434,8 +458,18 @@ class _LoadingCard extends StatelessWidget {
 /// "Mon 12 – Fri 16 Oct" (or "Mon 28 Sep – Fri 2 Oct").
 String _weekDates(String weekId) {
   const months = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
   ];
   final p = weekId.split('-').map(int.parse).toList();
   final d = DateTime(p[0], p[1], p[2]);
@@ -451,12 +485,12 @@ String _weekDates(String weekId) {
 /// [outline]: only a thin border and a clock, for "not open yet".
 class _Chip extends StatelessWidget {
   const _Chip(
-      this.text, {
-        required this.bg,
-        required this.fg,
-        this.dot,
-        this.outline = false,
-      });
+    this.text, {
+    required this.bg,
+    required this.fg,
+    this.dot,
+    this.outline = false,
+  });
 
   final String text;
   final Color bg;
@@ -507,38 +541,34 @@ class _Chip extends StatelessWidget {
 ///   Mon 12 – Fri 16 Oct
 /// [dark]: white dates, for the night-sky cards.
 Widget _cardTop(
-    String week,
-    Widget chip, {
-      Color color = _soft,
-      bool dark = false,
-    }) =>
-    Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Feedback for this week',
-                style: _inter(12.5, color: color),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                week,
-                style: _inter(
-                  15,
-                  weight: FontWeight.w600,
-                  color: dark ? Colors.white : AppColors.ink,
-                ),
-              ),
-            ],
+  String week,
+  Widget chip, {
+  Color color = _soft,
+  bool dark = false,
+}) => Row(
+  crossAxisAlignment: CrossAxisAlignment.start,
+  children: [
+    Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Feedback for this week', style: _inter(12.5, color: color)),
+          const SizedBox(height: 2),
+          Text(
+            week,
+            style: _inter(
+              15,
+              weight: FontWeight.w600,
+              color: dark ? Colors.white : AppColors.ink,
+            ),
           ),
-        ),
-        const SizedBox(width: 8),
-        chip,
-      ],
-    );
+        ],
+      ),
+    ),
+    const SizedBox(width: 8),
+    chip,
+  ],
+);
 
 /// 1. About to open: a dark blue "night sky" card with a big live timer.
 class _SoonCard extends StatefulWidget {
@@ -606,7 +636,11 @@ class _SoonCardState extends State<_SoonCard> {
     const unitColor = Color(0xFF9FB4F0);
 
     // One part of the timer: a big number and a small unit.
-    List<Widget> part(String number, String unit, {Color color = Colors.white}) => [
+    List<Widget> part(
+      String number,
+      String unit, {
+      Color color = Colors.white,
+    }) => [
       Text(
         number,
         style: _inter(
@@ -624,8 +658,9 @@ class _SoonCardState extends State<_SoonCard> {
     ];
 
     Widget when(String label, String value, {bool right = false}) => Column(
-      crossAxisAlignment:
-      right ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+      crossAxisAlignment: right
+          ? CrossAxisAlignment.end
+          : CrossAxisAlignment.start,
       children: [
         Text(label, style: _inter(13, color: unitColor)),
         const SizedBox(height: 2),
@@ -792,7 +827,7 @@ class _OpenCard extends StatelessWidget {
           if (everyDay)
             Text('Test mode: open every day', style: _inter(13, color: _unit))
           else
-          // Opened → Now (time left) → Closes. Same as management.
+            // Opened → Now (time left) → Closes. Same as management.
             _Timeline(opensAt: opensAt, closesAt: closesAt, onClosed: onClosed),
         ],
       ),
@@ -866,11 +901,14 @@ class _TimelineState extends State<_Timeline> {
   }
 
   static TextStyle _t(
-      double size, {
-        FontWeight weight = FontWeight.w400,
-        Color color = Colors.white,
-      }) =>
-      GoogleFonts.plusJakartaSans(fontSize: size, fontWeight: weight, color: color);
+    double size, {
+    FontWeight weight = FontWeight.w400,
+    Color color = Colors.white,
+  }) => GoogleFonts.plusJakartaSans(
+    fontSize: size,
+    fontWeight: weight,
+    color: color,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -978,7 +1016,11 @@ class _TimelineState extends State<_Timeline> {
                   ),
                   // Now: a blue dot with a soft glow.
                   if (!closed)
-                    Positioned(left: x, top: 0, child: dot(_glow, 12, glow: true)),
+                    Positioned(
+                      left: x,
+                      top: 0,
+                      child: dot(_glow, 12, glow: true),
+                    ),
                 ],
               ),
             ),
@@ -1109,8 +1151,10 @@ class _DoneCard extends StatelessWidget {
                           const SizedBox(height: 3),
                           Text(
                             week,
-                            style: _inter(13, color: deep)
-                                .copyWith(fontWeight: FontWeight.w400),
+                            style: _inter(
+                              13,
+                              color: deep,
+                            ).copyWith(fontWeight: FontWeight.w400),
                           ),
                         ],
                       ),
@@ -1170,7 +1214,9 @@ class _DoneCard extends StatelessWidget {
                     ),
                     const SizedBox(width: 10),
                     Icon(
-                      known ? PulseRating.icon(rating) : Icons.check_circle_outline,
+                      known
+                          ? PulseRating.icon(rating)
+                          : Icons.check_circle_outline,
                       color: color,
                       size: 30,
                     ),
@@ -1179,8 +1225,10 @@ class _DoneCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   'Thanks for sharing this week.',
-                  style: _inter(14, color: deep)
-                      .copyWith(fontWeight: FontWeight.w400),
+                  style: _inter(
+                    14,
+                    color: deep,
+                  ).copyWith(fontWeight: FontWeight.w400),
                 ),
               ],
             ),
@@ -1195,33 +1243,37 @@ class _DoneCard extends StatelessWidget {
                 Expanded(
                   child: date == null
                       ? Text(
-                    'You can answer again any day.',
-                    style: _inter(14, color: AppColors.muted),
-                  )
+                          'You can answer again any day.',
+                          style: _inter(14, color: AppColors.muted),
+                        )
                       : Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'NEXT FEEDBACK',
-                        style: cap(const Color(0xFF8A94AD)),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        date,
-                        style: _inter(19, weight: FontWeight.w700)
-                            .copyWith(letterSpacing: -0.3),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        [
-                          if (time != null) 'at $time',
-                          _inDays(nextAt!),
-                        ].join(' · '),
-                        style: _inter(13.5, color: AppColors.muted)
-                            .copyWith(fontWeight: FontWeight.w400),
-                      ),
-                    ],
-                  ),
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'NEXT FEEDBACK',
+                              style: cap(const Color(0xFF8A94AD)),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              date,
+                              style: _inter(
+                                19,
+                                weight: FontWeight.w700,
+                              ).copyWith(letterSpacing: -0.3),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              [
+                                if (time != null) 'at $time',
+                                _inDays(nextAt!),
+                              ].join(' · '),
+                              style: _inter(
+                                13.5,
+                                color: AppColors.muted,
+                              ).copyWith(fontWeight: FontWeight.w400),
+                            ),
+                          ],
+                        ),
                 ),
                 TextButton(
                   onPressed: onSeeMine,
@@ -1276,11 +1328,7 @@ class _MissedCard extends StatelessWidget {
         children: [
           _cardTop(
             week,
-            const _Chip(
-              'Closed',
-              bg: Color(0xFFE6E9EF),
-              fg: Color(0xFF5B6478),
-            ),
+            const _Chip('Closed', bg: Color(0xFFE6E9EF), fg: Color(0xFF5B6478)),
           ),
           const SizedBox(height: 16),
           Text(
@@ -1405,10 +1453,11 @@ class _BroadcastCard extends StatefulWidget {
 }
 
 class _BroadcastCardState extends State<_BroadcastCard> {
-  late final Stream<List<Broadcast>> _stream =
-      BroadcastService.instance.watchAll();
-  late final Stream<DateTime?> _seen =
-      BroadcastService.instance.watchSeenAt(widget.uid);
+  late final Stream<List<Broadcast>> _stream = BroadcastService.instance
+      .watchAll();
+  late final Stream<DateTime?> _seen = BroadcastService.instance.watchSeenAt(
+    widget.uid,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -1424,17 +1473,21 @@ class _BroadcastCardState extends State<_BroadcastCard> {
           final fresh = loading
               ? 0
               : all
-              .where((b) =>
-                  seenAt == null ||
-                  (b.createdAt != null && b.createdAt!.isAfter(seenAt)))
-              .length;
+                    .where(
+                      (b) =>
+                          seenAt == null ||
+                          (b.createdAt != null && b.createdAt!.isAfter(seenAt)),
+                    )
+                    .length;
           final String sub;
           if (all.isEmpty) {
             sub = 'Updates from admin show here.';
           } else if (fresh > 0) {
             sub = fresh == 1 ? '1 new update' : '$fresh new updates';
           } else {
-            sub = all.length == 1 ? '1 update · all read' : '${all.length} updates · all read';
+            sub = all.length == 1
+                ? '1 update · all read'
+                : '${all.length} updates · all read';
           }
           return Material(
             color: Colors.white,
@@ -1467,7 +1520,10 @@ class _BroadcastCardState extends State<_BroadcastCard> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Broadcast', style: _inter(16, weight: FontWeight.w600)),
+                          Text(
+                            'Broadcast',
+                            style: _inter(16, weight: FontWeight.w600),
+                          ),
                           const SizedBox(height: 2),
                           Text(
                             sub,
@@ -1475,7 +1531,9 @@ class _BroadcastCardState extends State<_BroadcastCard> {
                             overflow: TextOverflow.ellipsis,
                             style: _inter(
                               13,
-                              color: fresh > 0 ? AppColors.blue : AppColors.muted,
+                              color: fresh > 0
+                                  ? AppColors.blue
+                                  : AppColors.muted,
                               height: 1.35,
                             ),
                           ),
@@ -1494,7 +1552,11 @@ class _BroadcastCardState extends State<_BroadcastCard> {
                         ),
                         child: Text(
                           fresh > 99 ? '99+' : '$fresh',
-                          style: _inter(12, weight: FontWeight.w600, color: Colors.white),
+                          style: _inter(
+                            12,
+                            weight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 4),
@@ -1601,8 +1663,18 @@ class _RecentActivityState extends State<_RecentActivity> {
   static String _date(DateTime? d) {
     if (d == null) return '';
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return '${d.day} ${months[d.month - 1]}';
   }
@@ -1614,9 +1686,9 @@ class _RecentActivityState extends State<_RecentActivity> {
 
   /// Suggestions + pulse comments + pulse answers, newest first.
   List<_Recent> _merge(
-      List<FeedbackItem> items,
-      List<Map<String, dynamic>> answers,
-      ) {
+    List<FeedbackItem> items,
+    List<Map<String, dynamic>> answers,
+  ) {
     final out = <_Recent>[];
     // Pulse comments by week, to put them together with their answer.
     final commentByWeek = <String, FeedbackItem>{
@@ -1630,7 +1702,8 @@ class _RecentActivityState extends State<_RecentActivity> {
       final rating = a['rating'] as String?;
       if (rating == null) continue;
       // Just sent: the time may not be there yet, so use now.
-      final at = (a['createdAt'] as Timestamp?)?.toDate() ??
+      final at =
+          (a['createdAt'] as Timestamp?)?.toDate() ??
           (weekId == _thisWeek ? DateTime.now() : _weekDate(weekId));
       final c = commentByWeek[weekId];
       final color = PulseRating.color(rating);
@@ -1782,7 +1855,7 @@ class _RecentActivityState extends State<_RecentActivity> {
                 const SizedBox(height: 4),
                 Text(
                   'Your Weekly Pulse answers and suggestions show here, '
-                      'with replies from admin.',
+                  'with replies from admin.',
                   textAlign: TextAlign.center,
                   style: _inter(13.5, color: AppColors.muted, height: 1.4),
                 ),
@@ -1810,10 +1883,10 @@ class _RecentActivityState extends State<_RecentActivity> {
         onTap: r.item == null
             ? null
             : () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => FeedbackThreadScreen(item: r.item!),
-                  ),
+                MaterialPageRoute<void>(
+                  builder: (_) => FeedbackThreadScreen(item: r.item!),
                 ),
+              ),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(12, 12, 10, 12),
           child: Row(
@@ -1935,10 +2008,7 @@ class _DashedBorder extends CustomPainter {
       ..strokeWidth = 1.5;
     final path = Path()
       ..addRRect(
-        RRect.fromRectAndRadius(
-          Offset.zero & size,
-          const Radius.circular(20),
-        ),
+        RRect.fromRectAndRadius(Offset.zero & size, const Radius.circular(20)),
       );
     for (final metric in path.computeMetrics()) {
       var d = 0.0;
@@ -1951,4 +2021,367 @@ class _DashedBorder extends CustomPainter {
 
   @override
   bool shouldRepaint(_DashedBorder old) => false;
+}
+
+// ---------------------------------------------------------------------
+// Home tour: shown once after joining. Dims the screen, highlights one
+// card at a time with a short tip. Next / Got it; tap Skip to end.
+// ---------------------------------------------------------------------
+
+class _HomeTour {
+  static final pulse = GlobalKey(debugLabel: 'tourPulse');
+  static final suggest = GlobalKey(debugLabel: 'tourSuggest');
+  static final broadcast = GlobalKey(debugLabel: 'tourBroadcast');
+  static final recent = GlobalKey(debugLabel: 'tourRecent');
+
+  static const storeKey = 'home_tour_seen_v2';
+  static bool started = false;
+
+  /// Profile → App tour: bump this to show the tour again.
+  static final replay = ValueNotifier<int>(0);
+
+  static List<(GlobalKey, String, String)> get steps => [
+    (
+      pulse,
+      'Weekly Pulse',
+      'Once a week, tell us how your week went. Takes 5 seconds.',
+    ),
+    (
+      suggest,
+      'Suggestion Box',
+      'Share an idea or a problem any day. Tap Write. '
+          'Your name stays hidden.',
+    ),
+    (broadcast, 'Broadcast', 'News and updates from admin show here.'),
+    (
+      recent,
+      'Your feedback',
+      'Replies from admin show here. You will get a notification too.',
+    ),
+  ];
+}
+
+/// Starts the tour the first time the home screen opens on this phone.
+class _TourHost extends StatefulWidget {
+  const _TourHost({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_TourHost> createState() => _TourHostState();
+}
+
+class _TourHostState extends State<_TourHost> {
+  static const _store = FlutterSecureStorage();
+
+  @override
+  void initState() {
+    super.initState();
+    _HomeTour.replay.addListener(_show);
+    if (_HomeTour.started) return;
+    _HomeTour.started = true;
+    _maybeStart();
+  }
+
+  Future<void> _maybeStart() async {
+    String? seen;
+    try {
+      seen = await _store.read(key: _HomeTour.storeKey);
+    } catch (_) {}
+    if (seen == '1') return;
+    // Let the cards load first.
+    await Future<void>.delayed(const Duration(milliseconds: 1200));
+    _show();
+  }
+
+  @override
+  void dispose() {
+    _HomeTour.replay.removeListener(_show);
+    super.dispose();
+  }
+
+  void _show() {
+    if (!mounted) return;
+    late OverlayEntry entry;
+    entry = OverlayEntry(
+      builder: (_) => _TourOverlay(
+        onDone: () {
+          entry.remove();
+          _store.write(key: _HomeTour.storeKey, value: '1').catchError((_) {});
+        },
+      ),
+    );
+    Overlay.of(context, rootOverlay: true).insert(entry);
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
+}
+
+class _TourOverlay extends StatefulWidget {
+  const _TourOverlay({required this.onDone});
+
+  final VoidCallback onDone;
+
+  @override
+  State<_TourOverlay> createState() => _TourOverlayState();
+}
+
+class _TourOverlayState extends State<_TourOverlay> {
+  late final List<(GlobalKey, String, String)> _steps = _HomeTour.steps
+      .where((s) => s.$1.currentContext != null)
+      .toList();
+  int _i = 0;
+  Rect? _rect;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_steps.isEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => widget.onDone());
+    } else {
+      _show(0);
+    }
+  }
+
+  Future<void> _show(int i) async {
+    final ctx = _steps[i].$1.currentContext;
+    if (ctx == null) return _next();
+    try {
+      await Scrollable.ensureVisible(
+        ctx,
+        alignment: 0.35,
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeOutCubic,
+      );
+    } catch (_) {}
+    if (!mounted) return;
+    final box = _steps[i].$1.currentContext?.findRenderObject();
+    if (box is! RenderBox || !box.hasSize) return _next();
+    final topLeft = box.localToGlobal(Offset.zero);
+    setState(() {
+      _i = i;
+      _rect = (topLeft & box.size).inflate(6);
+    });
+  }
+
+  void _next() {
+    if (_i + 1 >= _steps.length) {
+      widget.onDone();
+    } else {
+      _show(_i + 1);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final rect = _rect;
+    final size = MediaQuery.sizeOf(context);
+    final t = Theme.of(context).textTheme;
+    if (rect == null || _steps.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    final step = _steps[_i];
+    final last = _i == _steps.length - 1;
+    final below = rect.center.dy < size.height * 0.55;
+    const pale = Color(0xFFC9D6FF);
+    final card = Container(
+      padding: const EdgeInsets.fromLTRB(18, 16, 14, 10),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF142261), Color(0xFF1B3590), Color(0xFF2A57D9)],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x66000000),
+            blurRadius: 24,
+            offset: Offset(0, 10),
+            spreadRadius: -6,
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              for (var k = 0; k < _steps.length; k++)
+                Container(
+                  width: k == _i ? 18 : 6,
+                  height: 6,
+                  margin: const EdgeInsets.only(right: 5),
+                  decoration: BoxDecoration(
+                    color: k == _i
+                        ? Colors.white
+                        : Colors.white.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
+              const Spacer(),
+              Text(
+                '${_i + 1} of ${_steps.length}',
+                style: t.labelSmall?.copyWith(fontSize: 12, color: pale),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            step.$2,
+            style: t.titleMedium?.copyWith(
+              fontSize: 17,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            step.$3,
+            style: t.bodyMedium?.copyWith(
+              fontSize: 14,
+              height: 1.45,
+              color: pale,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              if (!last)
+                TextButton(
+                  onPressed: widget.onDone,
+                  style: TextButton.styleFrom(foregroundColor: pale),
+                  child: const Text('Skip'),
+                ),
+              const Spacer(),
+              FilledButton(
+                onPressed: _next,
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: const Color(0xFF1B3590),
+                  shape: const StadiumBorder(),
+                ),
+                child: Text(last ? 'Got it' : 'Next'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+    // Small pointer from the tip to the highlighted card.
+    final arrowX = rect.center.dx.clamp(44.0, size.width - 44.0) - 20 - 9;
+    return Material(
+      type: MaterialType.transparency,
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: GestureDetector(
+              onTap: _next,
+              child: TweenAnimationBuilder<Rect?>(
+                tween: RectTween(end: rect),
+                duration: const Duration(milliseconds: 320),
+                curve: Curves.easeOutCubic,
+                builder: (_, r, __) =>
+                    CustomPaint(painter: _TourDim(r ?? rect)),
+              ),
+            ),
+          ),
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 320),
+            curve: Curves.easeOutCubic,
+            left: 20,
+            right: 20,
+            top: below ? rect.bottom + 16 : null,
+            bottom: below ? null : size.height - rect.top + 16,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (below)
+                  Padding(
+                    padding: EdgeInsets.only(left: arrowX),
+                    child: const _TourArrow(up: true),
+                  ),
+                card,
+                if (!below)
+                  Padding(
+                    padding: EdgeInsets.only(left: arrowX),
+                    child: const _TourArrow(up: false),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Dark layer with a rounded hole around the highlighted card.
+class _TourDim extends CustomPainter {
+  _TourDim(this.hole);
+
+  final Rect hole;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final path = Path()
+      ..fillType = PathFillType.evenOdd
+      ..addRect(Offset.zero & size)
+      ..addRRect(RRect.fromRectAndRadius(hole, const Radius.circular(26)));
+    canvas.drawPath(path, Paint()..color = const Color(0xC70B1230));
+  }
+
+  @override
+  bool shouldRepaint(_TourDim old) => old.hole != hole;
+}
+
+/// Little triangle on the tip card, pointing at the card.
+class _TourArrow extends StatelessWidget {
+  const _TourArrow({required this.up});
+
+  final bool up;
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(size: const Size(18, 9), painter: _TourArrowPainter(up));
+  }
+}
+
+class _TourArrowPainter extends CustomPainter {
+  _TourArrowPainter(this.up);
+
+  final bool up;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final p = Path();
+    if (up) {
+      p
+        ..moveTo(0, size.height)
+        ..lineTo(size.width / 2, 0)
+        ..lineTo(size.width, size.height);
+    } else {
+      p
+        ..moveTo(0, 0)
+        ..lineTo(size.width / 2, size.height)
+        ..lineTo(size.width, 0);
+    }
+    canvas.drawPath(
+      p..close(),
+      Paint()..color = up ? const Color(0xFF15266F) : const Color(0xFF2550C8),
+    );
+  }
+
+  @override
+  bool shouldRepaint(_TourArrowPainter old) => old.up != up;
+}
+
+/// Profile → "App tour": go back to home and show the tips again.
+void replayHomeTour() {
+  Future<void>.delayed(const Duration(milliseconds: 450), () {
+    _HomeTour.replay.value++;
+  });
 }
