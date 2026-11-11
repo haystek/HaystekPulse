@@ -116,7 +116,7 @@ class _UpdateScreen extends StatelessWidget {
 
   TextStyle _s(double size,
           {FontWeight w = FontWeight.w400, Color c = AppColors.ink, double? h}) =>
-      GoogleFonts.inter(fontSize: size, fontWeight: w, color: c, height: h);
+      GoogleFonts.plusJakartaSans(fontSize: size, fontWeight: w, color: c, height: h);
 
   Future<void> _open(BuildContext context) async {
     final messenger = ScaffoldMessenger.of(context);

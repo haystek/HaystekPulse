@@ -8,7 +8,6 @@ import '../models/feedback_item.dart';
 import '../models/pulse_rating.dart';
 import '../services/feedback_service.dart';
 import '../theme/app_theme.dart';
-import '../widgets/ui.dart';
 import '../services/notification_service.dart';
 
 /// Employee: one suggestion or Weekly Pulse comment, with the whole
@@ -38,6 +37,13 @@ class _FeedbackThreadScreenState extends State<FeedbackThreadScreen> {
   int _shown = 0;
   double _lastInset = 0;
 
+  /// Collapsing header: slim when reading older messages (or typing).
+  bool _scrolledUp = false;
+
+  /// Slim header tapped: stay open until the next scroll.
+  bool _pinOpen = false;
+  double _pinAt = 0;
+
   @override
   void initState() {
     super.initState();
@@ -48,6 +54,7 @@ class _FeedbackThreadScreenState extends State<FeedbackThreadScreen> {
       limit: _limit,
     );
     _text.addListener(() => setState(() {}));
+    _scroll.addListener(_onScroll);
   }
 
   @override
@@ -58,6 +65,29 @@ class _FeedbackThreadScreenState extends State<FeedbackThreadScreen> {
     _text.dispose();
     _scroll.dispose();
     super.dispose();
+  }
+
+  /// The list is reversed: offset 0 = newest at the bottom.
+  void _onScroll() {
+    if (!_scroll.hasClients) return;
+    final o = _scroll.offset;
+    final up = _scrolledUp ? o > 8 : o > 40;
+    final pin = _pinOpen && (o - _pinAt).abs() <= 80;
+    if (up != _scrolledUp || pin != _pinOpen) {
+      setState(() {
+        _scrolledUp = up;
+        _pinOpen = pin;
+      });
+    }
+  }
+
+  /// Tap on the slim header: open the big one.
+  void _expand() {
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _pinOpen = true;
+      _pinAt = _scroll.hasClients ? _scroll.offset : 0;
+    });
   }
 
   /// "Show older messages": load 50 more, with a small loader on top.
@@ -98,7 +128,7 @@ class _FeedbackThreadScreenState extends State<FeedbackThreadScreen> {
   Widget build(BuildContext context) {
     final t = Theme.of(context);
     return Theme(
-      data: t.copyWith(textTheme: GoogleFonts.interTextTheme(t.textTheme)),
+      data: t.copyWith(textTheme: GoogleFonts.plusJakartaSansTextTheme(t.textTheme)),
       child: StreamBuilder<FeedbackItem?>(
         stream: _itemStream,
         builder: (context, itemSnap) {
@@ -106,28 +136,18 @@ class _FeedbackThreadScreenState extends State<FeedbackThreadScreen> {
           final item = itemSnap.data ?? widget.item;
           // Keyboard opening: keep the newest message in view.
           _lastInset = keepLastInView(context, _scroll, _lastInset);
+          final typing = MediaQuery.viewInsetsOf(context).bottom > 0;
+          final collapsed = typing || (!_pinOpen && _scrolledUp);
           return Scaffold(
             backgroundColor: Colors.white,
             resizeToAvoidBottomInset: true,
-            appBar: AppBar(
-              backgroundColor: Colors.white,
-              surfaceTintColor: Colors.white,
-              leadingWidth: 68,
-              leading: const AppBackButton(),
-              title: const SizedBox.shrink(),
-              actions: [
-                ThreadTitlePill(
-                  item.isFromBox ? 'Suggestion' : 'Weekly Pulse',
-                  icon: item.isFromBox
-                      ? Icons.lightbulb_outline
-                      : Icons.monitor_heart_outlined,
-                ),
-              ],
-            ),
             body: Column(
               children: [
-                // Sticky: the original message stays on top.
-                _MyMessageCard(item: item),
+                ThreadQuoteHeader(
+                  item: item,
+                  collapsed: collapsed,
+                  onExpand: _expand,
+                ),
                 Expanded(
                   child: StreamBuilder<List<ThreadEntry>>(
                     stream: _threadStream,
@@ -164,7 +184,7 @@ class _FeedbackThreadScreenState extends State<FeedbackThreadScreen> {
                               ),
                             )
                           else if (rows.isEmpty)
-                            ThreadNextSteps(item: item)
+                            const _NoRepliesYet()
                           else ...[
                             if (showBar)
                               ThreadOlderBar(
@@ -195,46 +215,6 @@ class _FeedbackThreadScreenState extends State<FeedbackThreadScreen> {
   }
 }
 
-/// The employee's own message, sticky on top.
-class _MyMessageCard extends StatelessWidget {
-  const _MyMessageCard({required this.item});
-
-  final FeedbackItem item;
-
-  @override
-  Widget build(BuildContext context) {
-    final rating = item.rating;
-    final meta = [
-      'You',
-      if (item.createdAt != null) threadDate(item.createdAt!),
-      if (!item.isFromBox && rating != null) PulseRating.label(rating),
-    ].join(' · ');
-    return ThreadHeaderCard(
-      text: item.text,
-      top: Row(
-        children: [
-          ThreadStatusPill(status: item.status),
-          const Spacer(),
-          Icon(
-            item.anonymous ? Icons.lock_outline : Icons.person_outline,
-            size: 13,
-            color: threadSoft,
-          ),
-          const SizedBox(width: 4),
-          Flexible(
-            child: Text(
-              meta,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: threadText(12, color: threadSoft),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 // ---------------------------------------------------------------------
 // Shared with the management screen (feedback_detail_screen.dart)
 // ---------------------------------------------------------------------
@@ -247,7 +227,7 @@ TextStyle threadText(
   FontWeight weight = FontWeight.w400,
   Color color = AppColors.ink,
   double? height,
-}) => GoogleFonts.inter(
+}) => GoogleFonts.plusJakartaSans(
   fontSize: size,
   fontWeight: weight,
   color: color,
@@ -508,18 +488,23 @@ class ThreadRow {
     required this.text,
     this.at,
     this.pending = false,
+    this.movedTo,
   }) : status = null;
 
   const ThreadRow.status({required String this.status, this.at})
     : fromManagement = true,
       text = '',
-      pending = false;
+        pending = false,
+        movedTo = null;
 
   final bool fromManagement;
   final String text;
   final String? status;
   final DateTime? at;
   final bool pending;
+
+  /// Status changed together with this message ("Moved to …" on top).
+  final String? movedTo;
 
   bool get isStatus => status != null;
 }
@@ -547,16 +532,18 @@ List<ThreadRow> buildThreadRows(
     );
   }
   for (final e in entries) {
-    if (e.status != null) {
+    final hasText = e.text.trim().isNotEmpty;
+    if (e.status != null && !hasText) {
       rows.add(ThreadRow.status(status: e.status!, at: e.at));
     }
-    if (e.text.trim().isNotEmpty) {
+    if (hasText) {
       rows.add(
         ThreadRow.message(
           fromManagement: e.fromManagement,
           text: e.text,
           at: e.at,
           pending: e.pending,
+          movedTo: e.status,
         ),
       );
     }
@@ -996,7 +983,8 @@ class _MessageGroup extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 4),
-                  for (final r in rows)
+                  for (final r in rows) ...[
+                    if (r.movedTo != null) _MovedTag(status: r.movedTo!),
                     Padding(
                       padding: const EdgeInsets.only(top: 2),
                       child: Text.rich(
@@ -1019,6 +1007,7 @@ class _MessageGroup extends StatelessWidget {
                         ),
                       ),
                     ),
+                  ],
                 ],
               ),
             ),
@@ -1210,6 +1199,500 @@ class ThreadTitlePill extends StatelessWidget {
             const SizedBox(width: 9),
             Text(text, style: threadText(16)),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------
+// V1 "Clean card": collapsing header (employee + management)
+// ---------------------------------------------------------------------
+
+const Color _v1Ink = Color(0xFF111827);
+const Color _v1Soft = Color(0xFF6B7280);
+const Color _v1Faint = Color(0xFF9CA3AF);
+
+/// Step 1–5 of a status (Noted and Implemented are the last step).
+int threadStep(String s) {
+  if (s == FeedbackStatus.underReview) return 2;
+  if (s == FeedbackStatus.planned) return 3;
+  if (s == FeedbackStatus.inProgress) return 4;
+  if (s == FeedbackStatus.implemented || s == FeedbackStatus.noted) return 5;
+  return 1;
+}
+
+/// Top bar (back · type · broadcast) and one card: who + date and the
+/// status, the message, a 5-part progress bar. Slim while scrolling or
+/// typing; tap it to open again.
+class ThreadQuoteHeader extends StatelessWidget {
+  const ThreadQuoteHeader({
+    super.key,
+    required this.item,
+    required this.collapsed,
+    required this.onExpand,
+    this.management = false,
+    this.actionIcon,
+    this.actionTooltip,
+    this.onAction,
+  });
+
+  final FeedbackItem item;
+  final bool collapsed;
+  final VoidCallback onExpand;
+
+  /// Management sees the sender; the employee sees "You".
+  final bool management;
+
+  /// Optional round button on the right (admin: broadcast).
+  final IconData? actionIcon;
+  final String? actionTooltip;
+  final VoidCallback? onAction;
+
+  String get _meta {
+    final rating = item.rating;
+    final String who;
+    if (management) {
+      final name = (item.authorName ?? '').trim();
+      final id = (item.authorEmployeeId ?? '').trim();
+      who = item.anonymous || name.isEmpty
+          ? 'Name hidden'
+          : [name, if (id.isNotEmpty) id].join(' · ');
+    } else {
+      who = item.anonymous ? 'You · name hidden' : 'You';
+    }
+    return [
+      who,
+      if (item.createdAt != null) threadDate(item.createdAt!),
+      if (!item.isFromBox && rating != null) PulseRating.label(rating),
+    ].join(' · ');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final top = MediaQuery.paddingOf(context).top;
+    void back() => Navigator.of(context).maybePop();
+    final type = item.isFromBox ? 'Suggestion' : 'Weekly Pulse';
+    final color = FeedbackStatus.color(item.status);
+    final step = threadStep(item.status);
+    final action = onAction == null
+        ? null
+        : _W3Button(
+            icon: actionIcon ?? Icons.more_horiz,
+            tooltip: actionTooltip ?? '',
+            onTap: onAction!,
+            color: AppColors.blue,
+            size: 42,
+          );
+    final tile = Container(
+      width: 26,
+      height: 26,
+      decoration: BoxDecoration(
+        color: item.isFromBox
+            ? const Color(0xFFFEF3C7)
+            : const Color(0xFFEAF0FF),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Icon(
+        item.isFromBox ? Icons.lightbulb_outline : Icons.monitor_heart_outlined,
+        size: 14,
+        color: item.isFromBox ? const Color(0xFFB7791F) : AppColors.blue,
+      ),
+    );
+    final bar = Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: Row(
+        children: [
+          _W3Button(
+            icon: Icons.arrow_back_ios_new_rounded,
+            tooltip: 'Back',
+            onTap: back,
+            size: 42,
+          ),
+          Expanded(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                tile,
+                const SizedBox(width: 8),
+                Text(
+                  type,
+                  style: threadText(16, weight: FontWeight.w600),
+                ),
+              ],
+            ),
+          ),
+          action ?? const SizedBox(width: 42),
+        ],
+      ),
+    );
+    final card = Container(
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7F8FB),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Icon(
+                item.anonymous
+                    ? Icons.lock_outline_rounded
+                    : Icons.person_outline_rounded,
+                size: 13,
+                color: _v1Faint,
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  _meta,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: threadText(
+                    12.5,
+                    weight: FontWeight.w500,
+                    color: _v1Soft,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                height: 26,
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(13),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color: color,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      FeedbackStatus.label(item.status),
+                      style: threadText(
+                        12,
+                        weight: FontWeight.w600,
+                        color: color,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _V1Text(text: item.text),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              for (var i = 0; i < 5; i++) ...[
+                if (i > 0) const SizedBox(width: 4),
+                Expanded(
+                  child: Container(
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: i < step ? color : const Color(0xFFE5E7EB),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Step $step of 5',
+            style: threadText(11.5, color: _v1Faint),
+          ),
+        ],
+      ),
+    );
+    final slim = Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
+      child: Row(
+        children: [
+          _W3Button(
+            icon: Icons.arrow_back_ios_new_rounded,
+            tooltip: 'Back',
+            onTap: back,
+            size: 40,
+            iconSize: 16,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: onExpand,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    item.text.trim().replaceAll(RegExp(r'\s+'), ' '),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: threadText(15, weight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          color: color,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          '${FeedbackStatus.label(item.status)} · tap to read',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: threadText(12, color: _v1Faint),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (onAction != null) ...[
+            const SizedBox(width: 10),
+            _W3Button(
+              icon: actionIcon ?? Icons.more_horiz,
+              tooltip: actionTooltip ?? '',
+              onTap: onAction!,
+              color: AppColors.blue,
+              size: 40,
+              iconSize: 18,
+            ),
+          ],
+        ],
+      ),
+    );
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.dark,
+      child: Container(
+        padding: EdgeInsets.only(top: top),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          border: Border(bottom: BorderSide(color: Color(0xFFF0F1F4))),
+        ),
+        child: AnimatedCrossFade(
+          duration: const Duration(milliseconds: 240),
+          sizeCurve: Curves.easeOutCubic,
+          firstCurve: Curves.easeOut,
+          secondCurve: Curves.easeOut,
+          crossFadeState:
+              collapsed ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+          firstChild: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [bar, card],
+          ),
+          secondChild: slim,
+        ),
+      ),
+    );
+  }
+}
+
+/// The message: 5 lines, then "More" / "Less".
+class _V1Text extends StatefulWidget {
+  const _V1Text({required this.text});
+
+  final String text;
+
+  @override
+  State<_V1Text> createState() => _V1TextState();
+}
+
+class _V1TextState extends State<_V1Text> {
+  bool _open = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = widget.text.trim();
+    final style = threadText(
+      18,
+      weight: FontWeight.w500,
+      color: _v1Ink,
+      height: 1.5,
+    ).copyWith(letterSpacing: -0.15);
+    return LayoutBuilder(
+      builder: (context, box) {
+        final painter = TextPainter(
+          text: TextSpan(text: text, style: style),
+          maxLines: 5,
+          textDirection: TextDirection.ltr,
+        )..layout(maxWidth: box.maxWidth);
+        final long = painter.didExceedMaxLines;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (_open)
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.sizeOf(context).height * 0.35,
+                ),
+                child: SingleChildScrollView(
+                  child: SelectableText(text, style: style),
+                ),
+              )
+            else
+              Text(
+                text,
+                maxLines: 5,
+                overflow: TextOverflow.ellipsis,
+                style: style,
+              ),
+            if (long)
+              GestureDetector(
+                onTap: () => setState(() => _open = !_open),
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text(
+                    _open ? 'Less' : 'More',
+                    style: threadText(
+                      13,
+                      weight: FontWeight.w600,
+                      color: AppColors.blue,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// Employee, no reply yet: a calm note in the middle.
+class _NoRepliesYet extends StatelessWidget {
+  const _NoRepliesYet();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 60, 24, 24),
+      child: Column(
+        children: [
+          Container(
+            width: 64,
+            height: 64,
+            decoration: const BoxDecoration(
+              color: Color(0xFFEEF2FF),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.chat_bubble_outline_rounded,
+              size: 26,
+              color: AppColors.blue,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'No replies yet',
+            style: threadText(17, weight: FontWeight.w600),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Admin will reply here. You will get a notification.',
+            textAlign: TextAlign.center,
+            style: threadText(14, color: _v1Soft, height: 1.5),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// "Moved to Noted" on top of the message sent with that change.
+class _MovedTag extends StatelessWidget {
+  const _MovedTag({required this.status});
+
+  final String status;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = FeedbackStatus.color(status);
+    return Padding(
+      padding: const EdgeInsets.only(top: 2, bottom: 4),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.10),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Text.rich(
+          TextSpan(
+            text: 'Moved to ',
+            children: [
+              TextSpan(
+                text: FeedbackStatus.label(status),
+                style: threadText(12, weight: FontWeight.w700, color: color),
+              ),
+            ],
+          ),
+          style: threadText(12, color: const Color(0xFF475467)),
+        ),
+      ),
+    );
+  }
+}
+
+/// Round white button with a thin border.
+class _W3Button extends StatelessWidget {
+  const _W3Button({
+    required this.icon,
+    required this.tooltip,
+    required this.onTap,
+    this.color = const Color(0xFF101828),
+    this.size = 44,
+    this.iconSize = 17,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onTap;
+  final Color color;
+  final double size;
+  final double iconSize;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: Colors.white,
+        shape: const CircleBorder(
+          side: BorderSide(color: Color(0xFFE3E8F1)),
+        ),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onTap,
+          child: SizedBox(
+            width: size,
+            height: size,
+            child: Icon(icon, size: iconSize, color: color),
+          ),
         ),
       ),
     );

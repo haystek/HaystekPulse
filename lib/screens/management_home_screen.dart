@@ -30,7 +30,7 @@ import 'profile_screen.dart';
 Widget _withInter(BuildContext context, Widget child) {
   final t = Theme.of(context);
   return Theme(
-    data: t.copyWith(textTheme: GoogleFonts.interTextTheme(t.textTheme)),
+    data: t.copyWith(textTheme: GoogleFonts.plusJakartaSansTextTheme(t.textTheme)),
     child: child,
   );
 }
@@ -42,7 +42,7 @@ TextStyle _h(
       Color color = AppColors.ink,
       double? height,
     }) =>
-    GoogleFonts.inter(
+    GoogleFonts.plusJakartaSans(
       fontSize: size,
       fontWeight: weight,
       color: color,
@@ -915,7 +915,7 @@ class _WeekHeroState extends State<_WeekHero> {
         double? letterSpacing,
         double? height,
       }) =>
-      GoogleFonts.inter(
+      GoogleFonts.plusJakartaSans(
         fontSize: size,
         fontWeight: weight,
         color: color,
@@ -1406,7 +1406,7 @@ class _TimelineState extends State<_Timeline> {
         FontWeight weight = FontWeight.w400,
         Color color = Colors.white,
       }) =>
-      GoogleFonts.inter(fontSize: size, fontWeight: weight, color: color);
+      GoogleFonts.plusJakartaSans(fontSize: size, fontWeight: weight, color: color);
 
   @override
   Widget build(BuildContext context) {
@@ -1603,7 +1603,7 @@ class _HeroChip extends StatelessWidget {
           ],
           Text(
             text,
-            style: GoogleFonts.inter(
+            style: GoogleFonts.plusJakartaSans(
               fontSize: 12.5,
               fontWeight: outline ? FontWeight.w400 : FontWeight.w600,
               color: fg,
@@ -1658,7 +1658,7 @@ class _SoonNote extends StatelessWidget {
                       : total == 1
                       ? '1 person can answer'
                       : '$total people can answer',
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.plusJakartaSans(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
                     color: AppColors.ink,
@@ -1667,7 +1667,7 @@ class _SoonNote extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   'Answers and the summary show here once it opens.',
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.plusJakartaSans(
                     fontSize: 13,
                     height: 1.4,
                     color: const Color(0xFF69728A),
@@ -1870,7 +1870,7 @@ class _RemindRow extends StatelessWidget {
             children: [
               Text(
                 title,
-                style: GoogleFonts.inter(
+                style: GoogleFonts.plusJakartaSans(
                   fontSize: 14.5,
                   fontWeight: FontWeight.w600,
                   color: AppColors.ink,
@@ -1880,7 +1880,7 @@ class _RemindRow extends StatelessWidget {
               Text(
                 sub,
                 maxLines: 2,
-                style: GoogleFonts.inter(
+                style: GoogleFonts.plusJakartaSans(
                   fontSize: 12.5,
                   color: const Color(0xFF8E97AB),
                 ),
@@ -1932,7 +1932,7 @@ class _RemindPill extends StatelessWidget {
               ],
               Text(
                 label,
-                style: GoogleFonts.inter(
+                style: GoogleFonts.plusJakartaSans(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                   color: fg,
@@ -4278,7 +4278,7 @@ class _BottomTabs extends StatelessWidget {
                               ),
                               child: Text(
                                 badge > 99 ? '99+' : '$badge',
-                                style: GoogleFonts.inter(
+                                style: GoogleFonts.plusJakartaSans(
                                   fontSize: 10.5,
                                   fontWeight: FontWeight.w600,
                                   color: Colors.white,
@@ -4292,7 +4292,7 @@ class _BottomTabs extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       label,
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.plusJakartaSans(
                         fontSize: 12.5,
                         fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
                         color: color,

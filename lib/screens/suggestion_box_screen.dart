@@ -24,7 +24,7 @@ TextStyle _t(
       double? height,
       double? letterSpacing,
     }) =>
-    GoogleFonts.inter(
+    GoogleFonts.plusJakartaSans(
       fontSize: size,
       fontWeight: weight,
       color: color,
@@ -33,7 +33,7 @@ TextStyle _t(
     );
 
 /// Inter for titles on this screen (same as the home screen).
-TextStyle _title(double size, {Color color = AppColors.ink}) => GoogleFonts.inter(
+TextStyle _title(double size, {Color color = AppColors.ink}) => GoogleFonts.plusJakartaSans(
   fontSize: size,
   fontWeight: FontWeight.w800,
   color: color,
@@ -173,7 +173,7 @@ class _SuggestionBoxScreenState extends State<SuggestionBoxScreen>
     // Inter for every text on this screen, buttons and the text box too.
     return Theme(
       data: theme.copyWith(
-        textTheme: GoogleFonts.interTextTheme(theme.textTheme),
+        textTheme: GoogleFonts.plusJakartaSansTextTheme(theme.textTheme),
       ),
       child: Scaffold(
         backgroundColor: Colors.white,
@@ -445,7 +445,7 @@ class _SuggestionBoxScreenState extends State<SuggestionBoxScreen>
         style: TextButton.styleFrom(
           foregroundColor: AppColors.blue,
           padding: const EdgeInsets.symmetric(horizontal: 4),
-          textStyle: GoogleFonts.inter(fontSize: 13.5),
+          textStyle: GoogleFonts.plusJakartaSans(fontSize: 13.5),
         ),
       ),
     );
@@ -538,7 +538,7 @@ class _TitlePill extends StatelessWidget {
             const SizedBox(width: 9),
             Text(
               text,
-              style: GoogleFonts.inter(
+              style: GoogleFonts.plusJakartaSans(
                 fontSize: 16,
                 fontWeight: FontWeight.normal,
                 color: AppColors.ink,

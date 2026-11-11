@@ -42,7 +42,7 @@ TextStyle _inter(
       double? height,
       double? letterSpacing,
     }) =>
-    GoogleFonts.inter(
+    GoogleFonts.plusJakartaSans(
       fontSize: size,
       fontWeight: weight,
       color: color,
@@ -870,7 +870,7 @@ class _TimelineState extends State<_Timeline> {
         FontWeight weight = FontWeight.w400,
         Color color = Colors.white,
       }) =>
-      GoogleFonts.inter(fontSize: size, fontWeight: weight, color: color);
+      GoogleFonts.plusJakartaSans(fontSize: size, fontWeight: weight, color: color);
 
   @override
   Widget build(BuildContext context) {

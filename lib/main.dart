@@ -23,6 +23,7 @@ Future<void> main() async {
   await ErrorLog.start();
   await ScheduleService.start();
   runApp(const HaystekApp());
+
 }
 
 class HaystekApp extends StatelessWidget {
@@ -39,8 +40,8 @@ class HaystekApp extends StatelessWidget {
 
       // Inter on every screen, whatever font style the phone uses.
       theme: base.copyWith(
-        textTheme: GoogleFonts.interTextTheme(base.textTheme),
-        primaryTextTheme: GoogleFonts.interTextTheme(base.primaryTextTheme),
+        textTheme: GoogleFonts.plusJakartaSansTextTheme(base.textTheme),
+        primaryTextTheme: GoogleFonts.plusJakartaSansTextTheme(base.primaryTextTheme),
       ),
 
       // Same text size on every phone, whatever its font size setting.

@@ -363,7 +363,7 @@ class _LiveCountdownState extends State<LiveCountdown> {
           '${widget.suffix}',
       maxLines: 1,
       // Same-width digits, so the text does not jump every second.
-      style: GoogleFonts.inter(
+      style: GoogleFonts.plusJakartaSans(
         fontSize: widget.size,
         fontWeight: FontWeight.w600,
         color: widget.color,

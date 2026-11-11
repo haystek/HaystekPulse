@@ -50,7 +50,7 @@ class PulseLoadingScreen extends StatelessWidget {
                 Text(
                   text,
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.plusJakartaSans(
                     fontSize: 16,
                     color: const Color(0xFFC9D6FF),
                   ),

@@ -25,7 +25,7 @@ enum _Entry { welcome, join, personal, admin, found, moved }
 Widget _withInter(BuildContext context, Widget child) {
   final t = Theme.of(context);
   return Theme(
-    data: t.copyWith(textTheme: GoogleFonts.interTextTheme(t.textTheme)),
+    data: t.copyWith(textTheme: GoogleFonts.plusJakartaSansTextTheme(t.textTheme)),
     child: child,
   );
 }
@@ -37,7 +37,7 @@ TextStyle _h(
       Color color = AppColors.ink,
       double? height,
     }) =>
-    GoogleFonts.inter(
+    GoogleFonts.plusJakartaSans(
       fontSize: size,
       fontWeight: weight,
       color: color,
@@ -47,7 +47,7 @@ TextStyle _h(
 
 /// The small blue text buttons.
 final ButtonStyle _linkButton = TextButton.styleFrom(
-  textStyle: GoogleFonts.inter(fontSize: 14.5, fontWeight: FontWeight.w500),
+  textStyle: GoogleFonts.plusJakartaSans(fontSize: 14.5, fontWeight: FontWeight.w500),
 );
 
 /// The small grey line under a title.
@@ -216,7 +216,7 @@ class _LoginScreenState extends State<LoginScreen> {
             'This phone already has another account. If you switch, you’ll '
                 'need that account’s personal code to open it again.',
             textAlign: TextAlign.center,
-            style: GoogleFonts.inter(fontSize: 14.5, height: 1.45, color: AppColors.muted),
+            style: GoogleFonts.plusJakartaSans(fontSize: 14.5, height: 1.45, color: AppColors.muted),
           ),
           actionsPadding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
           actions: [
@@ -521,8 +521,8 @@ class _LoginScreenState extends State<LoginScreen> {
   /// A field with no box of its own (the card is the box).
   static InputDecoration _plain(String label) => InputDecoration(
     labelText: label,
-    labelStyle: GoogleFonts.inter(color: const Color(0xFF8E97AB)),
-    floatingLabelStyle: GoogleFonts.inter(color: const Color(0xFF8E97AB)),
+    labelStyle: GoogleFonts.plusJakartaSans(color: const Color(0xFF8E97AB)),
+    floatingLabelStyle: GoogleFonts.plusJakartaSans(color: const Color(0xFF8E97AB)),
     border: InputBorder.none,
     enabledBorder: InputBorder.none,
     focusedBorder: InputBorder.none,
@@ -533,7 +533,7 @@ class _LoginScreenState extends State<LoginScreen> {
     contentPadding: const EdgeInsets.symmetric(vertical: 12),
     // Long errors wrap instead of being cut off.
     errorMaxLines: 3,
-    errorStyle: GoogleFonts.inter(fontSize: 12.5, height: 1.3),
+    errorStyle: GoogleFonts.plusJakartaSans(fontSize: 12.5, height: 1.3),
   );
 
   /// The small grey line with a blue link: "Trouble signing in? Reset".
@@ -579,14 +579,14 @@ class _LoginScreenState extends State<LoginScreen> {
           textInputAction: TextInputAction.done,
           onChanged: (_) => _clearError(),
           onSubmitted: (_) => onDone(),
-          style: GoogleFonts.inter(
+          style: GoogleFonts.plusJakartaSans(
             fontSize: 16,
             color: AppColors.ink,
             letterSpacing: capitals ? 1.2 : 0.3,
           ),
           decoration: _plain(label).copyWith(
             hintText: hint,
-            hintStyle: GoogleFonts.inter(
+            hintStyle: GoogleFonts.plusJakartaSans(
               color: const Color(0xFFC3C9D6),
               letterSpacing: 1.2,
             ),
@@ -605,7 +605,7 @@ class _LoginScreenState extends State<LoginScreen> {
         minimumSize: const Size.fromHeight(54),
         side: const BorderSide(color: Color(0xFFE3E8F1), width: 1.5),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        textStyle: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600),
+        textStyle: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w600),
       ),
       child: Text(label),
     );
@@ -637,7 +637,7 @@ class _LoginScreenState extends State<LoginScreen> {
             Text(
               'Your account is on this phone.\nNo code needed.',
               textAlign: TextAlign.center,
-              style: GoogleFonts.inter(
+              style: GoogleFonts.plusJakartaSans(
                 fontSize: 14.5,
                 height: 1.5,
                 color: AppColors.muted,
@@ -659,7 +659,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(width: 6),
                     Text(
                       'Anonymous account',
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.plusJakartaSans(
                         fontSize: 12.5,
                         color: AppColors.blue,
                       ),
@@ -804,7 +804,7 @@ class _LoginScreenState extends State<LoginScreen> {
       autofillHints: const [AutofillHints.email],
       onFieldSubmitted: _resetMode ? (_) => _sendReset() : null,
       onChanged: _resetMode ? (_) => _clearError() : null,
-      style: GoogleFonts.inter(fontSize: 15.5, color: AppColors.ink),
+      style: GoogleFonts.plusJakartaSans(fontSize: 15.5, color: AppColors.ink),
       decoration: _plain('Office email'),
       validator: (v) {
         if (!_looksLikeEmail(v)) return 'Enter your office email';
@@ -883,7 +883,7 @@ class _LoginScreenState extends State<LoginScreen> {
           _signUpMode ? AutofillHints.newPassword : AutofillHints.password,
         ],
         onFieldSubmitted: (_) => _signUpMode ? _signUp() : _signIn(),
-        style: GoogleFonts.inter(fontSize: 15.5, color: AppColors.ink),
+        style: GoogleFonts.plusJakartaSans(fontSize: 15.5, color: AppColors.ink),
         decoration: _plain('Password'),
         validator: (v) {
           if (v == null || v.isEmpty) return 'Enter your password';
@@ -905,7 +905,7 @@ class _LoginScreenState extends State<LoginScreen> {
             padding: const EdgeInsets.fromLTRB(4, 14, 4, 8),
             child: Text(
               t,
-              style: GoogleFonts.inter(
+              style: GoogleFonts.plusJakartaSans(
                 fontSize: 12,
                 letterSpacing: 0.7,
                 color: const Color(0xFF8E97AB),
@@ -931,7 +931,7 @@ class _LoginScreenState extends State<LoginScreen> {
             const SizedBox(height: 4),
             Text(
               'Only for managers and HR.',
-              style: GoogleFonts.inter(fontSize: 14, color: AppColors.muted),
+              style: GoogleFonts.plusJakartaSans(fontSize: 14, color: AppColors.muted),
             ),
             section('ABOUT YOU'),
             _card([
@@ -942,7 +942,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   textCapitalization: TextCapitalization.words,
                   textInputAction: TextInputAction.next,
                   autofillHints: const [AutofillHints.name],
-                  style: GoogleFonts.inter(fontSize: 15.5, color: AppColors.ink),
+                  style: GoogleFonts.plusJakartaSans(fontSize: 15.5, color: AppColors.ink),
                   decoration: _plain('Full name'),
                   validator: (v) => (v == null || v.trim().length < 2)
                       ? 'Enter your name'
@@ -988,7 +988,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               (old, now) => now.copyWith(text: now.text.toUpperCase()),
                             ),
                           ],
-                          style: GoogleFonts.inter(fontSize: 15.5, color: AppColors.ink),
+                          style: GoogleFonts.plusJakartaSans(fontSize: 15.5, color: AppColors.ink),
                           decoration: _plain('Admin code (6 letters)'),
                           validator: (v) => (_admin && (v == null || v.trim().isEmpty))
                               ? 'Enter the admin code'
@@ -1007,7 +1007,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: Text(
                         'This makes sure only real admins can sign up. '
                         'Employees join with the entry code instead.',
-                        style: GoogleFonts.inter(
+                        style: GoogleFonts.plusJakartaSans(
                           fontSize: 12.5,
                           height: 1.4,
                           color: AppColors.muted,
@@ -1307,7 +1307,7 @@ class _TopBar extends StatelessWidget {
                   child: Icon(icon, size: 17, color: Colors.white),
                 ),
                 const SizedBox(width: 9),
-                Text(label, style: GoogleFonts.inter(fontSize: 16, color: AppColors.ink)),
+                Text(label, style: GoogleFonts.plusJakartaSans(fontSize: 16, color: AppColors.ink)),
               ],
             ),
           ),
@@ -1347,7 +1347,7 @@ class _AdminPicture extends StatelessWidget {
           children: [
             Text(emoji, style: const TextStyle(fontSize: 13)),
             const SizedBox(width: 6),
-            Text(text, style: GoogleFonts.inter(fontSize: 12, color: AppColors.ink)),
+            Text(text, style: GoogleFonts.plusJakartaSans(fontSize: 12, color: AppColors.ink)),
           ],
         ),
       ),
@@ -1426,7 +1426,7 @@ class _GradientButton extends StatelessWidget {
           foregroundColor: Colors.white,
           disabledForegroundColor: Colors.white,
           shape: const StadiumBorder(),
-          textStyle: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600),
+          textStyle: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w600),
         ),
         child: child,
       ),
@@ -1440,7 +1440,7 @@ class _Footer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final small = GoogleFonts.inter(
+    final small = GoogleFonts.plusJakartaSans(
       fontSize: 12.5,
       color: const Color(0xFF8E97AB),
     );
@@ -1504,7 +1504,7 @@ class _ErrorBox extends StatelessWidget {
               Expanded(
                 child: Text(
                   message,
-                  style: GoogleFonts.inter(fontSize: 13.5, color: red, height: 1.4),
+                  style: GoogleFonts.plusJakartaSans(fontSize: 13.5, color: red, height: 1.4),
                 ),
               ),
             ],
@@ -1528,7 +1528,7 @@ class _ErrorBox extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         child: Text(
                           a.$1,
-                          style: GoogleFonts.inter(fontSize: 13, color: AppColors.blue),
+                          style: GoogleFonts.plusJakartaSans(fontSize: 13, color: AppColors.blue),
                         ),
                       ),
                     ),
@@ -1649,7 +1649,7 @@ class _WelcomeViewState extends State<_WelcomeView> {
   static const _line = Color(0xFFE3E8F1);
 
   TextStyle _s(double size, {FontWeight w = FontWeight.w400, Color c = _ink, double? h}) =>
-      GoogleFonts.inter(fontSize: size, fontWeight: w, color: c, height: h);
+      GoogleFonts.plusJakartaSans(fontSize: size, fontWeight: w, color: c, height: h);
 
   Widget _card({required Widget child, double angle = 0}) => Transform.rotate(
     angle: angle,
@@ -1978,7 +1978,7 @@ class _JoinViewState extends State<_JoinView> {
   }
 
   TextStyle _s(double size, {FontWeight w = FontWeight.w400, Color c = _ink, double? h}) =>
-      GoogleFonts.inter(fontSize: size, fontWeight: w, color: c, height: h);
+      GoogleFonts.plusJakartaSans(fontSize: size, fontWeight: w, color: c, height: h);
 
   String get _code => widget.controller.text;
 
@@ -2510,7 +2510,7 @@ class _FoundView extends StatelessWidget {
   static const _line = Color(0xFFE3E8F1);
 
   TextStyle _s(double size, {FontWeight w = FontWeight.w400, Color c = AppColors.ink, double? h}) =>
-      GoogleFonts.inter(fontSize: size, fontWeight: w, color: c, height: h);
+      GoogleFonts.plusJakartaSans(fontSize: size, fontWeight: w, color: c, height: h);
 
   Widget _tag(String emoji, String text, double angle) => Transform.rotate(
     angle: angle,
@@ -2693,7 +2693,7 @@ class _MovedView extends StatelessWidget {
   static const _line = Color(0xFFE3E8F1);
 
   TextStyle _s(double size, {FontWeight w = FontWeight.w400, Color c = AppColors.ink, double? h}) =>
-      GoogleFonts.inter(fontSize: size, fontWeight: w, color: c, height: h);
+      GoogleFonts.plusJakartaSans(fontSize: size, fontWeight: w, color: c, height: h);
 
   Widget _phone(String label, bool isNew) => Opacity(
     opacity: isNew ? 1 : 0.55,

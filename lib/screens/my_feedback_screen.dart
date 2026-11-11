@@ -44,11 +44,11 @@ class MyFeedbackScreen extends StatefulWidget {
 /// Every text style here that does not name a font takes Inter from this.
 ThemeData _interTheme(BuildContext context) {
   final t = Theme.of(context);
-  return t.copyWith(textTheme: GoogleFonts.interTextTheme(t.textTheme));
+  return t.copyWith(textTheme: GoogleFonts.plusJakartaSansTextTheme(t.textTheme));
 }
 
 /// Inter for the few titles that set their own style.
-TextStyle _title(double size) => GoogleFonts.inter(
+TextStyle _title(double size) => GoogleFonts.plusJakartaSans(
   fontSize: size,
   fontWeight: FontWeight.w600,
   color: AppColors.ink,
@@ -521,18 +521,25 @@ class _MyFeedbackScreenState extends State<MyFeedbackScreen> {
                           ),
                         ),
                         if (shownCount == 0)
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(20, 40, 20, 0),
-                            child: Text(
-                              nothingAtAll
-                                  ? (_tab == 0
-                                  ? 'You have not sent a suggestion yet.'
-                                  : 'You have not answered the Weekly '
-                                  'Pulse yet.')
-                                  : 'Nothing here for these filters.',
-                              textAlign: TextAlign.center,
-                              style: _t(14.5, color: _soft, height: 1.4),
-                            ),
+                          _FeedbackEmpty(
+                            icon: !nothingAtAll
+                                ? Icons.filter_alt_off_outlined
+                                : (_tab == 0
+                                    ? Icons.lightbulb_outline_rounded
+                                    : Icons.monitor_heart_outlined),
+                            title: !nothingAtAll
+                                ? 'Nothing matches'
+                                : (_tab == 0
+                                    ? 'No suggestions yet'
+                                    : 'No Weekly Pulse answers yet'),
+                            text: !nothingAtAll
+                                ? 'Try another status or date.'
+                                : (_tab == 0
+                                    ? 'Have an idea or a problem? Tap Write on '
+                                        'the home screen. Admin will reply here.'
+                                    : 'Each week you get one quick question '
+                                        'about your week. Your answers will '
+                                        'show here.'),
                           ),
                         ...list,
                         const SizedBox(height: 4),
@@ -576,7 +583,7 @@ TextStyle _t(
       double? height,
       double? letterSpacing,
     }) =>
-    GoogleFonts.inter(
+    GoogleFonts.plusJakartaSans(
       fontSize: size,
       fontWeight: weight,
       color: color,
@@ -1060,7 +1067,7 @@ class _TitlePill extends StatelessWidget {
             const SizedBox(width: 9),
             Text(
               text,
-              style: GoogleFonts.inter(
+              style: GoogleFonts.plusJakartaSans(
                 fontSize: 16,
                 fontWeight: FontWeight.normal,
                 color: AppColors.ink,
@@ -1141,3 +1148,72 @@ const List<String> _longMonths = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
+
+/// My Feedback, nothing here yet: icon, title and a short line.
+class _FeedbackEmpty extends StatelessWidget {
+  const _FeedbackEmpty({
+    required this.icon,
+    required this.title,
+    required this.text,
+  });
+
+  final IconData icon;
+  final String title;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        32,
+        MediaQuery.sizeOf(context).height * 0.12,
+        32,
+        32,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 96,
+            height: 96,
+            decoration: const BoxDecoration(
+              color: Color(0xFFF5F7FF),
+              shape: BoxShape.circle,
+            ),
+            alignment: Alignment.center,
+            child: Container(
+              width: 64,
+              height: 64,
+              decoration: const BoxDecoration(
+                color: Color(0xFFE6ECFF),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 28, color: const Color(0xFF1B3590)),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: t.titleMedium?.copyWith(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFF111827),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            text,
+            textAlign: TextAlign.center,
+            style: t.bodyMedium?.copyWith(
+              fontSize: 14,
+              height: 1.5,
+              color: const Color(0xFF6B7280),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

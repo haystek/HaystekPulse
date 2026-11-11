@@ -11,7 +11,7 @@ TextStyle _t(
   Color color = AppColors.ink,
   double? height,
 }) =>
-    GoogleFonts.inter(
+    GoogleFonts.plusJakartaSans(
       fontSize: size,
       fontWeight: weight,
       color: color,
@@ -114,7 +114,7 @@ class HelpScreen extends StatelessWidget {
     final t = Theme.of(context);
     return Theme(
       data: t.copyWith(
-        textTheme: GoogleFonts.interTextTheme(t.textTheme),
+        textTheme: GoogleFonts.plusJakartaSansTextTheme(t.textTheme),
         dividerColor: Colors.transparent,
       ),
       child: Scaffold(

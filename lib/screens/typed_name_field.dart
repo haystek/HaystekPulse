@@ -33,18 +33,18 @@ class TypedNameField extends StatelessWidget {
       textCapitalization: TextCapitalization.words,
       autocorrect: false,
       onChanged: onChanged,
-      style: GoogleFonts.inter(fontSize: compact ? 14 : 15, color: AppColors.ink),
+      style: GoogleFonts.plusJakartaSans(fontSize: compact ? 14 : 15, color: AppColors.ink),
       decoration: InputDecoration(
         isDense: true,
         counterText: '',
         labelText: 'Your name',
-        labelStyle: GoogleFonts.inter(color: const Color(0xFF8E97AB)),
+        labelStyle: GoogleFonts.plusJakartaSans(color: const Color(0xFF8E97AB)),
         helperText: compact
             ? null
             : 'Sent only with this message. Admin sees it as “name typed by '
                 'sender”.',
         helperMaxLines: 2,
-        helperStyle: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF8E97AB)),
+        helperStyle: GoogleFonts.plusJakartaSans(fontSize: 12, color: const Color(0xFF8E97AB)),
         errorText: error,
         prefixIcon: const Icon(Icons.person_outline, size: 20, color: Color(0xFF8E97AB)),
         contentPadding: EdgeInsets.symmetric(
@@ -112,7 +112,7 @@ class SendAsChoice extends StatelessWidget {
               child: Center(
                 child: Text(
                   label,
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.plusJakartaSans(
                     fontSize: compact ? 13 : 14,
                     color: selected ? AppColors.blue : const Color(0xFF5F6A84),
                   ),
@@ -137,7 +137,7 @@ class SendAsChoice extends StatelessWidget {
       children: [
         Text(
           'SEND AS',
-          style: GoogleFonts.inter(
+          style: GoogleFonts.plusJakartaSans(
             fontSize: 12,
             letterSpacing: 0.7,
             color: const Color(0xFF8E97AB),
@@ -169,7 +169,7 @@ class SentAsLine extends StatelessWidget {
       textAlign: TextAlign.center,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
-      style: GoogleFonts.inter(fontSize: 12.5, color: const Color(0xFF8E97AB)),
+      style: GoogleFonts.plusJakartaSans(fontSize: 12.5, color: const Color(0xFF8E97AB)),
     );
   }
 }

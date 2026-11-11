@@ -16,7 +16,7 @@ import '../widgets/ui.dart';
 Widget _withInter(BuildContext context, Widget child) {
   final t = Theme.of(context);
   return Theme(
-    data: t.copyWith(textTheme: GoogleFonts.interTextTheme(t.textTheme)),
+    data: t.copyWith(textTheme: GoogleFonts.plusJakartaSansTextTheme(t.textTheme)),
     child: child,
   );
 }

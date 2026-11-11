@@ -5,11 +5,9 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../demo_data.dart';
 import '../models/feedback_item.dart';
-import '../models/pulse_rating.dart';
 import '../services/broadcast_service.dart';
 import '../services/feedback_service.dart';
 import '../theme/app_theme.dart';
-import '../widgets/ui.dart';
 import 'broadcast_screens.dart';
 import 'feedback_thread_screen.dart';
 import '../services/notification_service.dart';
@@ -18,7 +16,7 @@ import '../services/notification_service.dart';
 Widget _withInter(BuildContext context, Widget child) {
   final t = Theme.of(context);
   return Theme(
-    data: t.copyWith(textTheme: GoogleFonts.interTextTheme(t.textTheme)),
+    data: t.copyWith(textTheme: GoogleFonts.plusJakartaSansTextTheme(t.textTheme)),
     child: child,
   );
 }
@@ -28,7 +26,7 @@ TextStyle _t(
   FontWeight weight = FontWeight.w500,
   Color color = AppColors.ink,
   double? height,
-}) => GoogleFonts.inter(
+}) => GoogleFonts.plusJakartaSans(
   fontSize: size,
   fontWeight: weight,
   color: color,
@@ -88,6 +86,13 @@ class _FeedbackDetailScreenState extends State<FeedbackDetailScreen> {
   int _shown = 0;
   double _lastInset = 0;
 
+  /// Collapsing header: slim when reading older messages (or typing).
+  bool _scrolledUp = false;
+
+  /// Slim header tapped: stay open until the next scroll.
+  bool _pinOpen = false;
+  double _pinAt = 0;
+
   /// First name of the author, or null when anonymous or unknown.
   String? get _firstName {
     final item = _item;
@@ -104,6 +109,7 @@ class _FeedbackDetailScreenState extends State<FeedbackDetailScreen> {
     _item = widget.item;
     NotificationService.instance.openThreadId = widget.item.id;
     _reply.addListener(() => setState(() {}));
+    _scroll.addListener(_onScroll);
     _thread = FeedbackService.instance.watchThread(
       widget.item.id,
       limit: _limit,
@@ -132,6 +138,35 @@ class _FeedbackDetailScreenState extends State<FeedbackDetailScreen> {
     _scroll.dispose();
     super.dispose();
   }
+
+  /// The list is reversed: offset 0 = newest at the bottom.
+  void _onScroll() {
+    if (!_scroll.hasClients) return;
+    final o = _scroll.offset;
+    final up = _scrolledUp ? o > 8 : o > 40;
+    final pin = _pinOpen && (o - _pinAt).abs() <= 80;
+    if (up != _scrolledUp || pin != _pinOpen) {
+      setState(() {
+        _scrolledUp = up;
+        _pinOpen = pin;
+      });
+    }
+  }
+
+  /// Tap on the slim header: open the big one.
+  void _expand() {
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _pinOpen = true;
+      _pinAt = _scroll.hasClients ? _scroll.offset : 0;
+    });
+  }
+
+  void _openBroadcast() => Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => NewBroadcastScreen(quote: _item.text),
+        ),
+      );
 
   /// "Show older messages": load 50 more, with a small loader on top.
   void _showOlder() {
@@ -229,53 +264,24 @@ class _FeedbackDetailScreenState extends State<FeedbackDetailScreen> {
     final name = _firstName;
     // Keyboard opening: keep the newest message in view.
     _lastInset = keepLastInView(context, _scroll, _lastInset);
+    final typing = MediaQuery.viewInsetsOf(context).bottom > 0;
+    final collapsed = typing || (!_pinOpen && _scrolledUp);
     return _withInter(
       context,
       Scaffold(
         backgroundColor: Colors.white,
         resizeToAvoidBottomInset: true,
-        appBar: AppBar(
-          backgroundColor: Colors.white,
-          surfaceTintColor: Colors.white,
-          leadingWidth: 68,
-          leading: const AppBackButton(),
-          title: const SizedBox.shrink(),
-          actions: [
-            // Share an update about this with everyone (no name).
-            Tooltip(
-              message: 'Broadcast to everyone',
-              child: Material(
-                color: Colors.white,
-                shape: const CircleBorder(
-                  side: BorderSide(color: Color(0xFFE3E8F1)),
-                ),
-                child: InkWell(
-                  customBorder: const CircleBorder(),
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => NewBroadcastScreen(quote: _item.text),
-                    ),
-                  ),
-                  child: const SizedBox(
-                    width: 44,
-                    height: 44,
-                    child: Icon(
-                      Icons.campaign_outlined,
-                      size: 20,
-                      color: AppColors.blue,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 16),
-          ],
-        ),
         body: Column(
           children: [
-            // Sticky: the employee's message stays on top.
-            _TitleBlock(item: _item),
-            _MessageCard(item: _item),
+            ThreadQuoteHeader(
+              item: _item,
+              management: true,
+              collapsed: collapsed,
+              onExpand: _expand,
+              actionIcon: Icons.campaign_outlined,
+              actionTooltip: 'Broadcast to everyone',
+              onAction: _openBroadcast,
+            ),
             Expanded(
               child: StreamBuilder<List<ThreadEntry>>(
                 stream: _thread,
@@ -408,7 +414,7 @@ class _ShareDialogState extends State<_ShareDialog> {
     FontWeight w = FontWeight.w400,
     Color c = AppColors.ink,
     double? h,
-  }) => GoogleFonts.inter(fontSize: size, fontWeight: w, color: c, height: h);
+  }) => GoogleFonts.plusJakartaSans(fontSize: size, fontWeight: w, color: c, height: h);
 
   void _choose(bool everyone) {
     if (_busy || _statusSaved || everyone == _everyone) return;
@@ -1023,110 +1029,6 @@ class _StatusSheetState extends State<_StatusSheet> {
       ),
     );
   }
-}
-
-/// Header 1 "Big title": the type as a big title with the status tag,
-/// then who sent it and when.
-class _TitleBlock extends StatelessWidget {
-  const _TitleBlock({required this.item});
-
-  final FeedbackItem item;
-
-  @override
-  Widget build(BuildContext context) {
-    final name = (item.authorName ?? '').trim();
-    final anonymous = item.anonymous || name.isEmpty;
-    final id = (item.authorEmployeeId ?? '').trim();
-    final rating = item.rating;
-    final meta = [
-      anonymous ? 'Name hidden' : name,
-      if (!anonymous && id.isNotEmpty) id,
-      // Joined with an entry code: the name was typed, not checked.
-      if (!anonymous && id.isEmpty) 'name typed',
-      if (item.createdAt != null) threadDate(item.createdAt!),
-      if (!item.isFromBox && rating != null) PulseRating.label(rating),
-    ].join(' · ');
-    final color = FeedbackStatus.color(item.status);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 6, 24, 10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  item.isFromBox ? 'Suggestion' : 'Weekly Pulse',
-                  style: _t(28, weight: FontWeight.w700),
-                ),
-              ),
-              Container(
-                height: 28,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 7,
-                      height: 7,
-                      decoration: BoxDecoration(
-                        color: color,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      FeedbackStatus.label(item.status),
-                      style: _t(13, weight: FontWeight.w600, color: color),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              Icon(
-                anonymous
-                    ? Icons.lock_outline_rounded
-                    : Icons.person_outline_rounded,
-                size: 14,
-                color: const Color(0xFF5F6A84),
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  meta,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: _t(
-                    13,
-                    weight: FontWeight.w400,
-                    color: const Color(0xFF5F6A84),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// The employee's message in a grey card (sticky on top).
-class _MessageCard extends StatelessWidget {
-  const _MessageCard({required this.item});
-
-  final FeedbackItem item;
-
-  @override
-  Widget build(BuildContext context) => ThreadHeaderCard(text: item.text);
 }
 
 /// Small coloured status tag.

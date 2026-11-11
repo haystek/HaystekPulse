@@ -20,7 +20,7 @@ TextStyle _t(
   double? height,
   double? letterSpacing,
 }) =>
-    GoogleFonts.inter(
+    GoogleFonts.plusJakartaSans(
       fontSize: size,
       fontWeight: weight,
       color: color,

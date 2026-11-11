@@ -15,7 +15,7 @@ TextStyle _t(
   Color color = AppColors.ink,
   double? height,
 }) =>
-    GoogleFonts.inter(
+    GoogleFonts.plusJakartaSans(
       fontSize: size,
       fontWeight: weight,
       color: color,

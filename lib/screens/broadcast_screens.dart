@@ -31,7 +31,7 @@ String _when(DateTime? d) {
 Widget _withInter(BuildContext context, Widget child) {
   final t = Theme.of(context);
   return Theme(
-    data: t.copyWith(textTheme: GoogleFonts.interTextTheme(t.textTheme)),
+    data: t.copyWith(textTheme: GoogleFonts.plusJakartaSansTextTheme(t.textTheme)),
     child: child,
   );
 }
@@ -149,12 +149,7 @@ class _BroadcastListState extends State<BroadcastList> {
           );
         } else if (items.isEmpty) {
           children.add(
-            _note(
-              admin
-                  ? 'Nothing sent yet. Share an update with everyone, for '
-                      'example what changed after a suggestion.'
-                  : 'No broadcasts yet. Updates from admin will show here.',
-            ),
+            _BroadcastEmpty(admin: admin),
           );
         } else {
           for (final b in items) {
@@ -937,6 +932,72 @@ class _NewBroadcastScreenState extends State<NewBroadcastScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// No broadcasts yet: icon, title and a short line, in the middle.
+class _BroadcastEmpty extends StatelessWidget {
+  const _BroadcastEmpty({required this.admin});
+
+  final bool admin;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(32, MediaQuery.sizeOf(context).height * 0.22, 32, 32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 96,
+            height: 96,
+            decoration: const BoxDecoration(
+              color: Color(0xFFF5F7FF),
+              shape: BoxShape.circle,
+            ),
+            alignment: Alignment.center,
+            child: Container(
+              width: 64,
+              height: 64,
+              decoration: const BoxDecoration(
+                color: Color(0xFFE6ECFF),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.campaign_outlined,
+                size: 30,
+                color: Color(0xFF1B3590),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            admin ? 'Nothing sent yet' : 'No updates yet',
+            textAlign: TextAlign.center,
+            style: text.titleMedium?.copyWith(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFF111827),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            admin
+                ? 'Share an update with everyone, for example what '
+                    'changed after a suggestion.'
+                : 'When admin shares news or an update for everyone, '
+                    'it will show here. You will get a notification too.',
+            textAlign: TextAlign.center,
+            style: text.bodyMedium?.copyWith(
+              fontSize: 14,
+              height: 1.5,
+              color: const Color(0xFF6B7280),
+            ),
+          ),
+        ],
       ),
     );
   }
