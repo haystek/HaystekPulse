@@ -14,12 +14,24 @@ import 'services/schedule_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    // Dev build -> haystek-pulse-dev, otherwise live (haystek-pulse).
-    options: appFlavor == 'dev'
+  final firebaseOptions = appFlavor == 'dev'
         ? DevFirebaseOptions.currentPlatform
-        : DefaultFirebaseOptions.currentPlatform,
-  );
+        : DefaultFirebaseOptions.currentPlatform;
+  try {
+    await Firebase.initializeApp(options: firebaseOptions);
+  } on FirebaseException catch (e) {
+    // iPhone: Firebase is already started from GoogleService-Info.plist.
+    if (e.code != 'duplicate-app') rethrow;
+    await Firebase.initializeApp(); // use the one already started
+  }
+  // Safety: a DEV build must never talk to LIVE (or the other way round).
+  final usedProject = Firebase.app().options.projectId;
+  if (usedProject != firebaseOptions.projectId) {
+    throw StateError(
+      'Wrong Firebase project: $usedProject, expected '
+      '${firebaseOptions.projectId}',
+    );
+  }
   // If something breaks: save only the error and app version (no phone details).
   await ErrorLog.start();
   await ScheduleService.start();
