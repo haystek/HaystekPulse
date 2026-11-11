@@ -17,10 +17,12 @@ import 'services/pulse_service.dart';
 ///   from Firestore always replace the sample for the same week.
 /// - [comments]: a few written Weekly Pulse comments for each sample week.
 /// - [suggestions]: sample Suggestion Box entries.
+///
+///
 /// Sample items can be opened, and their status and reply can be changed,
 /// but only in memory: nothing is saved and no notification is sent.
 class DemoData {
-  static const bool on = false;
+  static const bool on = true;
   static const int people = 30;
 
   /// Great, Good, Okay, Difficult. Oldest week first, this week last

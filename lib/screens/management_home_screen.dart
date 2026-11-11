@@ -30,25 +30,26 @@ import 'profile_screen.dart';
 Widget _withInter(BuildContext context, Widget child) {
   final t = Theme.of(context);
   return Theme(
-    data: t.copyWith(textTheme: GoogleFonts.plusJakartaSansTextTheme(t.textTheme)),
+    data: t.copyWith(
+      textTheme: GoogleFonts.plusJakartaSansTextTheme(t.textTheme),
+    ),
     child: child,
   );
 }
 
 /// Titles and big numbers in Inter.
 TextStyle _h(
-    double size, {
-      FontWeight weight = FontWeight.w800,
-      Color color = AppColors.ink,
-      double? height,
-    }) =>
-    GoogleFonts.plusJakartaSans(
-      fontSize: size,
-      fontWeight: weight,
-      color: color,
-      height: height,
-      letterSpacing: size >= 22 ? -0.5 : -0.2,
-    );
+  double size, {
+  FontWeight weight = FontWeight.w800,
+  Color color = AppColors.ink,
+  double? height,
+}) => GoogleFonts.plusJakartaSans(
+  fontSize: size,
+  fontWeight: weight,
+  color: color,
+  height: height,
+  letterSpacing: size >= 22 ? -0.5 : -0.2,
+);
 
 /// Management home, in two tabs:
 /// - Weekly Pulse: a week's results and that week's written comments.
@@ -111,6 +112,7 @@ class _ManagementHomeScreenState extends State<ManagementHomeScreen>
         ),
       );
   }
+
   bool _windowOpen = PulseService.isOpen();
   Timer? _clock;
 
@@ -184,8 +186,7 @@ class _ManagementHomeScreenState extends State<ManagementHomeScreen>
 
   void _pickWeek(String weekId) {
     setState(
-          () => _viewWeekId =
-      weekId == PulseService.thisWeekId() ? null : weekId,
+      () => _viewWeekId = weekId == PulseService.thisWeekId() ? null : weekId,
     );
   }
 
@@ -201,12 +202,9 @@ class _ManagementHomeScreenState extends State<ManagementHomeScreen>
     );
     if (chosen == null || !mounted) return;
     setState(
-          () => _viewWeekId =
-      chosen == PulseService.thisWeekId() ? null : chosen,
+      () => _viewWeekId = chosen == PulseService.thisWeekId() ? null : chosen,
     );
   }
-
-
 
   void _push(Widget screen) {
     Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => screen));
@@ -231,20 +229,23 @@ class _ManagementHomeScreenState extends State<ManagementHomeScreen>
     final messenger = ScaffoldMessenger.of(context);
     final yes = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => _withInter(dialogContext, AlertDialog(
-        title: Text(title),
-        content: Text(question),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Send'),
-          ),
-        ],
-      )),
+      builder: (dialogContext) => _withInter(
+        dialogContext,
+        AlertDialog(
+          title: Text(title),
+          content: Text(question),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Send'),
+            ),
+          ],
+        ),
+      ),
     );
     if (yes != true || !mounted) return false;
     setState(() => _sending = true);
@@ -267,7 +268,7 @@ class _ManagementHomeScreenState extends State<ManagementHomeScreen>
     return _confirmAndSend(
       title: 'Send a reminder?',
       question:
-      'Only employees who have not answered this week will '
+          'Only employees who have not answered this week will '
           'receive it.',
       send: PulseService.instance.remindPending,
     );
@@ -291,114 +292,120 @@ class _ManagementHomeScreenState extends State<ManagementHomeScreen>
           onPopInvokedWithResult: (didPop, result) {
             if (!didPop) _onBack();
           },
-          child: _withInter(context, Scaffold(
-            body: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Top bar. On the Weekly Pulse tab it is blue, and the blue
-                // carries on into the week block below it.
-                Container(
-                  color: onBlue ? AppColors.blue : AppColors.background,
-                  child: SafeArea(
-                    bottom: false,
-                    child: Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 560),
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: onBlue
-                                    ? const EdgeInsets.fromLTRB(10, 6, 10, 6)
-                                    : EdgeInsets.zero,
-                                decoration: onBlue
-                                    ? BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(12),
-                                )
-                                    : null,
-                                child: Wordmark(height: onBlue ? 26 : 34),
-                              ),
-                              const Spacer(),
-                              // NotificationBell(employee: widget.employee),
-                              // const SizedBox(width: 8),
-                              _AccountButton(
-                                name: widget.employee.name,
-                                onBlue: onBlue,
-                                actions: [
-                                  MenuAction(
-                                    'Profile',
-                                        () => _push(
-                                      ProfileScreen(employee: widget.employee),
+          child: _withInter(
+            context,
+            Scaffold(
+              body: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Top bar. On the Weekly Pulse tab it is blue, and the blue
+                  // carries on into the week block below it.
+                  Container(
+                    color: onBlue ? AppColors.blue : AppColors.background,
+                    child: SafeArea(
+                      bottom: false,
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 560),
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: onBlue
+                                      ? const EdgeInsets.fromLTRB(10, 6, 10, 6)
+                                      : EdgeInsets.zero,
+                                  decoration: onBlue
+                                      ? BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                        )
+                                      : null,
+                                  child: Wordmark(height: onBlue ? 26 : 34),
+                                ),
+                                const Spacer(),
+                                // NotificationBell(employee: widget.employee),
+                                // const SizedBox(width: 8),
+                                _AccountButton(
+                                  name: widget.employee.name,
+                                  onBlue: onBlue,
+                                  actions: [
+                                    MenuAction(
+                                      'Profile',
+                                      () => _push(
+                                        ProfileScreen(
+                                          employee: widget.employee,
+                                        ),
+                                      ),
                                     ),
-                                  ),
-                                  MenuAction('Refresh', _refresh),
-                                  MenuAction(
-                                    'Sign out',
-                                        () => confirmSignOut(context),
-                                  ),
-                                ],
-                              ),
-                            ],
+                                    MenuAction('Refresh', _refresh),
+                                    MenuAction(
+                                      'Sign out',
+                                      () => confirmSignOut(context),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
                     ),
                   ),
-                ),
-                Expanded(
-                  child: Align(
-                    alignment: Alignment.topCenter,
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 560),
-                      child: Stack(
-                        children: [
-                          IndexedStack(
-                            index: _tab,
-                            children: [
-                              _buildPulseTab(all),
-                              _SuggestionTab(
-                                suggestions: suggestions,
-                                loading: !snap.hasData && !snap.hasError,
-                                onOpen: _openItem,
-                                onSearch: () =>
-                                    _push(const FeedbackListScreen(source: 'box')),
-                              ),
-                              // Broadcast: send to everyone, read the comments.
-                              BroadcastList(employee: widget.employee),
-                            ],
-                          ),
-                          // Refresh: a light white cover with a spinner in
-                          // the center.
-                          if (_refreshing)
-                            const Positioned.fill(
-                              child: ColoredBox(
-                                color: Color(0xB3FFFFFF),
-                                child: Center(
-                                  child: CircularProgressIndicator(),
+                  Expanded(
+                    child: Align(
+                      alignment: Alignment.topCenter,
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 560),
+                        child: Stack(
+                          children: [
+                            IndexedStack(
+                              index: _tab,
+                              children: [
+                                _buildPulseTab(all),
+                                _SuggestionTab(
+                                  suggestions: suggestions,
+                                  loading: !snap.hasData && !snap.hasError,
+                                  onOpen: _openItem,
+                                  onSearch: () => _push(
+                                    const FeedbackListScreen(source: 'box'),
+                                  ),
+                                ),
+                                // Broadcast: send to everyone, read the comments.
+                                BroadcastList(employee: widget.employee),
+                              ],
+                            ),
+                            // Refresh: a light white cover with a spinner in
+                            // the center.
+                            if (_refreshing)
+                              const Positioned.fill(
+                                child: ColoredBox(
+                                  color: Color(0xB3FFFFFF),
+                                  child: Center(
+                                    child: CircularProgressIndicator(),
+                                  ),
                                 ),
                               ),
-                            ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
+              bottomNavigationBar: _BottomTabs(
+                index: _tab,
+                newCount: newCount,
+                onTap: (i) => setState(() => _tab = i),
+              ),
             ),
-            bottomNavigationBar: _BottomTabs(
-              index: _tab,
-              newCount: newCount,
-              onTap: (i) => setState(() => _tab = i),
-            ),
-          )),
+          ),
         );
       },
     );
   }
-
-
 
   /// Tab 1. Week cards to pick a week, a ring with the answers, one
   /// remind button, and the week's comments.
@@ -443,8 +450,9 @@ class _ManagementHomeScreenState extends State<ManagementHomeScreen>
             };
             final total = DemoData.on ? DemoData.people : totalSnap.data!;
             final totals = weeks[shown] ?? const PulseTotals();
-            final pending =
-            total > totals.submitted ? total - totals.submitted : 0;
+            final pending = total > totals.submitted
+                ? total - totals.submitted
+                : 0;
 
             // The first week the app was used: the oldest week with any
             // answers, or this week when nobody has answered yet. The back
@@ -456,9 +464,11 @@ class _ManagementHomeScreenState extends State<ManagementHomeScreen>
 
             // Every week from the first one up to this week, newest first.
             final weekIds = <String>[];
-            for (var id = thisWeek;
-            id.compareTo(firstWeek) >= 0 && weekIds.length < 26;
-            id = PulseService.shiftWeek(id, -1)) {
+            for (
+              var id = thisWeek;
+              id.compareTo(firstWeek) >= 0 && weekIds.length < 26;
+              id = PulseService.shiftWeek(id, -1)
+            ) {
               weekIds.add(id);
             }
 
@@ -482,13 +492,9 @@ class _ManagementHomeScreenState extends State<ManagementHomeScreen>
                         shape: const CircleBorder(),
                         child: IconButton(
                           tooltip: 'Search comments',
-                          onPressed: () => _push(
-                            const WeekCommentsScreen(weekId: null),
-                          ),
-                          icon: const Icon(
-                            Icons.search,
-                            color: AppColors.blue,
-                          ),
+                          onPressed: () =>
+                              _push(const WeekCommentsScreen(weekId: null)),
+                          icon: const Icon(Icons.search, color: AppColors.blue),
                         ),
                       ),
                       const SizedBox(width: 4),
@@ -505,8 +511,9 @@ class _ManagementHomeScreenState extends State<ManagementHomeScreen>
                   weeks: weeks,
                   selected: shown,
                   upcoming: beforeOpen ? thisWeek : null,
-                  closedThisWeek:
-                  PulseService.closedForThisWeek() ? thisWeek : null,
+                  closedThisWeek: PulseService.closedForThisWeek()
+                      ? thisWeek
+                      : null,
                   onPick: _pickWeek,
                 ),
                 const SizedBox(height: 20),
@@ -530,7 +537,7 @@ class _ManagementHomeScreenState extends State<ManagementHomeScreen>
                       if (notOpenYet)
                         _SoonNote(total: total)
                       else
-                      // The numbers and the reminder, in one white card.
+                        // The numbers and the reminder, in one white card.
                         Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
@@ -597,9 +604,8 @@ class _ManagementHomeScreenState extends State<ManagementHomeScreen>
     QuerySnapshot<Map<String, dynamic>>? saved;
     var live = false;
 
-    Map<String, PulseTotals> toMap(QuerySnapshot<Map<String, dynamic>> snap) => {
-      for (final doc in snap.docs) doc.id: PulseTotals.fromMap(doc.data()),
-    };
+    Map<String, PulseTotals> toMap(QuerySnapshot<Map<String, dynamic>> snap) =>
+        {for (final doc in snap.docs) doc.id: PulseTotals.fromMap(doc.data())};
 
     controller = StreamController<Map<String, PulseTotals>>(
       onListen: () {
@@ -616,19 +622,19 @@ class _ManagementHomeScreenState extends State<ManagementHomeScreen>
             .snapshots(includeMetadataChanges: true)
             .listen(
               (snap) {
-            // First time: skip the saved copy, wait for the server.
-            if (!live && snap.metadata.isFromCache) {
-              saved = snap;
-              return;
-            }
-            live = true;
-            fallback?.cancel();
-            if (!controller.isClosed) controller.add(toMap(snap));
-          },
-          onError: (Object e) {
-            if (!controller.isClosed) controller.addError(e);
-          },
-        );
+                // First time: skip the saved copy, wait for the server.
+                if (!live && snap.metadata.isFromCache) {
+                  saved = snap;
+                  return;
+                }
+                live = true;
+                fallback?.cancel();
+                if (!controller.isClosed) controller.add(toMap(snap));
+              },
+              onError: (Object e) {
+                if (!controller.isClosed) controller.addError(e);
+              },
+            );
       },
       onCancel: () async {
         fallback?.cancel();
@@ -708,11 +714,7 @@ BoxDecoration _cardDecoration() => BoxDecoration(
   borderRadius: BorderRadius.circular(20),
   border: Border.all(color: const Color(0xFFE6EBF4)),
   boxShadow: const [
-    BoxShadow(
-      color: Color(0x0F0E1A3A),
-      blurRadius: 18,
-      offset: Offset(0, 6),
-    ),
+    BoxShadow(color: Color(0x0F0E1A3A), blurRadius: 18, offset: Offset(0, 6)),
   ],
 );
 
@@ -763,8 +765,8 @@ Color _moodColor(String rating) {
   }
   if (notOpenYet) {
     return (
-    'Starting soon',
-    'Opens ${PulseService.dateTimeLabel(PulseService.opensAt())}',
+      'Starting soon',
+      'Opens ${PulseService.dateTimeLabel(PulseService.opensAt())}',
     );
   }
   if (submitted == 0) {
@@ -774,20 +776,17 @@ Color _moodColor(String rating) {
   }
   if (submitted < needed) {
     return closed
-        ? (
-    'Not enough answers',
-    'A summary needs at least $needed answers.',
-    )
+        ? ('Not enough answers', 'A summary needs at least $needed answers.')
         : (
-    'Waiting for more answers',
-    '$submitted of $total answered. The summary shows after $needed.',
-    );
+            'Waiting for more answers',
+            '$submitted of $total answered. The summary shows after $needed.',
+          );
   }
   final share = _goodShare(totals);
   final String title;
   if (share >= 0.75) {
-    title = totals.countFor(PulseRating.great) >
-        totals.countFor(PulseRating.good)
+    title =
+        totals.countFor(PulseRating.great) > totals.countFor(PulseRating.good)
         ? 'A great week'
         : 'A good week';
   } else if (share > 0.5) {
@@ -795,8 +794,9 @@ Color _moodColor(String rating) {
   } else if (share >= 0.25) {
     title = 'A mixed week';
   } else {
-    title = totals.countFor(PulseRating.okay) >
-        totals.countFor(PulseRating.difficult)
+    title =
+        totals.countFor(PulseRating.okay) >
+            totals.countFor(PulseRating.difficult)
         ? 'An okay week'
         : 'A hard week';
   }
@@ -909,24 +909,24 @@ class _WeekHeroState extends State<_WeekHero> {
   }
 
   static TextStyle _t(
-      double size, {
-        FontWeight weight = FontWeight.w400,
-        Color color = Colors.white,
-        double? letterSpacing,
-        double? height,
-      }) =>
-      GoogleFonts.plusJakartaSans(
-        fontSize: size,
-        fontWeight: weight,
-        color: color,
-        letterSpacing: letterSpacing,
-        height: height,
-      );
+    double size, {
+    FontWeight weight = FontWeight.w400,
+    Color color = Colors.white,
+    double? letterSpacing,
+    double? height,
+  }) => GoogleFonts.plusJakartaSans(
+    fontSize: size,
+    fontWeight: weight,
+    color: color,
+    letterSpacing: letterSpacing,
+    height: height,
+  );
 
   /// A small label with a value under it, like "Answered / 18 of 30".
   Widget _when(String label, String value, {bool right = false}) => Column(
-    crossAxisAlignment:
-    right ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+    crossAxisAlignment: right
+        ? CrossAxisAlignment.end
+        : CrossAxisAlignment.start,
     children: [
       Text(label, style: _t(13, color: _soft)),
       const SizedBox(height: 2),
@@ -1039,11 +1039,25 @@ class _WeekHeroState extends State<_WeekHero> {
   /// "Mon 12 – Fri 16 Oct" (or "Mon 28 Sep – Fri 2 Oct").
   String _weekDates() {
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     final d = _weekDate;
-    final mon = DateTime(d.year, d.month, d.day - (d.weekday - DateTime.monday));
+    final mon = DateTime(
+      d.year,
+      d.month,
+      d.day - (d.weekday - DateTime.monday),
+    );
     final fri = DateTime(mon.year, mon.month, mon.day + 4);
     final start = mon.month == fri.month
         ? 'Mon ${mon.day}'
@@ -1093,23 +1107,26 @@ class _WeekHeroState extends State<_WeekHero> {
     );
 
     // One part of the timer: a big number and a small unit.
-    List<Widget> part(String number, String unit, {Color color = Colors.white}) =>
-        [
-          Text(
-            number,
-            style: _t(
-              46,
-              weight: FontWeight.w700,
-              color: color,
-              letterSpacing: -1.5,
-              height: 1,
-            ).copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(left: 2, right: 10, bottom: 5),
-            child: Text(unit, style: _t(15, color: _soft)),
-          ),
-        ];
+    List<Widget> part(
+      String number,
+      String unit, {
+      Color color = Colors.white,
+    }) => [
+      Text(
+        number,
+        style: _t(
+          46,
+          weight: FontWeight.w700,
+          color: color,
+          letterSpacing: -1.5,
+          height: 1,
+        ).copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
+      ),
+      Padding(
+        padding: const EdgeInsets.only(left: 2, right: 10, bottom: 5),
+        child: Text(unit, style: _t(15, color: _soft)),
+      ),
+    ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1217,7 +1234,7 @@ class _WeekHeroState extends State<_WeekHero> {
         if (AppConfig.pulseOpenEveryDay)
           Text('Test mode: open every day', style: _t(13, color: _soft))
         else
-        // Opened → Now (time left) → Closes.
+          // Opened → Now (time left) → Closes.
           _Timeline(
             opensAt: PulseService.opensAt(_weekDate),
             closesAt: PulseService.closesAt(_weekDate),
@@ -1319,7 +1336,7 @@ class _WeekHeroState extends State<_WeekHero> {
               children: [
                 Text(
                   'Next Weekly Pulse, '
-                      '${PulseService.shortWeekLabel(PulseService.nextWeekId())}',
+                  '${PulseService.shortWeekLabel(PulseService.nextWeekId())}',
                   style: _t(13, color: _light),
                 ),
                 const SizedBox(height: 2),
@@ -1402,11 +1419,14 @@ class _TimelineState extends State<_Timeline> {
   }
 
   static TextStyle _t(
-      double size, {
-        FontWeight weight = FontWeight.w400,
-        Color color = Colors.white,
-      }) =>
-      GoogleFonts.plusJakartaSans(fontSize: size, fontWeight: weight, color: color);
+    double size, {
+    FontWeight weight = FontWeight.w400,
+    Color color = Colors.white,
+  }) => GoogleFonts.plusJakartaSans(
+    fontSize: size,
+    fontWeight: weight,
+    color: color,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -1514,7 +1534,11 @@ class _TimelineState extends State<_Timeline> {
                   ),
                   // Now: a blue dot with a soft glow.
                   if (!closed)
-                    Positioned(left: x, top: 0, child: dot(_glow, 12, glow: true)),
+                    Positioned(
+                      left: x,
+                      top: 0,
+                      child: dot(_glow, 12, glow: true),
+                    ),
                 ],
               ),
             ),
@@ -1562,12 +1586,12 @@ class _TimelineState extends State<_Timeline> {
 /// no fill, a thin border, a clock icon and normal weight.
 class _HeroChip extends StatelessWidget {
   const _HeroChip(
-      this.text, {
-        required this.bg,
-        required this.fg,
-        this.dot,
-        this.outline = false,
-      });
+    this.text, {
+    required this.bg,
+    required this.fg,
+    this.dot,
+    this.outline = false,
+  });
 
   final String text;
   final Color bg;
@@ -1719,16 +1743,16 @@ class _RemindButton extends StatelessWidget {
       .where('weekId', isEqualTo: weekId)
       .snapshots()
       .map((snap) {
-    DateTime? last;
-    for (final d in snap.docs) {
-      final t = d.data()['createdAt'];
-      if (t is Timestamp) {
-        final at = t.toDate();
-        if (last == null || at.isAfter(last)) last = at;
-      }
-    }
-    return last;
-  });
+        DateTime? last;
+        for (final d in snap.docs) {
+          final t = d.data()['createdAt'];
+          if (t is Timestamp) {
+            final at = t.toDate();
+            if (last == null || at.isAfter(last)) last = at;
+          }
+        }
+        return last;
+      });
 
   static String _when(DateTime d) {
     final now = DateTime.now();
@@ -1738,7 +1762,8 @@ class _RemindButton extends StatelessWidget {
     final time =
         '$h:${d.minute.toString().padLeft(2, '0')} ${d.hour < 12 ? 'AM' : 'PM'}';
     if (day == today) return 'Today, $time';
-    if (day == today.subtract(const Duration(days: 1))) return 'Yesterday, $time';
+    if (day == today.subtract(const Duration(days: 1)))
+      return 'Yesterday, $time';
     return '${PulseService.dateTimeLabel(d).split(',').first}, $time';
   }
 
@@ -1768,7 +1793,9 @@ class _RemindButton extends StatelessWidget {
         icon: Icons.notifications_off_outlined,
         iconBg: _grey,
         iconColor: AppColors.muted,
-        title: pending == 1 ? '1 person didn\'t answer' : '$pending didn\'t answer',
+        title: pending == 1
+            ? '1 person didn\'t answer'
+            : '$pending didn\'t answer',
         sub: 'This week is closed',
       );
     }
@@ -1777,7 +1804,8 @@ class _RemindButton extends StatelessWidget {
       stream: _lastSent(),
       builder: (context, snap) {
         final last = snap.data;
-        final justSent = last != null &&
+        final justSent =
+            last != null &&
             DateTime.now().difference(last) < const Duration(hours: 1);
 
         if (sending) {
@@ -1819,12 +1847,12 @@ class _RemindButton extends StatelessWidget {
               : 'Last reminder: ${_when(last)}',
           action: canNotify
               ? _RemindPill(
-            label: 'Remind',
-            icon: Icons.notifications_none,
-            bg: const Color(0xFFEEF3FF),
-            fg: AppColors.blue,
-            onTap: onRemind,
-          )
+                  label: 'Remind',
+                  icon: Icons.notifications_none,
+                  bg: const Color(0xFFEEF3FF),
+                  fg: AppColors.blue,
+                  onTap: onRemind,
+                )
               : null,
         );
       },
@@ -1888,10 +1916,7 @@ class _RemindRow extends StatelessWidget {
             ],
           ),
         ),
-        if (action != null) ...[
-          const SizedBox(width: 10),
-          action!,
-        ],
+        if (action != null) ...[const SizedBox(width: 10), action!],
       ],
     );
   }
@@ -1967,8 +1992,18 @@ class _CenterNote extends StatelessWidget {
 }
 
 const List<String> _monthNames = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
 ];
 
 /// A work week in one short line: "5–9 Oct" or "28 Sep–2 Oct".
@@ -2046,8 +2081,10 @@ class _WeekCardsState extends State<_WeekCards> {
       final position = _scroll.position;
       final centre =
           _sidePadding + index * (_cardWidth + _gap) + _cardWidth / 2;
-      final target = (centre - position.viewportDimension / 2)
-          .clamp(0.0, position.maxScrollExtent);
+      final target = (centre - position.viewportDimension / 2).clamp(
+        0.0,
+        position.maxScrollExtent,
+      );
       if (animate) {
         _scroll.animateTo(
           target,
@@ -2140,8 +2177,9 @@ class _WeekCardsState extends State<_WeekCards> {
                       style: TextStyle(
                         fontSize: 13,
                         // Normal weight and grey until the week opens.
-                        fontWeight:
-                        isUpcoming ? FontWeight.w500 : FontWeight.w600,
+                        fontWeight: isUpcoming
+                            ? FontWeight.w500
+                            : FontWeight.w600,
                         color: isUpcoming
                             ? const Color(0xFF8E97AB)
                             : AppColors.ink,
@@ -2153,23 +2191,23 @@ class _WeekCardsState extends State<_WeekCards> {
                         height: 5,
                         child: parts.isEmpty
                             ? const ColoredBox(
-                          color: Color(0xFFE6EBF4),
-                          child: SizedBox.expand(),
-                        )
+                                color: Color(0xFFE6EBF4),
+                                child: SizedBox.expand(),
+                              )
                             : Row(
-                          children: [
-                            for (var j = 0; j < parts.length; j++) ...[
-                              if (j > 0) const SizedBox(width: 2),
-                              Expanded(
-                                flex: t.countFor(parts[j]),
-                                child: ColoredBox(
-                                  color: _moodColor(parts[j]),
-                                  child: const SizedBox.expand(),
-                                ),
+                                children: [
+                                  for (var j = 0; j < parts.length; j++) ...[
+                                    if (j > 0) const SizedBox(width: 2),
+                                    Expanded(
+                                      flex: t.countFor(parts[j]),
+                                      child: ColoredBox(
+                                        color: _moodColor(parts[j]),
+                                        child: const SizedBox.expand(),
+                                      ),
+                                    ),
+                                  ],
+                                ],
                               ),
-                            ],
-                          ],
-                        ),
                       ),
                     ),
                     Text(
@@ -2180,8 +2218,9 @@ class _WeekCardsState extends State<_WeekCards> {
                             ? const Color(0xFFB7791F)
                             : AppColors.muted,
                         fontSize: 12,
-                        fontWeight:
-                        isUpcoming ? FontWeight.w500 : FontWeight.w400,
+                        fontWeight: isUpcoming
+                            ? FontWeight.w500
+                            : FontWeight.w400,
                       ),
                     ),
                   ],
@@ -2226,10 +2265,7 @@ class _RingSummary extends StatelessWidget {
           ),
           Text(
             '$count',
-            style: const TextStyle(
-              fontSize: 14.5,
-              fontWeight: FontWeight.w600,
-            ),
+            style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600),
           ),
         ],
       ),
@@ -2370,10 +2406,12 @@ class _WhatPeopleSaid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fresh =
-    comments.where((f) => f.status == FeedbackStatus.newItem).toList();
-    final others =
-    comments.where((f) => f.status != FeedbackStatus.newItem).toList();
+    final fresh = comments
+        .where((f) => f.status == FeedbackStatus.newItem)
+        .toList();
+    final others = comments
+        .where((f) => f.status != FeedbackStatus.newItem)
+        .toList();
     final shown = [...fresh, ...others].take(_preview).toList();
 
     return Column(
@@ -2410,10 +2448,7 @@ class _WhatPeopleSaid extends StatelessWidget {
                   children: [
                     Text('All ${comments.length}'),
                     const SizedBox(width: 4),
-                    const Icon(
-                      Icons.arrow_forward_ios_rounded,
-                      size: 12,
-                    ),
+                    const Icon(Icons.arrow_forward_ios_rounded, size: 12),
                   ],
                 ),
               ),
@@ -2426,7 +2461,7 @@ class _WhatPeopleSaid extends StatelessWidget {
             decoration: _cardDecoration(),
             child: const Text(
               'No written comments for this week. People who choose Okay '
-                  'or Difficult write a few words, and they show here.',
+              'or Difficult write a few words, and they show here.',
               style: TextStyle(
                 color: AppColors.muted,
                 fontSize: 14.5,
@@ -2447,10 +2482,7 @@ class _WhatPeopleSaid extends StatelessWidget {
 /// Difficult, yellow for Okay). The rating on top, the words in quotes,
 /// then who wrote it, the date, and whether it needs a reply.
 class _Quote extends StatelessWidget {
-  const _Quote({
-    required this.item,
-    required this.onTap,
-  });
+  const _Quote({required this.item, required this.onTap});
 
   final FeedbackItem item;
   final VoidCallback onTap;
@@ -2461,8 +2493,8 @@ class _Quote extends StatelessWidget {
     final who = item.anonymous
         ? 'Anonymous'
         : ((item.authorName?.trim().isNotEmpty ?? false)
-        ? item.authorName!.trim()
-        : 'Employee');
+              ? item.authorName!.trim()
+              : 'Employee');
 
     final date = _FeedbackCard._date(item.createdAt);
     final needsReply = item.status == FeedbackStatus.newItem;
@@ -2473,10 +2505,7 @@ class _Quote extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: const Color(0xFFEAECEF),
-          width: 1,
-        ),
+        border: Border.all(color: const Color(0xFFEAECEF), width: 1),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.025),
@@ -2701,9 +2730,9 @@ class _WeekCommentsScreenState extends State<WeekCommentsScreen> {
   void initState() {
     super.initState();
     _weekId = widget.weekId;
-    _stream = FeedbackService.instance
-        .watchAll()
-        .map((all) => all.where((f) => !f.isFromBox).toList());
+    _stream = FeedbackService.instance.watchAll().map(
+      (all) => all.where((f) => !f.isFromBox).toList(),
+    );
   }
 
   @override
@@ -2764,44 +2793,44 @@ class _WeekCommentsScreenState extends State<WeekCommentsScreen> {
   /// "Pick a week": All weeks, then every week from this week back to
   /// the first week with comments.
   Future<void> _pickWeek(List<FeedbackItem> all, List<String> weeks) async {
-    FocusScope.of(context).unfocus();    Widget row({
+    FocusScope.of(context).unfocus();
+    Widget row({
       required String title,
       required String subtitle,
       required int count,
       required bool selected,
       required VoidCallback onTap,
-    }) =>
-        ListTile(
-          contentPadding: EdgeInsets.zero,
-          title: Text(
-            title,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+    }) => ListTile(
+      contentPadding: EdgeInsets.zero,
+      title: Text(
+        title,
+        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+      ),
+      subtitle: Text(
+        subtitle,
+        style: const TextStyle(color: AppColors.muted, fontSize: 13),
+      ),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '$count',
+            style: const TextStyle(
+              color: AppColors.muted,
+              fontWeight: FontWeight.w800,
+            ),
           ),
-          subtitle: Text(
-            subtitle,
-            style: const TextStyle(color: AppColors.muted, fontSize: 13),
+          const SizedBox(width: 12),
+          Icon(
+            selected
+                ? Icons.radio_button_checked
+                : Icons.radio_button_unchecked,
+            color: selected ? AppColors.blue : const Color(0xFFC9D0DC),
           ),
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                '$count',
-                style: const TextStyle(
-                  color: AppColors.muted,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Icon(
-                selected
-                    ? Icons.radio_button_checked
-                    : Icons.radio_button_unchecked,
-                color: selected ? AppColors.blue : const Color(0xFFC9D0DC),
-              ),
-            ],
-          ),
-          onTap: onTap,
-        );
+        ],
+      ),
+      onTap: onTap,
+    );
 
     await showModalBottomSheet<void>(
       context: context,
@@ -2811,345 +2840,356 @@ class _WeekCommentsScreenState extends State<WeekCommentsScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
       ),
-      builder: (sheetContext) => _withInter(sheetContext, SafeArea(
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(sheetContext).size.height * 0.7,
-          ),
-          child: ListView(
-            shrinkWrap: true,
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-            children: [
-              Text('Pick a week', style: _h(19, weight: FontWeight.w800)),
-              const SizedBox(height: 4),
-              row(
-                title: 'All weeks',
-                subtitle: 'Every comment, newest first',
-                count: all.length,
-                selected: _weekId == null,
-                onTap: () {
-                  Navigator.of(sheetContext).pop();
-                  setState(() => _weekId = null);
-                },
-              ),
-              for (final id in weeks)
+      builder: (sheetContext) => _withInter(
+        sheetContext,
+        SafeArea(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(sheetContext).size.height * 0.7,
+            ),
+            child: ListView(
+              shrinkWrap: true,
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+              children: [
+                Text('Pick a week', style: _h(19, weight: FontWeight.w800)),
+                const SizedBox(height: 4),
                 row(
-                  title: PulseService.weekLabel(id),
-                  subtitle: PulseService.weekName(id).isNotEmpty
-                      ? PulseService.weekName(id)
-                      : _monthOfWeek(id),
-                  count: all.where((f) => f.weekId == id).length,
-                  selected: _weekId == id,
+                  title: 'All weeks',
+                  subtitle: 'Every comment, newest first',
+                  count: all.length,
+                  selected: _weekId == null,
                   onTap: () {
                     Navigator.of(sheetContext).pop();
-                    setState(() => _weekId = id);
+                    setState(() => _weekId = null);
                   },
                 ),
-            ],
+                for (final id in weeks)
+                  row(
+                    title: PulseService.weekLabel(id),
+                    subtitle: PulseService.weekName(id).isNotEmpty
+                        ? PulseService.weekName(id)
+                        : _monthOfWeek(id),
+                    count: all.where((f) => f.weekId == id).length,
+                    selected: _weekId == id,
+                    onTap: () {
+                      Navigator.of(sheetContext).pop();
+                      setState(() => _weekId = id);
+                    },
+                  ),
+              ],
+            ),
           ),
         ),
-      )),
+      ),
     );
     FocusManager.instance.primaryFocus?.unfocus();
   }
 
   @override
   Widget build(BuildContext context) {
-    return _withInter(context, Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
+    return _withInter(
+      context,
+      Scaffold(
         backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
-        leadingWidth: 68,
-        leading: const AppBackButton(),
-        // No title on the left: the name sits on the right in a pill.
-        title: const SizedBox.shrink(),
-        actions: const [
-          _TitlePill('Comments', icon: Icons.chat_bubble_outline_rounded),
-        ],
-      ),
-      body: SafeArea(
-        child: Align(
-          alignment: Alignment.topCenter,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 560),
-            child: StreamBuilder<List<FeedbackItem>>(
-              stream: _stream,
-              builder: (context, snap) {
-                if (snap.hasError) {
-                  return const _CenterNote(
-                    'Could not load the comments. Please go back and try '
-                        'again.',
-                  );
-                }
-                if (!snap.hasData) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                final all = snap.data!;
-                final thisWeek = PulseService.thisWeekId();
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
+          leadingWidth: 68,
+          leading: const AppBackButton(),
+          // No title on the left: the name sits on the right in a pill.
+          title: const SizedBox.shrink(),
+          actions: const [
+            _TitlePill('Comments', icon: Icons.chat_bubble_outline_rounded),
+          ],
+        ),
+        body: SafeArea(
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 560),
+              child: StreamBuilder<List<FeedbackItem>>(
+                stream: _stream,
+                builder: (context, snap) {
+                  if (snap.hasError) {
+                    return const _CenterNote(
+                      'Could not load the comments. Please go back and try '
+                      'again.',
+                    );
+                  }
+                  if (!snap.hasData) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  final all = snap.data!;
+                  final thisWeek = PulseService.thisWeekId();
 
-                // Weeks from this week back to the first week with
-                // comments (or the week that was opened).
-                var first = _weekId ?? thisWeek;
-                for (final f in all) {
-                  final w = f.weekId;
-                  if (w != null && w.compareTo(first) < 0) first = w;
-                }
-                final weeks = <String>[];
-                for (var id = thisWeek;
-                id.compareTo(first) >= 0 && weeks.length < 104;
-                id = PulseService.shiftWeek(id, -1)) {
-                  weeks.add(id);
-                }
+                  // Weeks from this week back to the first week with
+                  // comments (or the week that was opened).
+                  var first = _weekId ?? thisWeek;
+                  for (final f in all) {
+                    final w = f.weekId;
+                    if (w != null && w.compareTo(first) < 0) first = w;
+                  }
+                  final weeks = <String>[];
+                  for (
+                    var id = thisWeek;
+                    id.compareTo(first) >= 0 && weeks.length < 104;
+                    id = PulseService.shiftWeek(id, -1)
+                  ) {
+                    weeks.add(id);
+                  }
 
-                final inWeek = _weekId == null
-                    ? all
-                    : all.where((f) => f.weekId == _weekId).toList();
-                final searched = inWeek.where(_matchesQuery).toList();
-                final items =
-                searched.where((f) => _chipMatches(f, _chip)).toList();
+                  final inWeek = _weekId == null
+                      ? all
+                      : all.where((f) => f.weekId == _weekId).toList();
+                  final searched = inWeek.where(_matchesQuery).toList();
+                  final items = searched
+                      .where((f) => _chipMatches(f, _chip))
+                      .toList();
 
-                final canBack =
-                    _weekId != null && _weekId!.compareTo(first) > 0;
-                final canNext =
-                    _weekId != null && _weekId!.compareTo(thisWeek) < 0;
+                  final canBack =
+                      _weekId != null && _weekId!.compareTo(first) > 0;
+                  final canNext =
+                      _weekId != null && _weekId!.compareTo(thisWeek) < 0;
 
-                // Week headers, only in All weeks.
-                final list = <Widget>[];
-                String? lastWeek;
-                for (final item in items) {
-                  if (_weekId == null && item.weekId != lastWeek) {
-                    lastWeek = item.weekId;
-                    final id = item.weekId;
+                  // Week headers, only in All weeks.
+                  final list = <Widget>[];
+                  String? lastWeek;
+                  for (final item in items) {
+                    if (_weekId == null && item.weekId != lastWeek) {
+                      lastWeek = item.weekId;
+                      final id = item.weekId;
+                      list.add(
+                        _GroupHeader(
+                          label: id == null
+                              ? 'Other'
+                              : PulseService.weekLabel(id),
+                          count: items.where((f) => f.weekId == id).length,
+                        ),
+                      );
+                    }
                     list.add(
-                      _GroupHeader(
-                        label: id == null
-                            ? 'Other'
-                            : PulseService.weekLabel(id),
-                        count: items.where((f) => f.weekId == id).length,
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                        child: _Quote(
+                          item: item,
+                          onTap: () {
+                            FocusScope.of(context).unfocus();
+                            Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) =>
+                                    FeedbackDetailScreen(item: item),
+                              ),
+                            );
+                          },
+                        ),
                       ),
                     );
                   }
-                  list.add(
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-                      child: _Quote(
-                        item: item,
-                        onTap: () {
-                          FocusScope.of(context).unfocus();
-                          Navigator.of(context).push(
-                            MaterialPageRoute<void>(
-                              builder: (_) => FeedbackDetailScreen(item: item),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  );
-                }
 
-                final q = _query.trim();
-                return ListView(
-                  keyboardDismissBehavior:
-                  ScrollViewKeyboardDismissBehavior.onDrag,
-                  padding: const EdgeInsets.fromLTRB(0, 4, 0, 24),
-                  children: [
-                    // The week bar.
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Container(
-                        height: 64,
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF2F6FF),
-                          borderRadius: BorderRadius.circular(18),
-                        ),
-                        child: Row(
-                          children: [
-                            _WeekArrow(
-                              icon: Icons.chevron_left,
-                              tooltip: 'Week before',
-                              visible: _weekId != null,
-                              onTap: canBack
-                                  ? () => setState(
-                                    () => _weekId =
-                                    PulseService.shiftWeek(_weekId!, -1),
-                              )
-                                  : null,
-                            ),
-                            Expanded(
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(14),
-                                onTap: () => _pickWeek(all, weeks),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      _weekId == null
-                                          ? 'All weeks'
-                                          : PulseService.weekLabel(_weekId!),
-                                      style: _h(
-                                        17,
-                                        weight: FontWeight.w800,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          [
-                                            if (_weekId != null &&
-                                                PulseService.weekName(
-                                                  _weekId!,
-                                                ).isNotEmpty)
-                                              PulseService.weekName(_weekId!),
-                                            '${inWeek.length} '
-                                                '${inWeek.length == 1 ? 'comment' : 'comments'}',
-                                          ].join(' · '),
-                                          style: const TextStyle(
-                                            color: AppColors.blue,
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                        ),
-                                        const Icon(
-                                          Icons.arrow_drop_down,
-                                          color: AppColors.blue,
-                                          size: 20,
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            _WeekArrow(
-                              icon: Icons.chevron_right,
-                              tooltip: 'Week after',
-                              visible: _weekId != null,
-                              onTap: canNext
-                                  ? () => setState(
-                                    () => _weekId =
-                                    PulseService.shiftWeek(_weekId!, 1),
-                              )
-                                  : null,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    // Search box.
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: TextField(
-                        controller: _search,
-                        autofocus: widget.focusSearch,
-                        onChanged: (v) => setState(() => _query = v),
-                        textInputAction: TextInputAction.search,
-                        decoration: InputDecoration(
-                          hintText: 'Search words, name or ID',
-                          prefixIcon: const Icon(Icons.search),
-                          suffixIcon: _query.isEmpty
-                              ? null
-                              : IconButton(
-                            tooltip: 'Clear',
-                            icon: const Icon(Icons.close),
-                            onPressed: () {
-                              _search.clear();
-                              setState(() => _query = '');
-                            },
-                          ),
-                          filled: true,
-                          fillColor: const Color(0xFFF5F7FB),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 14,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(28),
-                            borderSide: BorderSide.none,
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(28),
-                            borderSide: BorderSide.none,
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(28),
-                            borderSide: const BorderSide(
-                              color: AppColors.blue,
-                              width: 1.5,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    // One row of chips.
-                    SizedBox(
-                      height: 40,
-                      child: ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        itemCount: _CommentChip.values.length,
-                        separatorBuilder: (context, index) =>
-                        const SizedBox(width: 8),
-                        itemBuilder: (context, i) {
-                          final c = _CommentChip.values[i];
-                          return _StatusChip(
-                            label: _chipLabel(c),
-                            dot: _chipDot(c),
-                            count: searched
-                                .where((f) => _chipMatches(f, c))
-                                .length,
-                            selected: c == _chip,
-                            onTap: () => setState(() => _chip = c),
-                          );
-                        },
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(24, 12, 24, 4),
-                      child: Text(
-                        '${items.length} '
-                            '${items.length == 1 ? 'comment' : 'comments'}'
-                            '${q.isEmpty ? ' · newest first' : ' for “$q”'}',
-                        style: const TextStyle(
-                          color: AppColors.muted,
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    if (items.isEmpty)
+                  final q = _query.trim();
+                  return ListView(
+                    keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.onDrag,
+                    padding: const EdgeInsets.fromLTRB(0, 4, 0, 24),
+                    children: [
+                      // The week bar.
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 20),
                         child: Container(
-                          padding: const EdgeInsets.all(18),
-                          decoration: _cardDecoration(),
-                          child: Text(
-                            inWeek.isEmpty
-                                ? 'No written comments for this week.'
-                                : 'Nothing matches. Try another word or '
-                                'chip.',
-                            style: const TextStyle(
-                              color: AppColors.muted,
-                              fontSize: 15,
+                          height: 64,
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF2F6FF),
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                          child: Row(
+                            children: [
+                              _WeekArrow(
+                                icon: Icons.chevron_left,
+                                tooltip: 'Week before',
+                                visible: _weekId != null,
+                                onTap: canBack
+                                    ? () => setState(
+                                        () => _weekId = PulseService.shiftWeek(
+                                          _weekId!,
+                                          -1,
+                                        ),
+                                      )
+                                    : null,
+                              ),
+                              Expanded(
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(14),
+                                  onTap: () => _pickWeek(all, weeks),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        _weekId == null
+                                            ? 'All weeks'
+                                            : PulseService.weekLabel(_weekId!),
+                                        style: _h(17, weight: FontWeight.w800),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            [
+                                              if (_weekId != null &&
+                                                  PulseService.weekName(
+                                                    _weekId!,
+                                                  ).isNotEmpty)
+                                                PulseService.weekName(_weekId!),
+                                              '${inWeek.length} '
+                                                  '${inWeek.length == 1 ? 'comment' : 'comments'}',
+                                            ].join(' · '),
+                                            style: const TextStyle(
+                                              color: AppColors.blue,
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                          const Icon(
+                                            Icons.arrow_drop_down,
+                                            color: AppColors.blue,
+                                            size: 20,
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              _WeekArrow(
+                                icon: Icons.chevron_right,
+                                tooltip: 'Week after',
+                                visible: _weekId != null,
+                                onTap: canNext
+                                    ? () => setState(
+                                        () => _weekId = PulseService.shiftWeek(
+                                          _weekId!,
+                                          1,
+                                        ),
+                                      )
+                                    : null,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      // Search box.
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: TextField(
+                          controller: _search,
+                          autofocus: widget.focusSearch,
+                          onChanged: (v) => setState(() => _query = v),
+                          textInputAction: TextInputAction.search,
+                          decoration: InputDecoration(
+                            hintText: 'Search words, name or ID',
+                            prefixIcon: const Icon(Icons.search),
+                            suffixIcon: _query.isEmpty
+                                ? null
+                                : IconButton(
+                                    tooltip: 'Clear',
+                                    icon: const Icon(Icons.close),
+                                    onPressed: () {
+                                      _search.clear();
+                                      setState(() => _query = '');
+                                    },
+                                  ),
+                            filled: true,
+                            fillColor: const Color(0xFFF5F7FB),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 14,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(28),
+                              borderSide: BorderSide.none,
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(28),
+                              borderSide: BorderSide.none,
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(28),
+                              borderSide: const BorderSide(
+                                color: AppColors.blue,
+                                width: 1.5,
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ...list,
-                  ],
-                );
-              },
+                      const SizedBox(height: 12),
+                      // One row of chips.
+                      SizedBox(
+                        height: 40,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          itemCount: _CommentChip.values.length,
+                          separatorBuilder: (context, index) =>
+                              const SizedBox(width: 8),
+                          itemBuilder: (context, i) {
+                            final c = _CommentChip.values[i];
+                            return _StatusChip(
+                              label: _chipLabel(c),
+                              dot: _chipDot(c),
+                              count: searched
+                                  .where((f) => _chipMatches(f, c))
+                                  .length,
+                              selected: c == _chip,
+                              onTap: () => setState(() => _chip = c),
+                            );
+                          },
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(24, 12, 24, 4),
+                        child: Text(
+                          '${items.length} '
+                          '${items.length == 1 ? 'comment' : 'comments'}'
+                          '${q.isEmpty ? ' · newest first' : ' for “$q”'}',
+                          style: const TextStyle(
+                            color: AppColors.muted,
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      if (items.isEmpty)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: Container(
+                            padding: const EdgeInsets.all(18),
+                            decoration: _cardDecoration(),
+                            child: Text(
+                              inWeek.isEmpty
+                                  ? 'No written comments for this week.'
+                                  : 'Nothing matches. Try another word or '
+                                        'chip.',
+                              style: const TextStyle(
+                                color: AppColors.muted,
+                                fontSize: 15,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ...list,
+                    ],
+                  );
+                },
+              ),
             ),
           ),
         ),
       ),
-    ));
+    );
   }
 }
 
@@ -3348,8 +3388,7 @@ class _SuggestionTabState extends State<_SuggestionTab> {
 
   String _rangeLabel() {
     // After "Show older": "Since 8 Aug".
-    if (_older > 0 &&
-        (_range == _Range.days30 || _range == _Range.months3)) {
+    if (_older > 0 && (_range == _Range.days30 || _range == _Range.months3)) {
       final from = _from(DateTime.now())!;
       return 'Since ${from.day} ${_monthNames[from.month - 1]}';
     }
@@ -3393,9 +3432,7 @@ class _SuggestionTabState extends State<_SuggestionTab> {
         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w400),
       ),
       trailing: Icon(
-        _range == r
-            ? Icons.radio_button_checked
-            : Icons.radio_button_unchecked,
+        _range == r ? Icons.radio_button_checked : Icons.radio_button_unchecked,
         color: _range == r ? AppColors.blue : const Color(0xFFC9D0DC),
       ),
       onTap: () {
@@ -3411,49 +3448,52 @@ class _SuggestionTabState extends State<_SuggestionTab> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
       ),
-      builder: (sheetContext) => _withInter(sheetContext, SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'Show suggestions from',
-                style: _h(18, weight: FontWeight.w500),
-              ),
-              const SizedBox(height: 6),
-              option('Last 30 days', _Range.days30),
-              option('Last 3 months', _Range.months3),
-              option('This year', _Range.thisYear),
-              option('All time', _Range.all),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(
-                  Icons.calendar_month_outlined,
-                  color: AppColors.blue,
+      builder: (sheetContext) => _withInter(
+        sheetContext,
+        SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'Show suggestions from',
+                  style: _h(18, weight: FontWeight.w500),
                 ),
-                title: Text(
-                  _range == _Range.month ? _rangeLabel() : 'Pick a month…',
-                  style: const TextStyle(
+                const SizedBox(height: 6),
+                option('Last 30 days', _Range.days30),
+                option('Last 3 months', _Range.months3),
+                option('This year', _Range.thisYear),
+                option('All time', _Range.all),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(
+                    Icons.calendar_month_outlined,
                     color: AppColors.blue,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w400,
                   ),
+                  title: Text(
+                    _range == _Range.month ? _rangeLabel() : 'Pick a month…',
+                    style: const TextStyle(
+                      color: AppColors.blue,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                  trailing: const Icon(
+                    Icons.chevron_right,
+                    color: AppColors.blue,
+                  ),
+                  onTap: () {
+                    Navigator.of(sheetContext).pop();
+                    _openMonthSheet();
+                  },
                 ),
-                trailing: const Icon(
-                  Icons.chevron_right,
-                  color: AppColors.blue,
-                ),
-                onTap: () {
-                  Navigator.of(sheetContext).pop();
-                  _openMonthSheet();
-                },
-              ),
-            ],
+              ],
+            ),
           ),
         ),
-      )),
+      ),
     );
   }
 
@@ -3462,8 +3502,7 @@ class _SuggestionTabState extends State<_SuggestionTab> {
     final months = <DateTime>{
       for (final f in widget.suggestions)
         DateTime(_dateOf(f).year, _dateOf(f).month, 1),
-    }.toList()
-      ..sort((a, b) => b.compareTo(a));
+    }.toList()..sort((a, b) => b.compareTo(a));
 
     await showModalBottomSheet<void>(
       context: context,
@@ -3473,59 +3512,61 @@ class _SuggestionTabState extends State<_SuggestionTab> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
       ),
-      builder: (sheetContext) => _withInter(sheetContext, SafeArea(
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(sheetContext).size.height * 0.6,
-          ),
-          child: ListView(
-            shrinkWrap: true,
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-            children: [
-              Text('Pick a month', style: _h(18, weight: FontWeight.w500)),
-              const SizedBox(height: 6),
-              if (months.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 16),
-                  child: Text(
-                    'No suggestions yet.',
-                    style: TextStyle(color: AppColors.muted, fontSize: 15),
-                  ),
-                ),
-              for (final m in months)
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(
-                    '${_longMonths[m.month - 1]} ${m.year}',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w400,
+      builder: (sheetContext) => _withInter(
+        sheetContext,
+        SafeArea(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(sheetContext).size.height * 0.6,
+            ),
+            child: ListView(
+              shrinkWrap: true,
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+              children: [
+                Text('Pick a month', style: _h(18, weight: FontWeight.w500)),
+                const SizedBox(height: 6),
+                if (months.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    child: Text(
+                      'No suggestions yet.',
+                      style: TextStyle(color: AppColors.muted, fontSize: 15),
                     ),
                   ),
-                  trailing: Text(
-                    '${widget.suggestions.where((f) => _dateOf(f).year == m.year && _dateOf(f).month == m.month).length}',
-                    style: const TextStyle(
-                      color: AppColors.muted,
-                      fontWeight: FontWeight.w400,
+                for (final m in months)
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                      '${_longMonths[m.month - 1]} ${m.year}',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w400,
+                      ),
                     ),
+                    trailing: Text(
+                      '${widget.suggestions.where((f) => _dateOf(f).year == m.year && _dateOf(f).month == m.month).length}',
+                      style: const TextStyle(
+                        color: AppColors.muted,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                    onTap: () {
+                      Navigator.of(sheetContext).pop();
+                      _setRange(_Range.month, month: m);
+                    },
                   ),
-                  onTap: () {
-                    Navigator.of(sheetContext).pop();
-                    _setRange(_Range.month, month: m);
-                  },
-                ),
-            ],
+              ],
+            ),
           ),
         ),
-      )),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
-    final inRange =
-    widget.suggestions.where((f) => _inRange(f, now)).toList();
+    final inRange = widget.suggestions.where((f) => _inRange(f, now)).toList();
 
     // New counts every waiting suggestion, even old ones, so nothing is
     // forgotten. The other chips count the chosen dates only.
@@ -3557,9 +3598,9 @@ class _SuggestionTabState extends State<_SuggestionTab> {
     final from = _from(now);
     final canShowOlder =
         (_range == _Range.days30 || _range == _Range.months3) &&
-            _status != FeedbackStatus.newItem &&
-            from != null &&
-            widget.suggestions.any((f) => _dateOf(f).isBefore(from));
+        _status != FeedbackStatus.newItem &&
+        from != null &&
+        widget.suggestions.any((f) => _dateOf(f).isBefore(from));
     final olderMonth = from == null
         ? ''
         : _longMonths[DateTime(from.year, from.month - 1, 1).month - 1];
@@ -3686,8 +3727,8 @@ class _SuggestionTabState extends State<_SuggestionTab> {
                 Expanded(
                   child: Text(
                     '${items.length} '
-                        '${items.length == 1 ? 'suggestion' : 'suggestions'}'
-                        ' · newest first',
+                    '${items.length == 1 ? 'suggestion' : 'suggestions'}'
+                    ' · newest first',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
@@ -3738,9 +3779,12 @@ class _SuggestionTabState extends State<_SuggestionTab> {
                   _status == null
                       ? 'No suggestions in these dates'
                       : 'No ${FeedbackStatus.label(_status!)} suggestions '
-                      'in these dates',
+                            'in these dates',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(color: AppColors.muted, fontSize: 14.5),
+                  style: const TextStyle(
+                    color: AppColors.muted,
+                    fontSize: 14.5,
+                  ),
                 ),
               ],
             ),
@@ -3793,15 +3837,29 @@ class _GroupHeader extends StatelessWidget {
 }
 
 const List<String> _longMonths = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
 ];
 
 /// Which date group a suggestion goes in.
 String _groupLabel(DateTime d, DateTime now) {
   final today = DateTime(now.year, now.month, now.day);
   final day = DateTime(d.year, d.month, d.day);
-  final thisWeek = DateTime(today.year, today.month, today.day - (today.weekday - 1));
+  final thisWeek = DateTime(
+    today.year,
+    today.month,
+    today.day - (today.weekday - 1),
+  );
   final lastWeek = DateTime(thisWeek.year, thisWeek.month, thisWeek.day - 7);
   if (day == today) return 'Today';
   if (day == DateTime(today.year, today.month, today.day - 1)) {
@@ -3830,7 +3888,6 @@ String _cardWhen(DateTime? d) {
 
 /// A round chip: an optional colour dot, the name and the number.
 /// The chosen one is blue.
-
 
 /// A filter chip: colour dot, name and count.
 /// Chosen: light blue with a blue border and a blue count.
@@ -4012,94 +4069,142 @@ class _FeedbackCard extends StatelessWidget {
     return '${d.day} ${_monthNames[d.month - 1]}';
   }
 
+  // card design S2: status colour bar, message first.
   @override
   Widget build(BuildContext context) {
-    final status = item.status;
-    final isNew = status == FeedbackStatus.newItem;
-    final name = item.authorName ?? '';
-    final id = item.authorEmployeeId ?? '';
-    final who = item.anonymous
-        ? 'Name hidden'
-        : (id.isEmpty ? name : '$name ($id)');
-    final rating =
-    !item.isFromBox && item.rating != null ? item.rating : null;
-    final meta = [
-      _cardWhen(item.createdAt),
-      if (rating != null) PulseRating.label(rating),
-      if (who.isNotEmpty) who,
-    ].join(' · ');
-    final waitingDays = item.createdAt == null
-        ? 0
-        : DateTime.now().difference(item.createdAt!).inDays;
-    final late = isNew && waitingDays >= 7;
-    const metaStyle = TextStyle(fontSize: 12, color: Color(0xFF8E97AB));
-    final bodyStyle = TextStyle(
-      fontSize: 14.5,
-      height: 1.45,
-      color: AppColors.ink,
-      fontWeight: isNew ? FontWeight.w500 : FontWeight.w400,
-    );
-
-    Widget? footer;
-    if (item.hasReply) {
-      footer = const _CardFooter(
-        icon: Icons.chat_bubble_outline_rounded,
-        text: 'Management replied',
-        color: Color(0xFF15803D),
-      );
-    } else if (late) {
-      footer = _CardFooter(
-        icon: Icons.schedule_rounded,
-        text: 'Waiting $waitingDays days',
-        color: const Color(0xFFC2410C),
-      );
-    }
-
+    final t = Theme.of(context).textTheme;
+    final color = FeedbackStatus.color(item.status);
+    final d = item.createdAt;
+    final now = DateTime.now();
+    final today =
+        d != null &&
+        d.year == now.year &&
+        d.month == now.month &&
+        d.day == now.day;
+    final when = d == null
+        ? ''
+        : today
+        ? '${d.hour % 12 == 0 ? 12 : d.hour % 12}:'
+              '${d.minute.toString().padLeft(2, '0')} '
+              '${d.hour < 12 ? 'AM' : 'PM'}'
+        : _date(d);
+    final name = (item.authorName ?? '').trim();
+    final id = (item.authorEmployeeId ?? '').trim();
+    final hidden = item.anonymous || name.isEmpty;
+    const soft = Color(0xFF9CA3AF);
+    const green = Color(0xFF15803D);
     return Material(
       color: Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(18),
-        side: const BorderSide(color: Color(0xFFE3E8F1), width: 1.5),
+        side: const BorderSide(color: Color(0xFFEEF0F4)),
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 10, 14),
+        child: IntrinsicHeight(
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              Container(width: 4, color: color),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Status chip, and date · name on the right.
-                    Row(
-                      children: [
-                        _CardChip(status),
-                        const SizedBox(width: 10),
-                        Expanded(child: Text(meta, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.right, style: metaStyle)),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(item.text, maxLines: 2, overflow: TextOverflow.ellipsis, style: bodyStyle),
-                    if (footer != null) ...[
-                      const SizedBox(height: 10),
-                      const Divider(
-                        height: 1,
-                        thickness: 1,
-                        color: Color(0xFFEDF0F5),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 13, 14, 13),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            FeedbackStatus.label(item.status).toUpperCase(),
+                            style: t.labelSmall?.copyWith(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.5,
+                              color: color,
+                            ),
+                          ),
+                          const Spacer(),
+                          Text(
+                            when,
+                            style: t.bodySmall?.copyWith(
+                              fontSize: 12,
+                              color: soft,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 10),
-                      footer,
+                      const SizedBox(height: 8),
+                      Text(
+                        item.text.trim(),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: t.bodyLarge?.copyWith(
+                          fontSize: 16,
+                          height: 1.42,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: -0.15,
+                          color: const Color(0xFF111827),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          if (hidden) ...[
+                            const Icon(
+                              Icons.lock_outline_rounded,
+                              size: 12,
+                              color: soft,
+                            ),
+                            const SizedBox(width: 4),
+                          ],
+                          Expanded(
+                            child: Text.rich(
+                              hidden
+                                  ? const TextSpan(text: 'Name hidden')
+                                  : TextSpan(
+                                      children: [
+                                        TextSpan(
+                                          text: name,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            color: Color(0xFF374151),
+                                          ),
+                                        ),
+                                        if (id.isNotEmpty)
+                                          TextSpan(text: ' · $id'),
+                                      ],
+                                    ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: t.bodySmall?.copyWith(
+                                fontSize: 12,
+                                color: soft,
+                              ),
+                            ),
+                          ),
+                          if (item.hasReply) ...[
+                            const SizedBox(width: 8),
+                            const Icon(
+                              Icons.chat_bubble_outline_rounded,
+                              size: 12,
+                              color: green,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Replied',
+                              style: t.bodySmall?.copyWith(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: green,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
                     ],
-                  ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: 10),
-              const Icon(
-                Icons.chevron_right_rounded,
-                color: Color(0xFF8E97AB),
-                size: 22,
               ),
             ],
           ),
@@ -4261,7 +4366,11 @@ class _BottomTabs extends StatelessWidget {
                     Stack(
                       clipBehavior: Clip.none,
                       children: [
-                        Icon(selected ? activeIcon : icon, size: 23, color: color),
+                        Icon(
+                          selected ? activeIcon : icon,
+                          size: 23,
+                          color: color,
+                        ),
                         if (badge > 0)
                           Positioned(
                             top: -5,
@@ -4269,12 +4378,17 @@ class _BottomTabs extends StatelessWidget {
                             child: Container(
                               constraints: const BoxConstraints(minWidth: 18),
                               height: 18,
-                              padding: const EdgeInsets.symmetric(horizontal: 5),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 5,
+                              ),
                               alignment: Alignment.center,
                               decoration: BoxDecoration(
                                 color: const Color(0xFFE2583E),
                                 borderRadius: BorderRadius.circular(9),
-                                border: Border.all(color: Colors.white, width: 2),
+                                border: Border.all(
+                                  color: Colors.white,
+                                  width: 2,
+                                ),
                               ),
                               child: Text(
                                 badge > 99 ? '99+' : '$badge',
@@ -4294,7 +4408,9 @@ class _BottomTabs extends StatelessWidget {
                       label,
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 12.5,
-                        fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                        fontWeight: selected
+                            ? FontWeight.w600
+                            : FontWeight.w500,
                         color: color,
                       ),
                     ),
