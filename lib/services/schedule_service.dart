@@ -20,8 +20,10 @@ import '../config.dart';
 class ScheduleService {
   ScheduleService._();
 
-  static final DocumentReference<Map<String, dynamic>> _doc =
-  FirebaseFirestore.instance.collection('settings').doc('pulse');
+  static final DocumentReference<Map<String, dynamic>> _doc = FirebaseFirestore
+      .instance
+      .collection('settings')
+      .doc('pulse');
 
   static StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _sub;
 
@@ -43,9 +45,8 @@ class ScheduleService {
       debugPrint('[Schedule] could not read settings/pulse: $e');
     }
     _sub ??= _doc.snapshots().listen(
-          (snap) => _apply(snap.data()),
-      onError: (Object e) =>
-          debugPrint('[Schedule] listen error: $e'),
+      (snap) => _apply(snap.data()),
+      onError: (Object e) => debugPrint('[Schedule] listen error: $e'),
     );
   }
 
@@ -85,9 +86,11 @@ class ScheduleService {
       AppConfig.pulseOpenDays = days;
       changedNow = true;
     }
-    debugPrint('[Schedule] day ${AppConfig.pulseOpenDay}, '
-        '${AppConfig.pulseOpenHour}:${AppConfig.pulseOpenMinute}, '
-        '${AppConfig.pulseOpenDays} day(s)');
+    debugPrint(
+      '[Schedule] day ${AppConfig.pulseOpenDay}, '
+      '${AppConfig.pulseOpenHour}:${AppConfig.pulseOpenMinute}, '
+      '${AppConfig.pulseOpenDays} day(s)',
+    );
     if (changedNow) changed.value++;
   }
 }

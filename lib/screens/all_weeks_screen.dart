@@ -16,7 +16,9 @@ import '../widgets/ui.dart';
 Widget _withInter(BuildContext context, Widget child) {
   final t = Theme.of(context);
   return Theme(
-    data: t.copyWith(textTheme: GoogleFonts.plusJakartaSansTextTheme(t.textTheme)),
+    data: t.copyWith(
+      textTheme: GoogleFonts.plusJakartaSansTextTheme(t.textTheme),
+    ),
     child: child,
   );
 }
@@ -73,10 +75,10 @@ class _AllWeeksScreenState extends State<AllWeeksScreen> {
         .snapshots()
         .map(
           (snap) => {
-        for (final doc in snap.docs)
-          doc.id: PulseTotals.fromMap(doc.data()),
-      },
-    );
+            for (final doc in snap.docs)
+              doc.id: PulseTotals.fromMap(doc.data()),
+          },
+        );
     // The card changes by itself when the Weekly Pulse opens or closes.
     _timer = Timer.periodic(const Duration(seconds: 30), (_) {
       if (mounted) setState(() {});
@@ -144,7 +146,7 @@ class _AllWeeksScreenState extends State<AllWeeksScreen> {
                       if (snap.hasError || totalSnap.hasError) {
                         return const _Message(
                           'Could not load the weeks. Please go back and try '
-                              'again.',
+                          'again.',
                         );
                       }
                       if (!snap.hasData || !totalSnap.hasData) {
@@ -190,9 +192,11 @@ class _AllWeeksScreenState extends State<AllWeeksScreen> {
     // Every past week, newest first. Weeks where nobody answered still
     // show, so no week goes missing. This week has its own card on top.
     final pastIds = <String>[];
-    for (var id = PulseService.shiftWeek(thisWeek, -1);
-    id.compareTo(firstWeek) >= 0;
-    id = PulseService.shiftWeek(id, -1)) {
+    for (
+      var id = PulseService.shiftWeek(thisWeek, -1);
+      id.compareTo(firstWeek) >= 0;
+      id = PulseService.shiftWeek(id, -1)
+    ) {
       pastIds.add(id);
     }
 
@@ -281,10 +285,10 @@ class _AllWeeksScreenState extends State<AllWeeksScreen> {
   /// The tapped week, else the dashboard's week, else the newest week
   /// with a result.
   String? _pickChartWeek(
-      List<String> chartIds,
-      String selected,
-      int? Function(String) levelOf,
-      ) {
+    List<String> chartIds,
+    String selected,
+    int? Function(String) levelOf,
+  ) {
     if (chartIds.isEmpty) return null;
     if (_chartWeekId != null && chartIds.contains(_chartWeekId)) {
       return _chartWeekId;
@@ -337,13 +341,13 @@ class _ThisWeekCard extends StatelessWidget {
     final String timing;
     if (notOpenYet) {
       title = 'Not open yet';
-      timing =
-      'Opens ${PulseService.dateTimeLabel(PulseService.opensAt(now))}';
+      timing = 'Opens ${PulseService.dateTimeLabel(PulseService.opensAt(now))}';
     } else if (open) {
       title = _result(totals, total);
       // The window ends at midnight; show it as 11:59 PM of the last day.
-      final last = PulseService.closesAt(now)
-          .subtract(const Duration(minutes: 1));
+      final last = PulseService.closesAt(
+        now,
+      ).subtract(const Duration(minutes: 1));
       timing = 'Open until ${PulseService.dateTimeLabel(last)}';
     } else {
       title = _result(totals, total);
@@ -375,10 +379,7 @@ class _ThisWeekCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 4),
-              Text(
-                timing,
-                style: const TextStyle(fontSize: 13, color: onBlue),
-              ),
+              Text(timing, style: const TextStyle(fontSize: 13, color: onBlue)),
               if (!notOpenYet) ...[
                 const SizedBox(height: 14),
                 _AnswerBlocks(answered: submitted, total: total),
@@ -680,9 +681,9 @@ class _MoodChart extends StatelessWidget {
             levelOf(weekIds[i]) == null
                 ? null
                 : Offset(
-              _labelWidth + columnWidth * (i + 0.5),
-              _yOfLevel(levelOf(weekIds[i])!),
-            ),
+                    _labelWidth + columnWidth * (i + 0.5),
+                    _yOfLevel(levelOf(weekIds[i])!),
+                  ),
         ];
 
         return SizedBox(
@@ -690,9 +691,7 @@ class _MoodChart extends StatelessWidget {
           child: Stack(
             children: [
               Positioned.fill(
-                child: CustomPaint(
-                  painter: _ChartPainter(points: points),
-                ),
+                child: CustomPaint(painter: _ChartPainter(points: points)),
               ),
               for (var level = _greatLevel; level >= 1; level--)
                 Positioned(
@@ -788,11 +787,11 @@ class _ChartColumn extends StatelessWidget {
                         ),
                         boxShadow: selected
                             ? [
-                          BoxShadow(
-                            color: _dotColor(mood),
-                            spreadRadius: 2,
-                          ),
-                        ]
+                                BoxShadow(
+                                  color: _dotColor(mood),
+                                  spreadRadius: 2,
+                                ),
+                              ]
                             : null,
                       ),
                     ),
@@ -807,8 +806,9 @@ class _ChartColumn extends StatelessWidget {
                       '$day',
                       style: TextStyle(
                         fontSize: 13,
-                        fontWeight:
-                        selected ? FontWeight.w500 : FontWeight.w400,
+                        fontWeight: selected
+                            ? FontWeight.w500
+                            : FontWeight.w400,
                         color: selected ? _betterText : _muted,
                       ),
                     ),
@@ -1154,13 +1154,33 @@ class _Message extends StatelessWidget {
 // ---------------------------------------------------------------------
 
 const List<String> _monthNames = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
 ];
 
 const List<String> _longMonthNames = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
 ];
 
 DateTime _mondayOf(String weekId) {

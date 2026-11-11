@@ -79,7 +79,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                     const SizedBox(height: 8),
                     const Text(
                       'Please replace the password you were given with one of '
-                          'your own before you continue.',
+                      'your own before you continue.',
                     ),
                     const SizedBox(height: 24),
                     TextFormField(
@@ -132,10 +132,12 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         child: _busy
                             ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
                             : const Text('Save password'),
                       ),
                     ),

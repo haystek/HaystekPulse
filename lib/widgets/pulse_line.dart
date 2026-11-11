@@ -286,10 +286,10 @@ class _PulseLinePainter extends CustomPainter {
   @override
   bool shouldRepaint(_PulseLinePainter old) =>
       old.beat != beat ||
-          old.progress != progress ||
-          old.moving != moving ||
-          old.showDot != showDot ||
-          old.lineColor != lineColor;
+      old.progress != progress ||
+      old.moving != moving ||
+      old.showDot != showDot ||
+      old.lineColor != lineColor;
 }
 
 /// A live countdown: "2d 6h 14m", "6h 20m 15s" or "4m 09s".
@@ -360,15 +360,14 @@ class _LiveCountdownState extends State<LiveCountdown> {
   Widget build(BuildContext context) {
     return Text(
       '${widget.prefix}${_text(widget.to.difference(DateTime.now()))}'
-          '${widget.suffix}',
+      '${widget.suffix}',
       maxLines: 1,
       // Same-width digits, so the text does not jump every second.
       style: GoogleFonts.plusJakartaSans(
         fontSize: widget.size,
         fontWeight: FontWeight.w600,
         color: widget.color,
-      )
-          .copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
+      ).copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
     );
   }
 }

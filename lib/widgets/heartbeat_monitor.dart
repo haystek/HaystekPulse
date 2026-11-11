@@ -9,7 +9,10 @@ import '../theme/app_theme.dart';
 /// away. It loops forever. If the phone has "reduce motion" turned on,
 /// it shows a still line instead.
 class HeartbeatMonitor extends StatefulWidget {
-  const HeartbeatMonitor({super.key, this.duration = const Duration(milliseconds: 2600)});
+  const HeartbeatMonitor({
+    super.key,
+    this.duration = const Duration(milliseconds: 2600),
+  });
 
   /// How long one run from left to right takes.
   final Duration duration;

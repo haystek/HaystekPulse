@@ -86,8 +86,8 @@ class _FeedbackListScreenState extends State<FeedbackListScreen> {
   /// How many filters are on, for "Clear all".
   int get _filtersOn =>
       (_rating != null ? 1 : 0) +
-          (_status != null ? 1 : 0) +
-          (_dates != _Dates.any ? 1 : 0);
+      (_status != null ? 1 : 0) +
+      (_dates != _Dates.any ? 1 : 0);
 
   /// Every filter except status, so the status chips can show counts.
   bool _matchesOthers(FeedbackItem f) {
@@ -120,8 +120,7 @@ class _FeedbackListScreenState extends State<FeedbackListScreen> {
 
     final months = <DateTime>{
       for (final f in all) DateTime(_dateOf(f).year, _dateOf(f).month, 1),
-    }.toList()
-      ..sort((a, b) => b.compareTo(a));
+    }.toList()..sort((a, b) => b.compareTo(a));
 
     await showModalBottomSheet<void>(
       context: context,
@@ -141,9 +140,7 @@ class _FeedbackListScreenState extends State<FeedbackListScreen> {
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
             children: [
               Text(
-                widget.isPulse
-                    ? 'Show comments from'
-                    : 'Show suggestions from',
+                widget.isPulse ? 'Show comments from' : 'Show suggestions from',
                 style: heading(19, weight: FontWeight.w700),
               ),
               const SizedBox(height: 6),
@@ -230,9 +227,7 @@ class _FeedbackListScreenState extends State<FeedbackListScreen> {
   void _open(FeedbackItem item) {
     FocusScope.of(context).unfocus();
     Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => FeedbackDetailScreen(item: item),
-      ),
+      MaterialPageRoute<void>(builder: (_) => FeedbackDetailScreen(item: item)),
     );
   }
 
@@ -286,13 +281,13 @@ class _FeedbackListScreenState extends State<FeedbackListScreen> {
                           suffixIcon: _query.isEmpty
                               ? null
                               : IconButton(
-                            tooltip: 'Clear',
-                            icon: const Icon(Icons.close),
-                            onPressed: () {
-                              _search.clear();
-                              setState(() => _query = '');
-                            },
-                          ),
+                                  tooltip: 'Clear',
+                                  icon: const Icon(Icons.close),
+                                  onPressed: () {
+                                    _search.clear();
+                                    setState(() => _query = '');
+                                  },
+                                ),
                           filled: true,
                           fillColor: const Color(0xFFF5F7FB),
                           contentPadding: const EdgeInsets.symmetric(
@@ -354,11 +349,13 @@ class _FeedbackListScreenState extends State<FeedbackListScreen> {
                           padding: const EdgeInsets.symmetric(horizontal: 20),
                           itemCount: filters.length,
                           separatorBuilder: (context, index) =>
-                          const SizedBox(width: 8),
+                              const SizedBox(width: 8),
                           itemBuilder: (context, i) {
                             final s = filters[i];
                             return _StatusChip(
-                              label: s == null ? 'All' : FeedbackStatus.label(s),
+                              label: s == null
+                                  ? 'All'
+                                  : FeedbackStatus.label(s),
                               dot: s == null ? null : _statusDot(s),
                               count: s == null
                                   ? found.length
@@ -389,8 +386,12 @@ class _FeedbackListScreenState extends State<FeedbackListScreen> {
                               child: InkWell(
                                 onTap: () => _openDates(all),
                                 child: Padding(
-                                  padding:
-                                  const EdgeInsets.fromLTRB(12, 8, 8, 8),
+                                  padding: const EdgeInsets.fromLTRB(
+                                    12,
+                                    8,
+                                    8,
+                                    8,
+                                  ),
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
@@ -465,10 +466,10 @@ class _FeedbackListScreenState extends State<FeedbackListScreen> {
   }
 
   Widget _list(
-      AsyncSnapshot<List<FeedbackItem>> snap,
-      List<FeedbackItem> all,
-      List<FeedbackItem> items,
-      ) {
+    AsyncSnapshot<List<FeedbackItem>> snap,
+    List<FeedbackItem> all,
+    List<FeedbackItem> items,
+  ) {
     if (snap.hasError) {
       return const _Empty(
         icon: Icons.cloud_off_outlined,
@@ -494,7 +495,7 @@ class _FeedbackListScreenState extends State<FeedbackListScreen> {
         title: 'Nothing yet',
         text: widget.isPulse
             ? 'When employees write Weekly Pulse comments, you can search '
-            'them here.'
+                  'them here.'
             : 'When employees send suggestions, you can search them here.',
       );
     }
@@ -579,8 +580,18 @@ class _TitlePill extends StatelessWidget {
 enum _Dates { any, days7, days30, months3, thisYear, month }
 
 const List<String> _longMonths = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
 ];
 
 /// A round chip with an optional icon. The chosen one is dark blue.
@@ -752,8 +763,7 @@ class _ResultCard extends StatelessWidget {
     final who = item.anonymous
         ? 'Name hidden'
         : (id.isEmpty ? name : '$name ($id)');
-    final rating =
-    !item.isFromBox && item.rating != null ? item.rating : null;
+    final rating = !item.isFromBox && item.rating != null ? item.rating : null;
     final meta = [
       _when(item.createdAt),
       if (rating != null) PulseRating.label(rating),
@@ -808,11 +818,26 @@ class _ResultCard extends StatelessWidget {
                       children: [
                         _CardChip(status),
                         const SizedBox(width: 10),
-                        Expanded(child: Text.rich(_highlight(meta, item.anonymous ? '' : query, metaStyle), maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.right)),
+                        Expanded(
+                          child: Text.rich(
+                            _highlight(
+                              meta,
+                              item.anonymous ? '' : query,
+                              metaStyle,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.right,
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 8),
-                    Text.rich(_highlight(item.text, query, bodyStyle), maxLines: 2, overflow: TextOverflow.ellipsis),
+                    Text.rich(
+                      _highlight(item.text, query, bodyStyle),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                     if (footer != null) ...[
                       const SizedBox(height: 10),
                       const Divider(
@@ -958,10 +983,7 @@ class _Empty extends StatelessWidget {
               textAlign: TextAlign.center,
               style: const TextStyle(color: AppColors.muted, fontSize: 15),
             ),
-            if (action != null) ...[
-              const SizedBox(height: 8),
-              action!,
-            ],
+            if (action != null) ...[const SizedBox(height: 8), action!],
           ],
         ),
       ),
@@ -970,8 +992,18 @@ class _Empty extends StatelessWidget {
 }
 
 const List<String> _months = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
 ];
 
 /// "3:40 PM" for today, "7 Oct" this year, "7 Oct 2025" before.

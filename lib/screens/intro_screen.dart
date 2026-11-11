@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-
 const Color _sky1 = Color(0xFF0B1B4D);
 
 /// Shows the intro once (the first time the app is opened on this phone),
@@ -80,8 +79,10 @@ Animation<double> _iPart(
   double from,
   double to, [
   Curve curve = Curves.easeOutCubic,
-]) =>
-    CurvedAnimation(parent: a, curve: Interval(from, to, curve: curve));
+]) => CurvedAnimation(
+  parent: a,
+  curve: Interval(from, to, curve: curve),
+);
 
 /// First open: 4 slides that animate in. Swipe or tap Next; Skip on top.
 class IntroScreen extends StatefulWidget {
@@ -146,7 +147,8 @@ class _IntroScreenState extends State<IntroScreen>
           a: a,
           hero: _HeroWelcome(a: a, float: _float, beat: _beat),
           title: 'Your voice at Haystek, heard.',
-          sub: 'Share ideas, raise problems and tell us how your week '
+          sub:
+              'Share ideas, raise problems and tell us how your week '
               'went. Admin reads every message and replies.',
         );
       case 1:
@@ -219,13 +221,15 @@ class _IntroScreenState extends State<IntroScreen>
             _IStep(
               n: 1,
               title: 'Enter your entry code',
-              text: 'You will find it on Zoho. Only Haystek staff can see it, '
+              text:
+                  'You will find it on Zoho. Only Haystek staff can see it, '
                   'so outsiders cannot join.',
             ),
             _IStep(
               n: 2,
               title: 'Save your personal code',
-              text: 'The app gives you this code after you join. Keep it safe. You need it only if you move to a new phone.',
+              text:
+                  'The app gives you this code after you join. Keep it safe. You need it only if you move to a new phone.',
             ),
             _IStep(
               n: 3,
@@ -633,7 +637,8 @@ class _HeroWelcome extends StatelessWidget {
               iconColor: Color(0xFFB7791F),
               tile: Color(0xFFFEF3C7),
               title: 'New suggestion',
-              text: 'Can we keep drinking water bottles filled in the meeting rooms?',
+              text:
+                  'Can we keep drinking water bottles filled in the meeting rooms?',
             ),
           ),
         ),
@@ -668,7 +673,7 @@ class _HeroWelcome extends StatelessWidget {
 /// bright wave with a glowing dot keeps running along it ([beat]).
 class _IPulsePainter extends CustomPainter {
   _IPulsePainter(this.p, this.beat)
-      : super(repaint: Listenable.merge([p, beat]));
+    : super(repaint: Listenable.merge([p, beat]));
 
   final Animation<double> p;
   final Animation<double> beat;
@@ -748,8 +753,12 @@ class _HeroTiles extends StatelessWidget {
               float: float,
               flip: i == 1,
               child: ScaleTransition(
-                scale: _iPart(a, 0.05 + i * 0.12, 0.45 + i * 0.12,
-                    Curves.easeOutBack),
+                scale: _iPart(
+                  a,
+                  0.05 + i * 0.12,
+                  0.45 + i * 0.12,
+                  Curves.easeOutBack,
+                ),
                 child: Container(
                   width: 92,
                   height: 120,
@@ -757,13 +766,13 @@ class _HeroTiles extends StatelessWidget {
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(22),
                     boxShadow: const [
-          BoxShadow(
-            color: Color(0x33000000),
-            blurRadius: 24,
-            offset: Offset(0, 10),
-            spreadRadius: -8,
-          ),
-        ],
+                      BoxShadow(
+                        color: Color(0x33000000),
+                        blurRadius: 24,
+                        offset: Offset(0, 10),
+                        spreadRadius: -8,
+                      ),
+                    ],
                   ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,

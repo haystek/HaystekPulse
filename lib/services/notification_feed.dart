@@ -49,11 +49,10 @@ class NotificationFeed {
     final rows = employee.isManagement
         ? _watchManagement()
         : _watchEmployee(employee);
-    return _combine2<List<AppNotification>, Set<String>,
-        List<AppNotification>>(
+    return _combine2<List<AppNotification>, Set<String>, List<AppNotification>>(
       rows,
       watchHidden(employee.uid),
-          (all, hidden) => [
+      (all, hidden) => [
         for (final n in all)
           if (!hidden.contains(n.id)) n,
       ],
@@ -65,14 +64,14 @@ class NotificationFeed {
     return _state(uid)
         .snapshots()
         .map((doc) {
-      final list = doc.data()?['hiddenNotifications'];
-      return list is List ? list.whereType<String>().toSet() : <String>{};
-    })
+          final list = doc.data()?['hiddenNotifications'];
+          return list is List ? list.whereType<String>().toSet() : <String>{};
+        })
         .transform(
-      StreamTransformer<Set<String>, Set<String>>.fromHandlers(
-        handleError: (error, stack, sink) => sink.add(<String>{}),
-      ),
-    );
+          StreamTransformer<Set<String>, Set<String>>.fromHandlers(
+            handleError: (error, stack, sink) => sink.add(<String>{}),
+          ),
+        );
   }
 
   /// Deletes notifications for this person only.
@@ -96,7 +95,10 @@ class NotificationFeed {
       final doc = await _state(uid).get();
       final list = doc.data()?['hiddenNotifications'];
       if (list is! List || list.length <= _maxHidden) return;
-      final keep = list.whereType<String>().where(stillListed.contains).toList();
+      final keep = list
+          .whereType<String>()
+          .where(stillListed.contains)
+          .toList();
       await _state(uid).set(<String, dynamic>{
         'hiddenNotifications': keep,
       }, SetOptions(merge: true));
@@ -137,7 +139,7 @@ class NotificationFeed {
                 : item.rating == null
                 ? 'Weekly Pulse feedback'
                 : 'Weekly Pulse feedback: '
-                '${PulseRating.label(item.rating!)}',
+                      '${PulseRating.label(item.rating!)}',
             body: PushSender.shorten(item.text),
             time: item.createdAt ?? fallback,
             item: item,
@@ -147,8 +149,9 @@ class NotificationFeed {
   }
 
   Stream<List<AppNotification>> _watchEmployee(Employee employee) {
-    final replies =
-    FeedbackService.instance.watchMyFeedback(employee.uid).map((items) {
+    final replies = FeedbackService.instance.watchMyFeedback(employee.uid).map((
+      items,
+    ) {
       final fallback = DateTime.now();
       return [
         for (final item in items)
@@ -160,7 +163,7 @@ class NotificationFeed {
               title: item.status == FeedbackStatus.implemented
                   ? 'Your feedback has been implemented'
                   : 'Your feedback was updated: '
-                  '${FeedbackStatus.label(item.status)}',
+                        '${FeedbackStatus.label(item.status)}',
               body: item.hasReply
                   ? PushSender.shorten(item.managementMessage)
                   : PushSender.shorten(item.text),
@@ -176,8 +179,11 @@ class NotificationFeed {
         .snapshots()
         .asyncMap((snap) => _broadcastRows(snap, employee.uid));
 
-    return _combine2<List<AppNotification>, List<AppNotification>,
-        List<AppNotification>>(replies, broadcasts, (a, b) {
+    return _combine2<
+      List<AppNotification>,
+      List<AppNotification>,
+      List<AppNotification>
+    >(replies, broadcasts, (a, b) {
       final all = [...a, ...b]..sort((x, y) => y.time.compareTo(x.time));
       return all.take(_maxRows).toList();
     });
@@ -191,9 +197,9 @@ class NotificationFeed {
 
   /// A reminder is listed only for a week this employee did not answer.
   Future<List<AppNotification>> _broadcastRows(
-      QuerySnapshot<Map<String, dynamic>> snap,
-      String uid,
-      ) async {
+    QuerySnapshot<Map<String, dynamic>> snap,
+    String uid,
+  ) async {
     final rows = <AppNotification>[];
     final fallback = DateTime.now();
     for (final doc in snap.docs) {
@@ -279,10 +285,10 @@ class NotificationFeed {
 /// Emits a combined value whenever either stream changes, once both
 /// have produced at least one value.
 Stream<R> _combine2<A, B, R>(
-    Stream<A> a,
-    Stream<B> b,
-    R Function(A, B) combine,
-    ) {
+  Stream<A> a,
+  Stream<B> b,
+  R Function(A, B) combine,
+) {
   late final StreamController<R> controller;
   StreamSubscription<A>? subA;
   StreamSubscription<B>? subB;
@@ -299,22 +305,16 @@ Stream<R> _combine2<A, B, R>(
 
   controller = StreamController<R>(
     onListen: () {
-      subA = a.listen(
-            (value) {
-          lastA = value;
-          hasA = true;
-          emit();
-        },
-        onError: controller.addError,
-      );
-      subB = b.listen(
-            (value) {
-          lastB = value;
-          hasB = true;
-          emit();
-        },
-        onError: controller.addError,
-      );
+      subA = a.listen((value) {
+        lastA = value;
+        hasA = true;
+        emit();
+      }, onError: controller.addError);
+      subB = b.listen((value) {
+        lastB = value;
+        hasB = true;
+        emit();
+      }, onError: controller.addError);
     },
     onCancel: () async {
       await subA?.cancel();

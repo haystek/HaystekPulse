@@ -26,11 +26,11 @@ class AppColors {
 /// Bricolage Grotesque for headings and numbers. Body text is Figtree
 /// (set in the theme below).
 TextStyle heading(
-    double size, {
-      Color color = AppColors.ink,
-      FontWeight weight = FontWeight.w600,
-      double height = 1.15,
-    }) {
+  double size, {
+  Color color = AppColors.ink,
+  FontWeight weight = FontWeight.w600,
+  double height = 1.15,
+}) {
   return GoogleFonts.bricolageGrotesque(
     fontSize: size,
     fontWeight: weight,
@@ -52,10 +52,9 @@ ThemeData buildAppTheme() {
   );
 
   final base = ThemeData(useMaterial3: true, colorScheme: scheme);
-  final textTheme = GoogleFonts.figtreeTextTheme(base.textTheme).apply(
-    bodyColor: AppColors.ink,
-    displayColor: AppColors.ink,
-  );
+  final textTheme = GoogleFonts.figtreeTextTheme(
+    base.textTheme,
+  ).apply(bodyColor: AppColors.ink, displayColor: AppColors.ink);
 
   OutlineInputBorder inputBorder(Color color, double width) {
     return OutlineInputBorder(

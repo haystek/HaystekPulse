@@ -52,9 +52,10 @@ class DeviceId {
       // Not readable (rare). A new one is made below.
     }
     final r = Random.secure();
-    final id = List<int>.generate(16, (_) => r.nextInt(256))
-        .map((b) => b.toRadixString(16).padLeft(2, '0'))
-        .join();
+    final id = List<int>.generate(
+      16,
+      (_) => r.nextInt(256),
+    ).map((b) => b.toRadixString(16).padLeft(2, '0')).join();
     try {
       await _store.write(key: _key, value: id);
     } catch (e) {

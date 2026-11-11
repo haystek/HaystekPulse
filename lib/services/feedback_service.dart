@@ -526,7 +526,6 @@ class ThreadEntry {
       status: d['status'] as String?,
       at: (d['createdAt'] as Timestamp?)?.toDate(),
       pending: doc.metadata.hasPendingWrites,
-
     );
   }
 }

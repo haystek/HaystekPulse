@@ -58,8 +58,9 @@ class FeedbackItem {
       text: TextCrypto.decrypt((data['text'] ?? '') as String),
       anonymous: (data['anonymous'] ?? false) as bool,
       status: (data['status'] ?? FeedbackStatus.newItem) as String,
-      managementMessage:
-      TextCrypto.decrypt((data['managementMessage'] ?? '') as String),
+      managementMessage: TextCrypto.decrypt(
+        (data['managementMessage'] ?? '') as String,
+      ),
       authorName: data['authorName'] as String?,
       authorEmployeeId: data['authorEmployeeId'] as String?,
       rating: data['rating'] as String?,

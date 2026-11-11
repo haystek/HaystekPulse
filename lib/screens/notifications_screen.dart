@@ -12,17 +12,16 @@ import 'weekly_pulse_screen.dart';
 
 /// One font for this screen: Inter.
 TextStyle _inter(
-    double size, {
-      FontWeight weight = FontWeight.w400,
-      Color color = AppColors.ink,
-      double? height,
-    }) =>
-    GoogleFonts.plusJakartaSans(
-      fontSize: size,
-      fontWeight: weight,
-      color: color,
-      height: height,
-    );
+  double size, {
+  FontWeight weight = FontWeight.w400,
+  Color color = AppColors.ink,
+  double? height,
+}) => GoogleFonts.plusJakartaSans(
+  fontSize: size,
+  fontWeight: weight,
+  color: color,
+  height: height,
+);
 
 const Color _soft = Color(0xFF8E97AB);
 
@@ -155,9 +154,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         final item = n.item;
         if (item != null) screen = FeedbackDetailScreen(item: item);
       case AppNotificationKind.feedbackReply:
-      // Open that one suggestion or comment in the bottom sheet, with
-      // the reply. If it is not known, open My Feedback on the right
-      // tab (Weekly Pulse comments on the Weekly Pulse tab).
+        // Open that one suggestion or comment in the bottom sheet, with
+        // the reply. If it is not known, open My Feedback on the right
+        // tab (Weekly Pulse comments on the Weekly Pulse tab).
         final item = n.item;
         if (item != null) {
           showMyFeedbackSheet(context, item);
@@ -177,9 +176,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         );
       return;
     }
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => target),
-    );
+    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => target));
   }
 
   Future<void> _delete(AppNotification n) async {
@@ -209,7 +206,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         title: const Text('Delete all notifications?'),
         content: const Text(
           'They will be removed from your list on all your phones. '
-              'The feedback and replies themselves are not deleted.',
+          'The feedback and replies themselves are not deleted.',
         ),
         actions: [
           TextButton(
@@ -431,7 +428,6 @@ class _TitlePill extends StatelessWidget {
   }
 }
 
-
 /// A small blue tip at the top that explains the swipes.
 class _Tip extends StatelessWidget {
   const _Tip({required this.onClose});
@@ -471,10 +467,7 @@ class _Tip extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Quick tip',
-                  style: _inter(14, weight: FontWeight.w600),
-                ),
+                Text('Quick tip', style: _inter(14, weight: FontWeight.w600)),
                 line(
                   Icons.touch_app_outlined,
                   AppColors.blue,
@@ -688,8 +681,18 @@ class _NotificationRow extends StatelessWidget {
     if (days == 0) return '${diff.inHours} h ago';
     if (days == 1) return 'Yesterday, $time';
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return '${d.day} ${months[d.month - 1]}, $time';
   }

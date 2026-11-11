@@ -12,13 +12,12 @@ TextStyle _t(
   FontWeight weight = FontWeight.w400,
   Color color = AppColors.ink,
   double? height,
-}) =>
-    GoogleFonts.plusJakartaSans(
-      fontSize: size,
-      fontWeight: weight,
-      color: color,
-      height: height,
-    );
+}) => GoogleFonts.plusJakartaSans(
+  fontSize: size,
+  fontWeight: weight,
+  color: color,
+  height: height,
+);
 
 const Color _soft = Color(0xFF8E97AB);
 const Color _line = Color(0xFFE3E8F1);
@@ -97,7 +96,11 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
             color: Color(0xFFFDEFEC),
             shape: BoxShape.circle,
           ),
-          child: const Icon(Icons.delete_outline_rounded, color: _red, size: 28),
+          child: const Icon(
+            Icons.delete_outline_rounded,
+            color: _red,
+            size: 28,
+          ),
         ),
         title: Text(
           'Delete your account?',
@@ -107,7 +110,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
         content: Text(
           _codeAccount
               ? 'Your account and personal code will be deleted for good. '
-                  'You can’t get them back.'
+                    'You can’t get them back.'
               : 'Your account will be deleted for good. You can’t get it back.',
           textAlign: TextAlign.center,
           style: _t(14.5, color: AppColors.muted, height: 1.45),
@@ -221,7 +224,10 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
               controller: _scroll,
               padding: const EdgeInsets.fromLTRB(22, 4, 22, 28),
               children: [
-                Text('Delete your account?', style: _t(24, weight: FontWeight.w500)),
+                Text(
+                  'Delete your account?',
+                  style: _t(24, weight: FontWeight.w500),
+                ),
                 const SizedBox(height: 6),
                 Text(
                   'Do this only when you leave Haystek. For a new phone or '
@@ -241,20 +247,31 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('You will lose', style: _t(14, weight: FontWeight.w600, color: _red)),
+                      Text(
+                        'You will lose',
+                        style: _t(14, weight: FontWeight.w600, color: _red),
+                      ),
                       if (_codeAccount)
-                        _point(Icons.key_off_outlined,
-                            'Your personal code. It will stop working.',
-                            color: _red),
-                      _point(Icons.inbox_outlined,
-                          'Your list of old messages (My Feedback).',
-                          color: _red),
-                      _point(Icons.chat_bubble_outline_rounded,
-                          'Your chats with admin. You won’t get replies anymore.',
-                          color: _red),
-                      _point(Icons.favorite_border_rounded,
-                          'Your Weekly Pulse history.',
-                          color: _red),
+                        _point(
+                          Icons.key_off_outlined,
+                          'Your personal code. It will stop working.',
+                          color: _red,
+                        ),
+                      _point(
+                        Icons.inbox_outlined,
+                        'Your list of old messages (My Feedback).',
+                        color: _red,
+                      ),
+                      _point(
+                        Icons.chat_bubble_outline_rounded,
+                        'Your chats with admin. You won’t get replies anymore.',
+                        color: _red,
+                      ),
+                      _point(
+                        Icons.favorite_border_rounded,
+                        'Your Weekly Pulse history.',
+                        color: _red,
+                      ),
                     ],
                   ),
                 ),
@@ -270,11 +287,16 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('What stays', style: _t(14, weight: FontWeight.w600)),
-                      _point(Icons.lock_outline_rounded,
-                          'Messages you sent stay with admin, without your name. '
-                          'Nobody can link them to you.',
-                          color: AppColors.blue),
+                      Text(
+                        'What stays',
+                        style: _t(14, weight: FontWeight.w600),
+                      ),
+                      _point(
+                        Icons.lock_outline_rounded,
+                        'Messages you sent stay with admin, without your name. '
+                        'Nobody can link them to you.',
+                        color: AppColors.blue,
+                      ),
                     ],
                   ),
                 ),
@@ -292,7 +314,9 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                     onChanged: (_) => setState(() => _error = null),
                     style: _t(15.5),
                     decoration: InputDecoration(
-                      labelText: _codeAccount ? 'Your personal code' : 'Your password',
+                      labelText: _codeAccount
+                          ? 'Your personal code'
+                          : 'Your password',
                       hintText: _codeAccount ? 'XXXXX-XXXXX' : null,
                     ),
                   ),

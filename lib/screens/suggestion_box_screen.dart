@@ -18,28 +18,28 @@ const _soft = Color(0xFF8E97AB);
 
 /// Inter with a chosen size, weight and colour.
 TextStyle _t(
-    double size, {
-      FontWeight weight = FontWeight.w400,
-      Color color = AppColors.ink,
-      double? height,
-      double? letterSpacing,
-    }) =>
-    GoogleFonts.plusJakartaSans(
-      fontSize: size,
-      fontWeight: weight,
-      color: color,
-      height: height,
-      letterSpacing: letterSpacing,
-    );
+  double size, {
+  FontWeight weight = FontWeight.w400,
+  Color color = AppColors.ink,
+  double? height,
+  double? letterSpacing,
+}) => GoogleFonts.plusJakartaSans(
+  fontSize: size,
+  fontWeight: weight,
+  color: color,
+  height: height,
+  letterSpacing: letterSpacing,
+);
 
 /// Inter for titles on this screen (same as the home screen).
-TextStyle _title(double size, {Color color = AppColors.ink}) => GoogleFonts.plusJakartaSans(
-  fontSize: size,
-  fontWeight: FontWeight.w800,
-  color: color,
-  letterSpacing: -0.8,
-  height: 1.15,
-);
+TextStyle _title(double size, {Color color = AppColors.ink}) =>
+    GoogleFonts.plusJakartaSans(
+      fontSize: size,
+      fontWeight: FontWeight.w800,
+      color: color,
+      letterSpacing: -0.8,
+      height: 1.15,
+    );
 
 /// Suggestion Box ("Clean" design):
 /// - back arrow on the left, "Suggestion Box" pill on the right,
@@ -157,10 +157,10 @@ class _SuggestionBoxScreenState extends State<SuggestionBoxScreen>
     } catch (error) {
       if (!mounted) return;
       setState(
-            () => _error = error is SendError
+        () => _error = error is SendError
             ? error.message
             : 'Could not send. Please check your internet connection '
-            'and try again.',
+                  'and try again.',
       );
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -218,9 +218,9 @@ class _SuggestionBoxScreenState extends State<SuggestionBoxScreen>
                         child: typing
                             ? const SizedBox(width: double.infinity)
                             : Padding(
-                          padding: const EdgeInsets.only(bottom: 18),
-                          child: _header(),
-                        ),
+                                padding: const EdgeInsets.only(bottom: 18),
+                                child: _header(),
+                              ),
                       ),
                       Text(
                         'YOUR MESSAGE',
@@ -291,13 +291,14 @@ class _SuggestionBoxScreenState extends State<SuggestionBoxScreen>
                           boxShadow: _empty || _busy
                               ? null
                               : [
-                            BoxShadow(
-                              color:
-                              AppColors.blue.withValues(alpha: 0.28),
-                              blurRadius: 20,
-                              offset: const Offset(0, 8),
-                            ),
-                          ],
+                                  BoxShadow(
+                                    color: AppColors.blue.withValues(
+                                      alpha: 0.28,
+                                    ),
+                                    blurRadius: 20,
+                                    offset: const Offset(0, 8),
+                                  ),
+                                ],
                         ),
                         child: FilledButton(
                           onPressed: _busy || _empty ? null : _submit,
@@ -312,23 +313,21 @@ class _SuggestionBoxScreenState extends State<SuggestionBoxScreen>
                           ),
                           child: _busy
                               ? const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              SizedBox(
-                                height: 18,
-                                width: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              SizedBox(width: 10),
-                              Text('Sending…'),
-                            ],
-                          )
-                              : Text(
-                            'Send suggestion',
-                          ),
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    SizedBox(
+                                      height: 18,
+                                      width: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    SizedBox(width: 10),
+                                    Text('Sending…'),
+                                  ],
+                                )
+                              : Text('Send suggestion'),
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -363,7 +362,7 @@ class _SuggestionBoxScreenState extends State<SuggestionBoxScreen>
         const SizedBox(height: 8),
         Text(
           'Ideas, concerns, requests, anything that would make the office '
-              'better.',
+          'better.',
           style: _t(15, color: AppColors.muted, height: 1.45),
         ),
       ],
@@ -380,10 +379,7 @@ class _SuggestionBoxScreenState extends State<SuggestionBoxScreen>
       decoration: BoxDecoration(
         color: focused ? Colors.white : _panel,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: focused ? AppColors.blue : _line,
-          width: 1.5,
-        ),
+        border: Border.all(color: focused ? AppColors.blue : _line, width: 1.5),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -437,9 +433,9 @@ class _SuggestionBoxScreenState extends State<SuggestionBoxScreen>
     return Align(
       alignment: Alignment.centerLeft,
       child: TextButton.icon(
-        onPressed: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(builder: (_) => const HelpScreen()),
-        ),
+        onPressed: () => Navigator.of(
+          context,
+        ).push(MaterialPageRoute<void>(builder: (_) => const HelpScreen())),
         icon: const Icon(Icons.help_outline_rounded, size: 16),
         label: const Text('How is my name hidden?'),
         style: TextButton.styleFrom(
@@ -450,7 +446,6 @@ class _SuggestionBoxScreenState extends State<SuggestionBoxScreen>
       ),
     );
   }
-
 
   Widget _buildDone(BuildContext context) {
     return SafeArea(
@@ -480,7 +475,7 @@ class _SuggestionBoxScreenState extends State<SuggestionBoxScreen>
                 Text(
                   _anonymous
                       ? 'Thank you. It was sent without your name. '
-                      'You can follow it in My Feedback.'
+                            'You can follow it in My Feedback.'
                       : 'Thank you. You can follow it in My Feedback.',
                   textAlign: TextAlign.center,
                   style: _t(15.5, color: AppColors.muted, height: 1.4),

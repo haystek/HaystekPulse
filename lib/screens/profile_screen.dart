@@ -1184,7 +1184,6 @@ class _CodeProfileState extends State<_CodeProfile> {
                             style: _s(13, c: AppColors.muted, h: 1.45),
                           )
                         else
-
                           Row(
                             children: [
                               Expanded(

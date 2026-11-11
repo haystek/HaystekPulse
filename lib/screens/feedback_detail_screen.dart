@@ -16,7 +16,9 @@ import '../services/notification_service.dart';
 Widget _withInter(BuildContext context, Widget child) {
   final t = Theme.of(context);
   return Theme(
-    data: t.copyWith(textTheme: GoogleFonts.plusJakartaSansTextTheme(t.textTheme)),
+    data: t.copyWith(
+      textTheme: GoogleFonts.plusJakartaSansTextTheme(t.textTheme),
+    ),
     child: child,
   );
 }
@@ -163,10 +165,10 @@ class _FeedbackDetailScreenState extends State<FeedbackDetailScreen> {
   }
 
   void _openBroadcast() => Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (_) => NewBroadcastScreen(quote: _item.text),
-        ),
-      );
+    MaterialPageRoute<void>(
+      builder: (_) => NewBroadcastScreen(quote: _item.text),
+    ),
+  );
 
   /// "Show older messages": load 50 more, with a small loader on top.
   void _showOlder() {
@@ -414,7 +416,12 @@ class _ShareDialogState extends State<_ShareDialog> {
     FontWeight w = FontWeight.w400,
     Color c = AppColors.ink,
     double? h,
-  }) => GoogleFonts.plusJakartaSans(fontSize: size, fontWeight: w, color: c, height: h);
+  }) => GoogleFonts.plusJakartaSans(
+    fontSize: size,
+    fontWeight: w,
+    color: c,
+    height: h,
+  );
 
   void _choose(bool everyone) {
     if (_busy || _statusSaved || everyone == _everyone) return;

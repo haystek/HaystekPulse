@@ -33,7 +33,10 @@ class TypedNameField extends StatelessWidget {
       textCapitalization: TextCapitalization.words,
       autocorrect: false,
       onChanged: onChanged,
-      style: GoogleFonts.plusJakartaSans(fontSize: compact ? 14 : 15, color: AppColors.ink),
+      style: GoogleFonts.plusJakartaSans(
+        fontSize: compact ? 14 : 15,
+        color: AppColors.ink,
+      ),
       decoration: InputDecoration(
         isDense: true,
         counterText: '',
@@ -42,11 +45,18 @@ class TypedNameField extends StatelessWidget {
         helperText: compact
             ? null
             : 'Sent only with this message. Admin sees it as “name typed by '
-                'sender”.',
+                  'sender”.',
         helperMaxLines: 2,
-        helperStyle: GoogleFonts.plusJakartaSans(fontSize: 12, color: const Color(0xFF8E97AB)),
+        helperStyle: GoogleFonts.plusJakartaSans(
+          fontSize: 12,
+          color: const Color(0xFF8E97AB),
+        ),
         errorText: error,
-        prefixIcon: const Icon(Icons.person_outline, size: 20, color: Color(0xFF8E97AB)),
+        prefixIcon: const Icon(
+          Icons.person_outline,
+          size: 20,
+          color: Color(0xFF8E97AB),
+        ),
         contentPadding: EdgeInsets.symmetric(
           horizontal: 14,
           vertical: compact ? 10 : 14,
@@ -169,7 +179,10 @@ class SentAsLine extends StatelessWidget {
       textAlign: TextAlign.center,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
-      style: GoogleFonts.plusJakartaSans(fontSize: 12.5, color: const Color(0xFF8E97AB)),
+      style: GoogleFonts.plusJakartaSans(
+        fontSize: 12.5,
+        color: const Color(0xFF8E97AB),
+      ),
     );
   }
 }

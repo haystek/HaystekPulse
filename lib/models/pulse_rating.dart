@@ -10,8 +10,7 @@ class PulseRating {
   static const List<String> all = [great, good, okay, difficult];
 
   /// Okay and Difficult ask one more question. Great and Good do not.
-  static bool needsText(String rating) =>
-      rating == okay || rating == difficult;
+  static bool needsText(String rating) => rating == okay || rating == difficult;
 
   static String label(String rating) {
     switch (rating) {

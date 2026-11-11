@@ -10,7 +10,13 @@ import '../theme/app_theme.dart';
 import '../widgets/ui.dart';
 import 'typed_name_field.dart';
 import 'feedback_thread_screen.dart'
-    show ThreadComposer, ThreadTitlePill, keepLastInView, threadDate, threadSoft, threadText;
+    show
+        ThreadComposer,
+        ThreadTitlePill,
+        keepLastInView,
+        threadDate,
+        threadSoft,
+        threadText;
 
 const Color _line = Color(0xFFE3E8F1);
 
@@ -21,7 +27,8 @@ String _when(DateTime? d) {
   final today = DateTime(now.year, now.month, now.day);
   final day = DateTime(d.year, d.month, d.day);
   final h = d.hour % 12 == 0 ? 12 : d.hour % 12;
-  final time = '$h:${d.minute.toString().padLeft(2, '0')} ${d.hour < 12 ? 'AM' : 'PM'}';
+  final time =
+      '$h:${d.minute.toString().padLeft(2, '0')} ${d.hour < 12 ? 'AM' : 'PM'}';
   final diff = today.difference(day).inDays;
   if (diff == 0) return 'Today, $time';
   if (diff == 1) return 'Yesterday, $time';
@@ -31,7 +38,9 @@ String _when(DateTime? d) {
 Widget _withInter(BuildContext context, Widget child) {
   final t = Theme.of(context);
   return Theme(
-    data: t.copyWith(textTheme: GoogleFonts.plusJakartaSansTextTheme(t.textTheme)),
+    data: t.copyWith(
+      textTheme: GoogleFonts.plusJakartaSansTextTheme(t.textTheme),
+    ),
     child: child,
   );
 }
@@ -94,8 +103,8 @@ class BroadcastList extends StatefulWidget {
 }
 
 class _BroadcastListState extends State<BroadcastList> {
-  late final Stream<List<Broadcast>> _stream =
-      BroadcastService.instance.watchAll();
+  late final Stream<List<Broadcast>> _stream = BroadcastService.instance
+      .watchAll();
 
   void _open(Broadcast b) {
     Navigator.of(context).push(
@@ -122,8 +131,10 @@ class _BroadcastListState extends State<BroadcastList> {
             // opens New broadcast.
             Text('Broadcast', style: threadText(24, weight: FontWeight.w600)),
             const SizedBox(height: 2),
-            Text('Updates you sent to everyone',
-                style: threadText(13.5, color: threadSoft)),
+            Text(
+              'Updates you sent to everyone',
+              style: threadText(13.5, color: threadSoft),
+            ),
             const SizedBox(height: 14),
             const _ShareBox(),
             const SizedBox(height: 14),
@@ -148,9 +159,7 @@ class _BroadcastListState extends State<BroadcastList> {
             ),
           );
         } else if (items.isEmpty) {
-          children.add(
-            _BroadcastEmpty(admin: admin),
-          );
+          children.add(_BroadcastEmpty(admin: admin));
         } else {
           for (final b in items) {
             children
@@ -167,13 +176,13 @@ class _BroadcastListState extends State<BroadcastList> {
   }
 
   Widget _note(String text) => Padding(
-        padding: const EdgeInsets.only(top: 50),
-        child: Text(
-          text,
-          textAlign: TextAlign.center,
-          style: threadText(14.5, color: threadSoft, height: 1.45),
-        ),
-      );
+    padding: const EdgeInsets.only(top: 50),
+    child: Text(
+      text,
+      textAlign: TextAlign.center,
+      style: threadText(14.5, color: threadSoft, height: 1.45),
+    ),
+  );
 }
 
 /// Admin: "Share an update with everyone…", like a post box. Tap to write.
@@ -201,8 +210,11 @@ class _ShareBox extends StatelessWidget {
                   color: AppColors.blue,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.campaign_outlined,
-                    size: 19, color: Colors.white),
+                child: const Icon(
+                  Icons.campaign_outlined,
+                  size: 19,
+                  color: Colors.white,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -219,8 +231,11 @@ class _ShareBox extends StatelessWidget {
                   shape: BoxShape.circle,
                   border: Border.all(color: _line),
                 ),
-                child: const Icon(Icons.edit_outlined,
-                    size: 16, color: AppColors.blue),
+                child: const Icon(
+                  Icons.edit_outlined,
+                  size: 16,
+                  color: AppColors.blue,
+                ),
               ),
             ],
           ),
@@ -277,7 +292,11 @@ class _Card extends StatelessWidget {
                   b.body,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: threadText(14, color: const Color(0xFF344054), height: 1.4),
+                  style: threadText(
+                    14,
+                    color: const Color(0xFF344054),
+                    height: 1.4,
+                  ),
                 ),
               ],
               const SizedBox(height: 8),
@@ -285,8 +304,8 @@ class _Card extends StatelessWidget {
                 count == 0
                     ? 'Be the first to comment'
                     : count == 1
-                        ? '💬 1 comment'
-                        : '💬 $count comments',
+                    ? '💬 1 comment'
+                    : '💬 $count comments',
                 style: threadText(12.5, color: threadSoft),
               ),
             ],
@@ -344,10 +363,12 @@ class BroadcastDetailScreen extends StatefulWidget {
 class _BroadcastDetailScreenState extends State<BroadcastDetailScreen> {
   final _text = TextEditingController();
   final _scroll = ScrollController();
-  late final Stream<Broadcast?> _item =
-      BroadcastService.instance.watchOne(widget.broadcastId);
-  late final Stream<List<BroadcastComment>> _comments =
-      BroadcastService.instance.watchComments(widget.broadcastId);
+  late final Stream<Broadcast?> _item = BroadcastService.instance.watchOne(
+    widget.broadcastId,
+  );
+  late final Stream<List<BroadcastComment>> _comments = BroadcastService
+      .instance
+      .watchComments(widget.broadcastId);
 
   /// Employees: hide the name by default.
   bool _showName = false;
@@ -424,11 +445,13 @@ class _BroadcastDetailScreenState extends State<BroadcastDetailScreen> {
             name: typed ? _name.text.trim() : null,
           )
           .catchError((Object e) {
-        messenger.showSnackBar(
-          const SnackBar(content: Text('Could not send. Please try again.')),
-        );
-        if (mounted && _text.text.isEmpty) _text.text = text;
-      }),
+            messenger.showSnackBar(
+              const SnackBar(
+                content: Text('Could not send. Please try again.'),
+              ),
+            );
+            if (mounted && _text.text.isEmpty) _text.text = text;
+          }),
     );
   }
 
@@ -447,7 +470,9 @@ class _BroadcastDetailScreenState extends State<BroadcastDetailScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(c, true),
-            style: TextButton.styleFrom(foregroundColor: const Color(0xFFD92D20)),
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFFD92D20),
+            ),
             child: const Text('Delete'),
           ),
         ],
@@ -485,7 +510,10 @@ class _BroadcastDetailScreenState extends State<BroadcastDetailScreen> {
               IconButton(
                 tooltip: 'Delete',
                 onPressed: _delete,
-                icon: const Icon(Icons.delete_outline_rounded, color: threadSoft),
+                icon: const Icon(
+                  Icons.delete_outline_rounded,
+                  color: threadSoft,
+                ),
               ),
             const ThreadTitlePill('Broadcast', icon: Icons.campaign_outlined),
           ],
@@ -499,8 +527,10 @@ class _BroadcastDetailScreenState extends State<BroadcastDetailScreen> {
               return Center(
                 child: itemSnap.connectionState == ConnectionState.waiting
                     ? const CircularProgressIndicator(color: AppColors.blue)
-                    : Text('This broadcast was removed.',
-                        style: threadText(14.5, color: threadSoft)),
+                    : Text(
+                        'This broadcast was removed.',
+                        style: threadText(14.5, color: threadSoft),
+                      ),
               );
             }
             return Column(
@@ -530,8 +560,11 @@ class _BroadcastDetailScreenState extends State<BroadcastDetailScreen> {
                               padding: const EdgeInsets.only(left: 4),
                               child: Text(
                                 'No comments yet. Share what you think.',
-                                style: threadText(13.5,
-                                    color: AppColors.muted, height: 1.45),
+                                style: threadText(
+                                  13.5,
+                                  color: AppColors.muted,
+                                  height: 1.45,
+                                ),
                               ),
                             ),
                           for (final c in comments) _CommentBubble(c: c),
@@ -540,11 +573,12 @@ class _BroadcastDetailScreenState extends State<BroadcastDetailScreen> {
                     },
                   ),
                 ),
-                if (!_admin) _NameChoice(
-                  show: _showName,
-                  name: widget.employee.name,
-                  onChanged: (v) => setState(() => _showName = v),
-                ),
+                if (!_admin)
+                  _NameChoice(
+                    show: _showName,
+                    name: widget.employee.name,
+                    onChanged: (v) => setState(() => _showName = v),
+                  ),
                 if (!_admin && _showName && _needsName)
                   Container(
                     color: Colors.white,
@@ -615,7 +649,11 @@ class _Header extends StatelessWidget {
                   const SizedBox(height: 8),
                   SelectableText(
                     b.body,
-                    style: threadText(14.5, color: const Color(0xFF344054), height: 1.45),
+                    style: threadText(
+                      14.5,
+                      color: const Color(0xFF344054),
+                      height: 1.45,
+                    ),
                   ),
                 ],
               ],
@@ -638,7 +676,9 @@ class _CommentBubble extends StatelessWidget {
     final who = c.admin ? 'Admin' : (c.name ?? '🔒 Name hidden');
     final time = c.pending
         ? 'Sending…'
-        : (c.createdAt == null ? '' : threadDate(c.createdAt!).split(', ').last);
+        : (c.createdAt == null
+              ? ''
+              : threadDate(c.createdAt!).split(', ').last);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Align(
@@ -786,23 +826,23 @@ class _NewBroadcastScreenState extends State<NewBroadcastScreen> {
   @override
   Widget build(BuildContext context) {
     OutlineInputBorder border(Color c) => OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: c, width: 1.5),
-        );
+      borderRadius: BorderRadius.circular(14),
+      borderSide: BorderSide(color: c, width: 1.5),
+    );
     InputDecoration deco(String hint) => InputDecoration(
-          hintText: hint,
-          hintStyle: threadText(15, color: const Color(0xFF9AA3B8)),
-          contentPadding: const EdgeInsets.all(14),
-          border: border(_line),
-          enabledBorder: border(_line),
-          focusedBorder: border(AppColors.blue),
-          errorBorder: border(Theme.of(context).colorScheme.error),
-          focusedErrorBorder: border(Theme.of(context).colorScheme.error),
-        );
+      hintText: hint,
+      hintStyle: threadText(15, color: const Color(0xFF9AA3B8)),
+      contentPadding: const EdgeInsets.all(14),
+      border: border(_line),
+      enabledBorder: border(_line),
+      focusedBorder: border(AppColors.blue),
+      errorBorder: border(Theme.of(context).colorScheme.error),
+      focusedErrorBorder: border(Theme.of(context).colorScheme.error),
+    );
     Widget label(String s) => Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 6),
-          child: Text(s, style: threadText(13, color: const Color(0xFF5F6A84))),
-        );
+      padding: const EdgeInsets.only(left: 4, bottom: 6),
+      child: Text(s, style: threadText(13, color: const Color(0xFF5F6A84))),
+    );
 
     return _withInter(
       context,
@@ -832,8 +872,9 @@ class _NewBroadcastScreenState extends State<NewBroadcastScreen> {
                       maxLength: 120,
                       textCapitalization: TextCapitalization.sentences,
                       style: threadText(15),
-                      decoration: deco('For example: Air dryer added on 5th floor')
-                          .copyWith(counterText: ''),
+                      decoration: deco(
+                        'For example: Air dryer added on 5th floor',
+                      ).copyWith(counterText: ''),
                       validator: (v) => (v == null || v.trim().isEmpty)
                           ? 'Write a short title'
                           : null,
@@ -855,16 +896,22 @@ class _NewBroadcastScreenState extends State<NewBroadcastScreen> {
                                 '“${_quote!.trim()}”',
                                 maxLines: 4,
                                 overflow: TextOverflow.ellipsis,
-                                style: threadText(13.5,
-                                    color: const Color(0xFF5F6A84), height: 1.4),
+                                style: threadText(
+                                  13.5,
+                                  color: const Color(0xFF5F6A84),
+                                  height: 1.4,
+                                ),
                               ),
                             ),
                             IconButton(
                               tooltip: 'Remove',
                               visualDensity: VisualDensity.compact,
                               onPressed: () => setState(() => _quote = null),
-                              icon: const Icon(Icons.close_rounded,
-                                  size: 18, color: threadSoft),
+                              icon: const Icon(
+                                Icons.close_rounded,
+                                size: 18,
+                                color: threadSoft,
+                              ),
                             ),
                           ],
                         ),
@@ -883,9 +930,13 @@ class _NewBroadcastScreenState extends State<NewBroadcastScreen> {
                     ),
                     if (_error != null) ...[
                       const SizedBox(height: 6),
-                      Text(_error!,
-                          style: threadText(13.5,
-                              color: Theme.of(context).colorScheme.error)),
+                      Text(
+                        _error!,
+                        style: threadText(
+                          13.5,
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
                     ],
                   ],
                 ),
@@ -908,7 +959,10 @@ class _NewBroadcastScreenState extends State<NewBroadcastScreen> {
                             backgroundColor: AppColors.blue,
                             minimumSize: const Size.fromHeight(52),
                             shape: const StadiumBorder(),
-                            textStyle: threadText(15.5, weight: FontWeight.w500),
+                            textStyle: threadText(
+                              15.5,
+                              weight: FontWeight.w500,
+                            ),
                           ),
                           child: _busy
                               ? const SizedBox(
@@ -922,8 +976,10 @@ class _NewBroadcastScreenState extends State<NewBroadcastScreen> {
                               : const Text('Send to everyone'),
                         ),
                         const SizedBox(height: 6),
-                        Text('Everyone gets a notification',
-                            style: threadText(12, color: threadSoft)),
+                        Text(
+                          'Everyone gets a notification',
+                          style: threadText(12, color: threadSoft),
+                        ),
                       ],
                     ),
                   ),
@@ -947,7 +1003,12 @@ class _BroadcastEmpty extends StatelessWidget {
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     return Padding(
-      padding: EdgeInsets.fromLTRB(32, MediaQuery.sizeOf(context).height * 0.22, 32, 32),
+      padding: EdgeInsets.fromLTRB(
+        32,
+        MediaQuery.sizeOf(context).height * 0.22,
+        32,
+        32,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -987,9 +1048,9 @@ class _BroadcastEmpty extends StatelessWidget {
           Text(
             admin
                 ? 'Share an update with everyone, for example what '
-                    'changed after a suggestion.'
+                      'changed after a suggestion.'
                 : 'When admin shares news or an update for everyone, '
-                    'it will show here. You will get a notification too.',
+                      'it will show here. You will get a notification too.',
             textAlign: TextAlign.center,
             style: text.bodyMedium?.copyWith(
               fontSize: 14,

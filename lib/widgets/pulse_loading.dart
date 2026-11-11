@@ -33,12 +33,18 @@ class PulseLoadingScreen extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(18),
                   ),
-                  child: Image.asset('assets/haystek_pulse_logo.png', height: 32),
+                  child: Image.asset(
+                    'assets/haystek_pulse_logo.png',
+                    height: 32,
+                  ),
                 ),
                 const SizedBox(height: 30),
                 const SizedBox(
@@ -93,9 +99,8 @@ class _HeartbeatLineState extends State<HeartbeatLine>
     return RepaintBoundary(
       child: AnimatedBuilder(
         animation: _run,
-        builder: (context, _) => CustomPaint(
-          painter: _PulsePainter(_run.value, widget.color),
-        ),
+        builder: (context, _) =>
+            CustomPaint(painter: _PulsePainter(_run.value, widget.color)),
       ),
     );
   }

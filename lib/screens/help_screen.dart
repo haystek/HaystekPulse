@@ -10,13 +10,12 @@ TextStyle _t(
   FontWeight weight = FontWeight.w400,
   Color color = AppColors.ink,
   double? height,
-}) =>
-    GoogleFonts.plusJakartaSans(
-      fontSize: size,
-      fontWeight: weight,
-      color: color,
-      height: height,
-    );
+}) => GoogleFonts.plusJakartaSans(
+  fontSize: size,
+  fontWeight: weight,
+  color: color,
+  height: height,
+);
 
 const Color _soft = Color(0xFF8E97AB);
 const Color _line = Color(0xFFE3E8F1);
@@ -44,10 +43,7 @@ const List<_Qa> _questions = [
         'If you want admin to know, choose “With my name” and type your name '
         'before you send. Your name is shown only on that one message.',
   ),
-  _Qa(
-    'Who reads my messages?',
-    'Only admins. Other employees can’t see them.',
-  ),
+  _Qa('Who reads my messages?', 'Only admins. Other employees can’t see them.'),
   _Qa(
     'Can anyone find out a message is mine?',
     'No. Messages are saved with no name and no ID. Nobody can tell which '
@@ -145,8 +141,11 @@ class HelpScreen extends StatelessWidget {
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(Icons.lock_outline_rounded,
-                            color: AppColors.blue, size: 22),
+                        const Icon(
+                          Icons.lock_outline_rounded,
+                          color: AppColors.blue,
+                          size: 22,
+                        ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
@@ -249,7 +248,9 @@ class _PrivacyLink extends StatelessWidget {
     }
     if (!ok) {
       messenger.showSnackBar(
-        const SnackBar(content: Text('Could not open the page. Please try again.')),
+        const SnackBar(
+          content: Text('Could not open the page. Please try again.'),
+        ),
       );
     }
   }
@@ -276,19 +277,26 @@ class _PrivacyLink extends StatelessWidget {
                   color: AppColors.blueTint,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.description_outlined,
-                    size: 20, color: AppColors.blue),
+                child: const Icon(
+                  Icons.description_outlined,
+                  size: 20,
+                  color: AppColors.blue,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Privacy Policy',
-                        style: _t(15, weight: FontWeight.w500)),
+                    Text(
+                      'Privacy Policy',
+                      style: _t(15, weight: FontWeight.w500),
+                    ),
                     const SizedBox(height: 2),
-                    Text('Read the full policy',
-                        style: _t(13, color: AppColors.muted)),
+                    Text(
+                      'Read the full policy',
+                      style: _t(13, color: AppColors.muted),
+                    ),
                   ],
                 ),
               ),
@@ -325,8 +333,11 @@ class _TitlePill extends StatelessWidget {
                 color: AppColors.blue,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.shield_outlined,
-                  size: 17, color: Colors.white),
+              child: const Icon(
+                Icons.shield_outlined,
+                size: 17,
+                color: Colors.white,
+              ),
             ),
             const SizedBox(width: 9),
             Text('Help & Privacy', style: _t(16)),

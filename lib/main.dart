@@ -11,6 +11,7 @@ import 'services/error_log.dart';
 import 'services/notification_service.dart';
 import 'theme/app_theme.dart';
 import 'services/schedule_service.dart';
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
@@ -23,8 +24,6 @@ Future<void> main() async {
   await ErrorLog.start();
   await ScheduleService.start();
   runApp(const HaystekApp());
-
-
 }
 
 class HaystekApp extends StatelessWidget {
@@ -42,16 +41,17 @@ class HaystekApp extends StatelessWidget {
       // Inter on every screen, whatever font style the phone uses.
       theme: base.copyWith(
         textTheme: GoogleFonts.plusJakartaSansTextTheme(base.textTheme),
-        primaryTextTheme: GoogleFonts.plusJakartaSansTextTheme(base.primaryTextTheme),
+        primaryTextTheme: GoogleFonts.plusJakartaSansTextTheme(
+          base.primaryTextTheme,
+        ),
       ),
 
       // Same text size on every phone, whatever its font size setting.
       builder: (context, child) {
-
         final page = MediaQuery(
-          data: MediaQuery.of(context).copyWith(
-            textScaler: TextScaler.noScaling,
-          ),
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: TextScaler.noScaling),
           child: child!,
         );
         // DEV build: an orange "DEV" ribbon on every screen, so a test

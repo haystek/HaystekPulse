@@ -11,6 +11,7 @@ import '../services/vault_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/ui.dart';
 import 'feedback_thread_screen.dart';
+import '../widgets/list_card.dart';
 
 /// Everything this employee has sent, in two tabs that never mix.
 /// Look: a blue switch for the two tabs, blue filter chips, and each
@@ -44,7 +45,9 @@ class MyFeedbackScreen extends StatefulWidget {
 /// Every text style here that does not name a font takes Inter from this.
 ThemeData _interTheme(BuildContext context) {
   final t = Theme.of(context);
-  return t.copyWith(textTheme: GoogleFonts.plusJakartaSansTextTheme(t.textTheme));
+  return t.copyWith(
+    textTheme: GoogleFonts.plusJakartaSansTextTheme(t.textTheme),
+  );
 }
 
 /// Inter for the few titles that set their own style.
@@ -149,12 +152,7 @@ class _MyFeedbackScreenState extends State<MyFeedbackScreen> {
       final w = c.weekId;
       if (w != null && seen.contains(w)) continue;
       out.add(
-        _Entry(
-          weekId: w,
-          rating: c.rating,
-          date: _dateOf(c),
-          comment: c,
-        ),
+        _Entry(weekId: w, rating: c.rating, date: _dateOf(c), comment: c),
       );
     }
     out.sort((a, b) => b.date.compareTo(a.date));
@@ -249,8 +247,7 @@ class _MyFeedbackScreenState extends State<MyFeedbackScreen> {
 
     final months = <DateTime>{
       for (final d in dates) DateTime(d.year, d.month, 1),
-    }.toList()
-      ..sort((a, b) => b.compareTo(a));
+    }.toList()..sort((a, b) => b.compareTo(a));
 
     await showModalBottomSheet<void>(
       context: context,
@@ -351,7 +348,8 @@ class _MyFeedbackScreenState extends State<MyFeedbackScreen> {
                 builder: (context, snap) {
                   if (snap.hasError) {
                     return const _Message(
-                      text: 'Could not load your feedback. '
+                      text:
+                          'Could not load your feedback. '
                           'Please go back and try again.',
                     );
                   }
@@ -401,8 +399,9 @@ class _MyFeedbackScreenState extends State<MyFeedbackScreen> {
                     nothingAtAll = box.isEmpty;
                     allDates = [for (final f in box) _dateOf(f)];
                   } else {
-                    final inDates =
-                    entries.where((e) => _inDatesAt(e.date)).toList();
+                    final inDates = entries
+                        .where((e) => _inDatesAt(e.date))
+                        .toList();
                     chips = [
                       _Chip(
                         label: 'All',
@@ -495,7 +494,7 @@ class _MyFeedbackScreenState extends State<MyFeedbackScreen> {
                             padding: const EdgeInsets.symmetric(horizontal: 20),
                             itemCount: chips.length,
                             separatorBuilder: (context, index) =>
-                            const SizedBox(width: 6),
+                                const SizedBox(width: 6),
                             itemBuilder: (context, i) => chips[i],
                           ),
                         ),
@@ -525,21 +524,21 @@ class _MyFeedbackScreenState extends State<MyFeedbackScreen> {
                             icon: !nothingAtAll
                                 ? Icons.filter_alt_off_outlined
                                 : (_tab == 0
-                                    ? Icons.lightbulb_outline_rounded
-                                    : Icons.monitor_heart_outlined),
+                                      ? Icons.lightbulb_outline_rounded
+                                      : Icons.monitor_heart_outlined),
                             title: !nothingAtAll
                                 ? 'Nothing matches'
                                 : (_tab == 0
-                                    ? 'No suggestions yet'
-                                    : 'No Weekly Pulse answers yet'),
+                                      ? 'No suggestions yet'
+                                      : 'No Weekly Pulse answers yet'),
                             text: !nothingAtAll
                                 ? 'Try another status or date.'
                                 : (_tab == 0
-                                    ? 'Have an idea or a problem? Tap Write on '
-                                        'the home screen. Admin will reply here.'
-                                    : 'Each week you get one quick question '
-                                        'about your week. Your answers will '
-                                        'show here.'),
+                                      ? 'Have an idea or a problem? Tap Write on '
+                                            'the home screen. Admin will reply here.'
+                                      : 'Each week you get one quick question '
+                                            'about your week. Your answers will '
+                                            'show here.'),
                           ),
                         ...list,
                         const SizedBox(height: 4),
@@ -577,19 +576,18 @@ const Color _replyFg = Color(0xFF15803D);
 
 /// Inter with a chosen size, weight and colour.
 TextStyle _t(
-    double size, {
-      FontWeight weight = FontWeight.w400,
-      Color color = AppColors.ink,
-      double? height,
-      double? letterSpacing,
-    }) =>
-    GoogleFonts.plusJakartaSans(
-      fontSize: size,
-      fontWeight: weight,
-      color: color,
-      height: height,
-      letterSpacing: letterSpacing,
-    );
+  double size, {
+  FontWeight weight = FontWeight.w400,
+  Color color = AppColors.ink,
+  double? height,
+  double? letterSpacing,
+}) => GoogleFonts.plusJakartaSans(
+  fontSize: size,
+  fontWeight: weight,
+  color: color,
+  height: height,
+  letterSpacing: letterSpacing,
+);
 
 /// Small capitals: "OCTOBER 2026", "MANAGEMENT REPLIED".
 TextStyle _caps(Color color) =>
@@ -728,10 +726,7 @@ class _Chip extends StatelessWidget {
     return Material(
       color: selected ? AppColors.blue : Colors.white,
       shape: StadiumBorder(
-        side: BorderSide(
-          color: selected ? AppColors.blue : _line,
-          width: 1.2,
-        ),
+        side: BorderSide(color: selected ? AppColors.blue : _line, width: 1.2),
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -940,21 +935,8 @@ class _SuggestionRow extends StatelessWidget {
   final FeedbackItem item;
 
   @override
-  Widget build(BuildContext context) {
-    final date = item.createdAt ?? DateTime.now();
-    return _Card(
-      icon: Icons.lightbulb_outline,
-      iconColor: AppColors.blue,
-      iconBg: AppColors.blueTint,
-      kind: 'Suggestion',
-      status: item.status,
-      title: item.text,
-      sub: '${date.day} ${_shortMonths[date.month - 1]} · '
-          '${item.anonymous ? 'Name hidden' : 'With your name'}',
-      replied: item.hasReply,
-      onTap: () => _showFeedbackSheet(context, item),
-    );
-  }
+  Widget build(BuildContext context) =>
+      FeedbackListCard(item: item, onTap: null, employeeView: true);
 }
 
 /// One Weekly Pulse week: the comment, or "You said Great" when there
@@ -972,7 +954,9 @@ class _WeekRow extends StatelessWidget {
     final name = weekId == null ? '' : PulseService.weekName(weekId);
     final week = weekId == null
         ? ''
-        : (name.isNotEmpty ? name : 'Week of ${PulseService.weekLabel(weekId)}');
+        : (name.isNotEmpty
+              ? name
+              : 'Week of ${PulseService.weekLabel(weekId)}');
     final color = rating == null ? AppColors.blue : PulseRating.color(rating);
     final said = rating == null ? '' : 'You said ${PulseRating.label(rating)}';
 
@@ -991,7 +975,9 @@ class _WeekRow extends StatelessWidget {
         week,
       ].where((x) => x.isNotEmpty).join(' · '),
       replied: comment?.hasReply ?? false,
-      onTap: comment == null ? null : () => _showFeedbackSheet(context, comment),
+      onTap: comment == null
+          ? null
+          : () => _showFeedbackSheet(context, comment),
     );
   }
 }
@@ -1140,13 +1126,33 @@ Color _moodText(String rating) {
 }
 
 const List<String> _shortMonths = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
 ];
 
 const List<String> _longMonths = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
 ];
 
 /// My Feedback, nothing here yet: icon, title and a short line.

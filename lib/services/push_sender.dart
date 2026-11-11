@@ -1,7 +1,8 @@
 import 'package:flutter/foundation.dart';
 
 import 'push_sender_stub.dart'
-    if (dart.library.io) 'push_sender_io.dart' as impl;
+    if (dart.library.io) 'push_sender_io.dart'
+    as impl;
 
 /// Sends push notifications from the app.
 ///
@@ -32,12 +33,7 @@ class PushSender {
     var delivered = false;
     for (final token in tokens) {
       final ok = await _safe(
-        () => impl.sendPush(
-          token: token,
-          title: title,
-          body: body,
-          data: data,
-        ),
+        () => impl.sendPush(token: token, title: title, body: body, data: data),
       );
       delivered = delivered || ok;
     }

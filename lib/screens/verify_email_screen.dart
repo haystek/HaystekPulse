@@ -14,13 +14,12 @@ TextStyle _t(
   FontWeight weight = FontWeight.w400,
   Color color = AppColors.ink,
   double? height,
-}) =>
-    GoogleFonts.plusJakartaSans(
-      fontSize: size,
-      fontWeight: weight,
-      color: color,
-      height: height,
-    );
+}) => GoogleFonts.plusJakartaSans(
+  fontSize: size,
+  fontWeight: weight,
+  color: color,
+  height: height,
+);
 
 /// After sign-up: "Check your email". Checks by itself every few seconds,
 /// so after tapping the link the app moves on without a tap here.
@@ -43,7 +42,10 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _poll = Timer.periodic(const Duration(seconds: 4), (_) => _check(quiet: true));
+    _poll = Timer.periodic(
+      const Duration(seconds: 4),
+      (_) => _check(quiet: true),
+    );
   }
 
   @override
@@ -66,8 +68,11 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen>
       final ok = await AuthService.instance.checkVerified();
       // When verified, AuthGate moves on by itself.
       if (!ok && !quiet && mounted) {
-        setState(() => _note = 'Not verified yet. Please tap the link in the '
-            'email first.');
+        setState(
+          () => _note =
+              'Not verified yet. Please tap the link in the '
+              'email first.',
+        );
       }
     } catch (e) {
       if (!quiet && mounted) {
@@ -81,8 +86,12 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen>
   Future<void> _resend() async {
     try {
       await AuthService.instance.resendVerification();
-      if (mounted) setState(() => _note = 'Sent again. Please check your inbox '
-          'and spam folder.');
+      if (mounted)
+        setState(
+          () => _note =
+              'Sent again. Please check your inbox '
+              'and spam folder.',
+        );
     } catch (e) {
       if (mounted) setState(() => _note = AuthService.messageFor(e));
     }
@@ -90,10 +99,11 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen>
 
   /// First name for "Almost there, Shiva."
   String get _firstName {
-    final name = (AuthService.instance.pendingName ??
-            FirebaseAuth.instance.currentUser?.displayName ??
-            '')
-        .trim();
+    final name =
+        (AuthService.instance.pendingName ??
+                FirebaseAuth.instance.currentUser?.displayName ??
+                '')
+            .trim();
     return name.isEmpty ? '' : name.split(RegExp(r'\s+')).first;
   }
 
@@ -116,7 +126,10 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Text('Step 2 of 3', style: _t(13, color: AppColors.blue)),
+                        Text(
+                          'Step 2 of 3',
+                          style: _t(13, color: AppColors.blue),
+                        ),
                         const SizedBox(height: 4),
                         Text(
                           'Check your email',
@@ -124,7 +137,9 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen>
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          first.isEmpty ? 'Almost there.' : 'Almost there, $first.',
+                          first.isEmpty
+                              ? 'Almost there.'
+                              : 'Almost there, $first.',
                           style: _t(14.5, color: AppColors.muted),
                         ),
                         const SizedBox(height: 22),
@@ -171,14 +186,21 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen>
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Icon(Icons.lightbulb_outline,
-                                  size: 17, color: Color(0xFF8A5A00)),
+                              const Icon(
+                                Icons.lightbulb_outline,
+                                size: 17,
+                                color: Color(0xFF8A5A00),
+                              ),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
                                   'The app moves on by itself once you tap '
                                   'the link.',
-                                  style: _t(13, color: const Color(0xFF8A5A00), height: 1.45),
+                                  style: _t(
+                                    13,
+                                    color: const Color(0xFF8A5A00),
+                                    height: 1.45,
+                                  ),
                                 ),
                               ),
                             ],
@@ -203,7 +225,12 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen>
                             : Container(
                                 key: ValueKey(_note),
                                 margin: const EdgeInsets.only(bottom: 12),
-                                padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                                padding: const EdgeInsets.fromLTRB(
+                                  12,
+                                  10,
+                                  12,
+                                  10,
+                                ),
                                 decoration: BoxDecoration(
                                   color: const Color(0xFFF6F8FB),
                                   borderRadius: BorderRadius.circular(14),
@@ -211,13 +238,20 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen>
                                 child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Icon(Icons.info_outline_rounded,
-                                        size: 17, color: AppColors.blue),
+                                    const Icon(
+                                      Icons.info_outline_rounded,
+                                      size: 17,
+                                      color: AppColors.blue,
+                                    ),
                                     const SizedBox(width: 8),
                                     Expanded(
                                       child: Text(
                                         _note!,
-                                        style: _t(13, color: const Color(0xFF344054), height: 1.4),
+                                        style: _t(
+                                          13,
+                                          color: const Color(0xFF344054),
+                                          height: 1.4,
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -229,8 +263,10 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen>
                         children: [
                           const _PulseDot(),
                           const SizedBox(width: 10),
-                          Text('Waiting for you to tap the link…',
-                              style: _t(13, color: const Color(0xFF5F6A84))),
+                          Text(
+                            'Waiting for you to tap the link…',
+                            style: _t(13, color: const Color(0xFF5F6A84)),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 14),
@@ -245,24 +281,41 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen>
                                   color: Colors.white,
                                 ),
                               )
-                            : Text("I've verified",
-                                style: _t(16, weight: FontWeight.w500, color: Colors.white)),
+                            : Text(
+                                "I've verified",
+                                style: _t(
+                                  16,
+                                  weight: FontWeight.w500,
+                                  color: Colors.white,
+                                ),
+                              ),
                       ),
                       const SizedBox(height: 6),
                       Row(
                         children: [
                           TextButton(
                             onPressed: _resend,
-                            child: Text('Send again', style: _t(13.5, color: AppColors.blue)),
+                            child: Text(
+                              'Send again',
+                              style: _t(13.5, color: AppColors.blue),
+                            ),
                           ),
                           const Spacer(),
-                          Text('Wrong email?', style: _t(13.5, color: const Color(0xFF8E97AB))),
+                          Text(
+                            'Wrong email?',
+                            style: _t(13.5, color: const Color(0xFF8E97AB)),
+                          ),
                           TextButton(
                             onPressed: AuthService.instance.startOver,
                             style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(horizontal: 6),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                              ),
                             ),
-                            child: Text('Start over', style: _t(13.5, color: AppColors.blue)),
+                            child: Text(
+                              'Start over',
+                              style: _t(13.5, color: AppColors.blue),
+                            ),
                           ),
                         ],
                       ),
@@ -379,18 +432,27 @@ class _Step extends StatelessWidget {
                   color: done
                       ? const Color(0xFF16A34A)
                       : now
-                          ? AppColors.blue
-                          : const Color(0xFFEDF0F6),
+                      ? AppColors.blue
+                      : const Color(0xFFEDF0F6),
                   shape: BoxShape.circle,
                   boxShadow: now
-                      ? const [BoxShadow(color: AppColors.blueTint, spreadRadius: 5)]
+                      ? const [
+                          BoxShadow(color: AppColors.blueTint, spreadRadius: 5),
+                        ]
                       : null,
                 ),
                 child: done
-                    ? const Icon(Icons.check_rounded, size: 16, color: Colors.white)
+                    ? const Icon(
+                        Icons.check_rounded,
+                        size: 16,
+                        color: Colors.white,
+                      )
                     : Text(
                         '$n',
-                        style: _t(13, color: now ? Colors.white : const Color(0xFF8E97AB)),
+                        style: _t(
+                          13,
+                          color: now ? Colors.white : const Color(0xFF8E97AB),
+                        ),
                       ),
               ),
               if (!last)
@@ -421,7 +483,10 @@ class _Step extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 2),
-                  Text(sub, style: _t(13, color: const Color(0xFF8E97AB), height: 1.4)),
+                  Text(
+                    sub,
+                    style: _t(13, color: const Color(0xFF8E97AB), height: 1.4),
+                  ),
                 ],
               ),
             ),
@@ -494,10 +559,11 @@ class _FinishProfileScreenState extends State<FinishProfileScreen> {
     final auth = AuthService.instance;
     // The name from the sign-up form, or the one saved with the login
     // (still there after the app was closed).
-    final known = (auth.pendingName ??
-            FirebaseAuth.instance.currentUser?.displayName ??
-            '')
-        .trim();
+    final known =
+        (auth.pendingName ??
+                FirebaseAuth.instance.currentUser?.displayName ??
+                '')
+            .trim();
     _name = TextEditingController(text: known);
     // Email sign-up is only for admins now (employees join with an entry
     // code), so this is always an admin account.
@@ -565,10 +631,7 @@ class _FinishProfileScreenState extends State<FinishProfileScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text(
-                      'Almost done',
-                      style: _t(22, weight: FontWeight.w600),
-                    ),
+                    Text('Almost done', style: _t(22, weight: FontWeight.w600)),
                     const SizedBox(height: 6),
                     Text(
                       'Your email is verified. Check your details and '
@@ -594,7 +657,9 @@ class _FinishProfileScreenState extends State<FinishProfileScreen> {
                         textCapitalization: TextCapitalization.characters,
                         // Admin codes are 6 letters or numbers, like HSTADM.
                         inputFormatters: [
-                          FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]')),
+                          FilteringTextInputFormatter.allow(
+                            RegExp(r'[A-Za-z0-9]'),
+                          ),
                           LengthLimitingTextInputFormatter(6),
                         ],
                         decoration: InputDecoration(
@@ -611,7 +676,8 @@ class _FinishProfileScreenState extends State<FinishProfileScreen> {
                                 setState(() => _hideCode = !_hideCode),
                           ),
                         ),
-                        validator: (v) => (_admin && (v == null || v.trim().isEmpty))
+                        validator: (v) =>
+                            (_admin && (v == null || v.trim().isEmpty))
                             ? 'Enter the admin entry code'
                             : null,
                       ),
@@ -620,8 +686,10 @@ class _FinishProfileScreenState extends State<FinishProfileScreen> {
                       const SizedBox(height: 12),
                       Text(
                         _error!,
-                        style: _t(13.5,
-                            color: Theme.of(context).colorScheme.error),
+                        style: _t(
+                          13.5,
+                          color: Theme.of(context).colorScheme.error,
+                        ),
                       ),
                     ],
                     const SizedBox(height: 22),

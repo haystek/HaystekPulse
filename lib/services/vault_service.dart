@@ -24,12 +24,12 @@ class VaultData {
   Map<String, dynamic> toJson() => {'posts': posts, 'pulse': pulse};
 
   factory VaultData.fromJson(Map<String, dynamic> j) => VaultData(
-        posts: [for (final p in (j['posts'] as List? ?? const [])) p as String],
-        pulse: {
-          for (final e in (j['pulse'] as Map? ?? const {}).entries)
-            e.key as String: e.value as String,
-        },
-      );
+    posts: [for (final p in (j['posts'] as List? ?? const [])) p as String],
+    pulse: {
+      for (final e in (j['pulse'] as Map? ?? const {}).entries)
+        e.key as String: e.value as String,
+    },
+  );
 }
 
 /// Result of opening the vault with a password.
@@ -110,7 +110,11 @@ class VaultService {
       final d = doc.data();
       if (d == null) return false;
       final list = _open(key, d['list'] as String);
-      _activate(uid, key, VaultData.fromJson(jsonDecode(list) as Map<String, dynamic>));
+      _activate(
+        uid,
+        key,
+        VaultData.fromJson(jsonDecode(list) as Map<String, dynamic>),
+      );
       return true;
     } catch (e) {
       debugPrint('[Vault] saved key not usable: $e');
@@ -133,7 +137,11 @@ class VaultService {
       await _create(uid, password);
       return VaultOpen.opened;
     }
-    final passKey = await _derive(password, d['salt'] as String, _passwordRounds);
+    final passKey = await _derive(
+      password,
+      d['salt'] as String,
+      _passwordRounds,
+    );
     final Uint8List key;
     try {
       key = _openBytes(passKey, d['byPassword'] as String);
@@ -155,8 +163,11 @@ class VaultService {
     final doc = await _ref(uid).get(const GetOptions(source: Source.server));
     final d = doc.data();
     if (d == null) return false;
-    final codeKey =
-        await _derive(normalizeCode(code), d['backupSalt'] as String, _codeRounds);
+    final codeKey = await _derive(
+      normalizeCode(code),
+      d['backupSalt'] as String,
+      _codeRounds,
+    );
     final Uint8List key;
     try {
       key = _openBytes(codeKey, d['byBackup'] as String);
@@ -167,10 +178,9 @@ class VaultService {
     // Lock with the new password, so the code is not needed next time.
     final salt = _randomB64(16);
     final passKey = await _derive(password, salt, _passwordRounds);
-    await _ref(uid).update({
-      'salt': salt,
-      'byPassword': _lockBytes(passKey, key),
-    });
+    await _ref(
+      uid,
+    ).update({'salt': salt, 'byPassword': _lockBytes(passKey, key)});
     await _activateAndSave(
       uid,
       key,
@@ -250,10 +260,9 @@ class VaultService {
     if (uid == null || key == null) return;
     final salt = _randomB64(16);
     final passKey = await _derive(newPassword, salt, _passwordRounds);
-    await _ref(uid).update({
-      'salt': salt,
-      'byPassword': _lockBytes(passKey, key),
-    });
+    await _ref(
+      uid,
+    ).update({'salt': salt, 'byPassword': _lockBytes(passKey, key)});
   }
 
   /// Makes a new backup code. The old one stops working at once.
@@ -266,10 +275,9 @@ class VaultService {
     final code = newCode();
     final backupSalt = _randomB64(16);
     final codeKey = await _derive(normalizeCode(code), backupSalt, _codeRounds);
-    await _ref(uid).update({
-      'backupSalt': backupSalt,
-      'byBackup': _lockBytes(codeKey, key),
-    });
+    await _ref(
+      uid,
+    ).update({'backupSalt': backupSalt, 'byBackup': _lockBytes(codeKey, key)});
     return code;
   }
 
@@ -432,14 +440,21 @@ class VaultService {
 
   /// Locks a short text with a key from [secret] (used to keep the
   /// personal code locked with the phone's ID). Returns {salt, lock}.
-  static Future<Map<String, String>> lockWith(String secret, String text) async {
+  static Future<Map<String, String>> lockWith(
+    String secret,
+    String text,
+  ) async {
     final salt = _randomB64(16);
     final key = await _derive(secret, salt, _codeRounds);
     return {'salt': salt, 'lock': _lock(key, text)};
   }
 
   /// Opens [lockWith]. Throws if [secret] is not the right one.
-  static Future<String> openWith(String secret, String salt, String lock) async {
+  static Future<String> openWith(
+    String secret,
+    String salt,
+    String lock,
+  ) async {
     final key = await _derive(secret, salt, _codeRounds);
     return _open(key, lock);
   }
@@ -451,7 +466,9 @@ class VaultService {
 
   /// SHA-256 of a text, as hex. Used for the admin code check.
   static String sha256Hex(String text) {
-    final digest = SHA256Digest().process(Uint8List.fromList(utf8.encode(text)));
+    final digest = SHA256Digest().process(
+      Uint8List.fromList(utf8.encode(text)),
+    );
     return digest.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
   }
 }

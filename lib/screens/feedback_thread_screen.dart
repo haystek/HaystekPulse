@@ -128,7 +128,9 @@ class _FeedbackThreadScreenState extends State<FeedbackThreadScreen> {
   Widget build(BuildContext context) {
     final t = Theme.of(context);
     return Theme(
-      data: t.copyWith(textTheme: GoogleFonts.plusJakartaSansTextTheme(t.textTheme)),
+      data: t.copyWith(
+        textTheme: GoogleFonts.plusJakartaSansTextTheme(t.textTheme),
+      ),
       child: StreamBuilder<FeedbackItem?>(
         stream: _itemStream,
         builder: (context, itemSnap) {
@@ -494,8 +496,8 @@ class ThreadRow {
   const ThreadRow.status({required String this.status, this.at})
     : fromManagement = true,
       text = '',
-        pending = false,
-        movedTo = null;
+      pending = false,
+      movedTo = null;
 
   final bool fromManagement;
   final String text;
@@ -1315,10 +1317,7 @@ class ThreadQuoteHeader extends StatelessWidget {
               children: [
                 tile,
                 const SizedBox(width: 8),
-                Text(
-                  type,
-                  style: threadText(16, weight: FontWeight.w600),
-                ),
+                Text(type, style: threadText(16, weight: FontWeight.w600)),
               ],
             ),
           ),
@@ -1412,10 +1411,7 @@ class ThreadQuoteHeader extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 6),
-          Text(
-            'Step $step of 5',
-            style: threadText(11.5, color: _v1Faint),
-          ),
+          Text('Step $step of 5', style: threadText(11.5, color: _v1Faint)),
         ],
       ),
     );
@@ -1498,8 +1494,9 @@ class ThreadQuoteHeader extends StatelessWidget {
           sizeCurve: Curves.easeOutCubic,
           firstCurve: Curves.easeOut,
           secondCurve: Curves.easeOut,
-          crossFadeState:
-              collapsed ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+          crossFadeState: collapsed
+              ? CrossFadeState.showSecond
+              : CrossFadeState.showFirst,
           firstChild: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisSize: MainAxisSize.min,
@@ -1682,9 +1679,7 @@ class _W3Button extends StatelessWidget {
       message: tooltip,
       child: Material(
         color: Colors.white,
-        shape: const CircleBorder(
-          side: BorderSide(color: Color(0xFFE3E8F1)),
-        ),
+        shape: const CircleBorder(side: BorderSide(color: Color(0xFFE3E8F1))),
         child: InkWell(
           customBorder: const CircleBorder(),
           onTap: onTap,

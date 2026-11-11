@@ -47,7 +47,8 @@ class _NotificationBellState extends State<NotificationBell> {
           builder: (context, seenSnap) {
             // Show a count only once both have loaded, so the badge does
             // not flash a wrong number on start.
-            final ready = rowsSnap.hasData &&
+            final ready =
+                rowsSnap.hasData &&
                 seenSnap.connectionState != ConnectionState.waiting;
             final unread = ready
                 ? NotificationFeed.unreadCount(rowsSnap.data!, seenSnap.data)

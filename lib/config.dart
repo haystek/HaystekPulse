@@ -4,7 +4,6 @@ class AppConfig {
   /// `false` = it opens on the day and time below.
   static const bool pulseOpenEveryDay = false;
 
-
   // ---- TESTING (Tuesday 6:05 PM, closes at midnight) ----
   // Default schedule. The real values come from Firebase: settings/pulse.
   // Change them in the Firebase console; no new build needed.

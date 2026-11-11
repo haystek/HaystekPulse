@@ -119,14 +119,16 @@ class BroadcastService {
     String? quote,
   }) async {
     final ref = _updates.doc();
-    await ref.set(<String, dynamic>{
-      'title': TextCrypto.encrypt(title.trim()),
-      'body': TextCrypto.encrypt(body.trim()),
-      if (quote != null && quote.trim().isNotEmpty)
-        'quote': TextCrypto.encrypt(quote.trim()),
-      'commentCount': 0,
-      'createdAt': FieldValue.serverTimestamp(),
-    }).timeout(const Duration(seconds: 15));
+    await ref
+        .set(<String, dynamic>{
+          'title': TextCrypto.encrypt(title.trim()),
+          'body': TextCrypto.encrypt(body.trim()),
+          if (quote != null && quote.trim().isNotEmpty)
+            'quote': TextCrypto.encrypt(quote.trim()),
+          'commentCount': 0,
+          'createdAt': FieldValue.serverTimestamp(),
+        })
+        .timeout(const Duration(seconds: 15));
 
     // Everyone's phone is in the "employees" group.
     unawaited(

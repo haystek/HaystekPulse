@@ -1,7 +1,12 @@
 import 'feedback_item.dart';
 
 /// What a row in the Notifications screen is about.
-enum AppNotificationKind { feedbackNew, feedbackReply, pulseOpen, pulseReminder }
+enum AppNotificationKind {
+  feedbackNew,
+  feedbackReply,
+  pulseOpen,
+  pulseReminder,
+}
 
 /// One row in the in-app Notifications screen.
 class AppNotification {

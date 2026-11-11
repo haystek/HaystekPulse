@@ -54,7 +54,8 @@ class _UpdateGateState extends State<UpdateGate> {
         final latestKey = isIos ? 'latestIos' : 'latestAndroid';
         final latest = (data?[latestKey] as String?)?.trim() ?? '';
         // This phone, e.g. "1.1.2+2" (Android dev builds end in "-dev").
-        final mine = '${info.version.replaceAll('-dev', '')}+${info.buildNumber}';
+        final mine =
+            '${info.version.replaceAll('-dev', '')}+${info.buildNumber}';
         if (!_isOlder(mine, latest)) return widget.child;
 
         final linkKey = isIos ? 'iosUrl' : 'androidUrl';
@@ -114,19 +115,32 @@ class _UpdateScreen extends StatelessWidget {
   final String version;
   final String latest;
 
-  TextStyle _s(double size,
-          {FontWeight w = FontWeight.w400, Color c = AppColors.ink, double? h}) =>
-      GoogleFonts.plusJakartaSans(fontSize: size, fontWeight: w, color: c, height: h);
+  TextStyle _s(
+    double size, {
+    FontWeight w = FontWeight.w400,
+    Color c = AppColors.ink,
+    double? h,
+  }) => GoogleFonts.plusJakartaSans(
+    fontSize: size,
+    fontWeight: w,
+    color: c,
+    height: h,
+  );
 
   Future<void> _open(BuildContext context) async {
     final messenger = ScaffoldMessenger.of(context);
     var ok = false;
     try {
-      ok = await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+      ok = await launchUrl(
+        Uri.parse(url),
+        mode: LaunchMode.externalApplication,
+      );
     } catch (_) {}
     if (!ok) {
       messenger.showSnackBar(
-        const SnackBar(content: Text('Could not open the store. Please try again.')),
+        const SnackBar(
+          content: Text('Could not open the store. Please try again.'),
+        ),
       );
     }
   }
@@ -168,8 +182,11 @@ class _UpdateScreen extends StatelessWidget {
                         ),
                       ],
                     ),
-                    child: const Icon(Icons.system_update_rounded,
-                        color: Colors.white, size: 44),
+                    child: const Icon(
+                      Icons.system_update_rounded,
+                      color: Colors.white,
+                      size: 44,
+                    ),
                   ),
                   const SizedBox(height: 26),
                   Text(
@@ -182,7 +199,7 @@ class _UpdateScreen extends StatelessWidget {
                     message.isNotEmpty
                         ? message
                         : 'A new version is ready. Please update to keep '
-                            'using the app.',
+                              'using the app.',
                     textAlign: TextAlign.center,
                     style: _s(15, c: AppColors.muted, h: 1.5),
                   ),

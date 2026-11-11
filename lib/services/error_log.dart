@@ -45,18 +45,21 @@ class ErrorLog {
       (stack?.toString() ?? '').split('\n').take(12).join('\n'),
       3000,
     );
-    unawaited(_save(<String, Object>{
-      'error': text,
-      'where': where,
-      'version': _version,
-      'platform':
-          defaultTargetPlatform == TargetPlatform.iOS ? 'ios' : 'android',
-      'at': FieldValue.serverTimestamp(),
-      // Firestore deletes the note by itself after 30 days (TTL policy).
-      'expireAt': Timestamp.fromDate(
-        DateTime.now().add(const Duration(days: 30)),
-      ),
-    }));
+    unawaited(
+      _save(<String, Object>{
+        'error': text,
+        'where': where,
+        'version': _version,
+        'platform': defaultTargetPlatform == TargetPlatform.iOS
+            ? 'ios'
+            : 'android',
+        'at': FieldValue.serverTimestamp(),
+        // Firestore deletes the note by itself after 30 days (TTL policy).
+        'expireAt': Timestamp.fromDate(
+          DateTime.now().add(const Duration(days: 30)),
+        ),
+      }),
+    );
   }
 
   static Future<void> _save(Map<String, Object> note) async {

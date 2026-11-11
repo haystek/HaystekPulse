@@ -78,10 +78,18 @@ class PulseService {
     if (AppConfig.pulseOpenEveryDay) return true;
     final n = now ?? DateTime.now();
     final day = _openDateOf(n);
-    final opens = DateTime(day.year, day.month, day.day,
-        AppConfig.pulseOpenHour, AppConfig.pulseOpenMinute);
-    final closes =
-    DateTime(day.year, day.month, day.day + AppConfig.pulseOpenDays);
+    final opens = DateTime(
+      day.year,
+      day.month,
+      day.day,
+      AppConfig.pulseOpenHour,
+      AppConfig.pulseOpenMinute,
+    );
+    final closes = DateTime(
+      day.year,
+      day.month,
+      day.day + AppConfig.pulseOpenDays,
+    );
     return !n.isBefore(opens) && n.isBefore(closes);
   }
 
@@ -95,16 +103,21 @@ class PulseService {
   }
 
   static const List<String> _dayNames = [
-    'Monday', 'Tuesday', 'Wednesday', 'Thursday',
-    'Friday', 'Saturday', 'Sunday',
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+    'Sunday',
   ];
 
   /// The day it opens, for example "Friday".
   static String openDayLabel() => _dayNames[AppConfig.pulseOpenDay - 1];
 
   /// The last day it is open, for example "Sunday".
-  static String closeDayLabel() => _dayNames[
-  (AppConfig.pulseOpenDay - 1 + AppConfig.pulseOpenDays - 1) % 7];
+  static String closeDayLabel() =>
+      _dayNames[(AppConfig.pulseOpenDay - 1 + AppConfig.pulseOpenDays - 1) % 7];
 
   // ---------------------------------------------------------------
   // Before, during and after this week's window.
@@ -113,8 +126,13 @@ class PulseService {
   /// When this week's window opens (open day at the open time).
   static DateTime opensAt([DateTime? now]) {
     final day = _openDateOf(now ?? DateTime.now());
-    return DateTime(day.year, day.month, day.day,
-        AppConfig.pulseOpenHour, AppConfig.pulseOpenMinute);
+    return DateTime(
+      day.year,
+      day.month,
+      day.day,
+      AppConfig.pulseOpenHour,
+      AppConfig.pulseOpenMinute,
+    );
   }
 
   /// When this week's window closes (midnight after the last open day).
@@ -152,8 +170,18 @@ class PulseService {
   static String dateTimeLabel(DateTime d) {
     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     final hour12 = d.hour % 12 == 0 ? 12 : d.hour % 12;
     final minute = d.minute.toString().padLeft(2, '0');
@@ -164,8 +192,18 @@ class PulseService {
   /// A work week in one short line: "19–23 Oct" or "28 Sep–2 Oct".
   static String shortWeekLabel(String weekId) {
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     final d = _dateOf(weekId);
     final mon = DateTime(d.year, d.month, d.day - (d.weekday - 1));
@@ -173,14 +211,24 @@ class PulseService {
     return mon.month == fri.month
         ? '${mon.day}–${fri.day} ${months[fri.month - 1]}'
         : '${mon.day} ${months[mon.month - 1]}–${fri.day} '
-        '${months[fri.month - 1]}';
+              '${months[fri.month - 1]}';
   }
 
   /// The work week as text, Monday to Friday, for example "5 Oct – 9 Oct".
   static String weekLabel(String weekId) {
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     final d = _dateOf(weekId);
     final monday = DateTime(d.year, d.month, d.day - (d.weekday - 1));
@@ -255,61 +303,61 @@ class PulseService {
   }) async {
     final weekId = currentWeekId();
     final responseRef = _responses.doc('${weekId}_${employee.uid}');
-    final feedbackRef =
-    PulseRating.needsText(rating) ? _db.collection('feedback').doc() : null;
+    final feedbackRef = PulseRating.needsText(rating)
+        ? _db.collection('feedback').doc()
+        : null;
     final String? feedbackId = feedbackRef?.id;
     // Into the locked history first, so a retry can't lose it.
     if (feedbackId != null) await VaultService.instance.addPost(feedbackId);
 
     try {
-      await _db.runTransaction<void>(
+      await _db
+          .runTransaction<void>(
             (tx) async {
-          final existing = await tx.get(responseRef);
-          if (existing.exists) {
-            throw const SendError(
-              'You have already answered this week. Thank you.',
-              alreadyAnswered: true,
-            );
-          }
+              final existing = await tx.get(responseRef);
+              if (existing.exists) {
+                throw const SendError(
+                  'You have already answered this week. Thank you.',
+                  alreadyAnswered: true,
+                );
+              }
 
-          tx.set(responseRef, <String, dynamic>{
-            'uid': employee.uid,
-            'weekId': weekId,
-          });
+              tx.set(responseRef, <String, dynamic>{
+                'uid': employee.uid,
+                'weekId': weekId,
+              });
 
-          tx.set(
-            _weeks.doc(weekId),
-            <String, dynamic>{
-              rating: FieldValue.increment(1),
-              'submitted': FieldValue.increment(1),
+              tx.set(_weeks.doc(weekId), <String, dynamic>{
+                rating: FieldValue.increment(1),
+                'submitted': FieldValue.increment(1),
+              }, SetOptions(merge: true));
+
+              if (feedbackRef != null) {
+                tx.set(feedbackRef, <String, dynamic>{
+                  'source': 'pulse',
+                  'rating': rating,
+                  'weekId': weekId,
+                  'text': TextCrypto.encrypt(text.trim()),
+                  'anonymous': anonymous,
+                  // [name]: typed by the employee (no name in the app).
+                  if (!anonymous) 'authorName': (name ?? employee.name).trim(),
+                  if (!anonymous) 'authorEmployeeId': employee.employeeId,
+                  'status': FeedbackStatus.newItem,
+                  'managementMessage': '',
+                  'createdAt': FieldValue.serverTimestamp(),
+                  'updatedAt': FieldValue.serverTimestamp(),
+                });
+              }
             },
-            SetOptions(merge: true),
-          );
-
-          if (feedbackRef != null) {
-            tx.set(feedbackRef, <String, dynamic>{
-              'source': 'pulse',
-              'rating': rating,
-              'weekId': weekId,
-              'text': TextCrypto.encrypt(text.trim()),
-              'anonymous': anonymous,
-              // [name]: typed by the employee (no name in the app).
-              if (!anonymous) 'authorName': (name ?? employee.name).trim(),
-              if (!anonymous) 'authorEmployeeId': employee.employeeId,
-              'status': FeedbackStatus.newItem,
-              'managementMessage': '',
-              'createdAt': FieldValue.serverTimestamp(),
-              'updatedAt': FieldValue.serverTimestamp(),
-            });
-          }
-        },
-        timeout: sendLimit,
-        maxAttempts: 3,
-      ).timeout(sendLimit + const Duration(seconds: 2));
+            timeout: sendLimit,
+            maxAttempts: 3,
+          )
+          .timeout(sendLimit + const Duration(seconds: 2));
     } catch (error) {
       throw SendError.from(
         error,
-        notAllowed: 'This could not be sent. The Weekly Pulse may have '
+        notAllowed:
+            'This could not be sent. The Weekly Pulse may have '
             'just closed. Please go back and check.',
       );
     }
@@ -357,7 +405,8 @@ class PulseService {
   /// answered yet.
   Future<bool> notifyAllEmployees() async {
     const title = 'Weekly Pulse is open 💙';
-    final body = 'How was your week? It takes 10 seconds. '
+    final body =
+        'How was your week? It takes 10 seconds. '
         'Open until ${closeDayLabel()} night.';
     final sent = await PushSender.toTopic(
       NotificationService.pendingTopic(currentWeekId()),
