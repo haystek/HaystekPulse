@@ -1525,10 +1525,7 @@ class _V1TextState extends State<_V1Text> {
   @override
   Widget build(BuildContext context) {
     final text = widget.text.trim();
-    final style = threadText(
-      18,
-      weight: FontWeight.w500,
-      color: _v1Ink,
+    final style = threadText(16, weight: FontWeight.w500, color: _v1Ink,
       height: 1.5,
     ).copyWith(letterSpacing: -0.15);
     return LayoutBuilder(

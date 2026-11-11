@@ -1925,9 +1925,9 @@ class _RecentActivityState extends State<_RecentActivity> {
                     const SizedBox(height: 3),
                     Text(
                       r.title,
-                      maxLines: 1,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: _inter(15, weight: FontWeight.normal),
+                      style: _inter(14, weight: FontWeight.normal),
                     ),
                     const SizedBox(height: 3),
                     Text.rich(

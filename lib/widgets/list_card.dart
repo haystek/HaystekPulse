@@ -22,18 +22,8 @@ class FeedbackListCard extends StatelessWidget {
   final bool employeeView;
 
   static const _months = [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'May',
-    'Jun',
-    'Jul',
-    'Aug',
-    'Sep',
-    'Oct',
-    'Nov',
-    'Dec',
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
   ];
 
   static String _when(DateTime? d) {
@@ -54,35 +44,23 @@ class FeedbackListCard extends StatelessWidget {
     const soft = Color(0xFF9CA3AF);
     const green = Color(0xFF15803D);
     final rating = item.rating;
-    final ratingText = !item.isFromBox && rating != null
-        ? PulseRating.label(rating)
-        : null;
+    final ratingText =
+        !item.isFromBox && rating != null ? PulseRating.label(rating) : null;
 
-    final Widget who;
+    final Widget? who;
     if (employeeView) {
-      who = Row(
-        children: [
-          Icon(
-            item.isFromBox
-                ? Icons.lightbulb_outline_rounded
-                : Icons.monitor_heart_outlined,
-            size: 13,
-            color: soft,
-          ),
-          const SizedBox(width: 4),
-          Expanded(
-            child: Text(
-              [
-                item.isFromBox ? 'Suggestion' : 'Weekly Pulse',
-                if (ratingText != null) ratingText,
-              ].join(' · '),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: t.bodySmall?.copyWith(fontSize: 12, color: soft),
-            ),
-          ),
-        ],
-      );
+      who = ratingText == null
+          ? null
+          : Row(
+              children: [
+                const Icon(Icons.monitor_heart_outlined, size: 13, color: soft),
+                const SizedBox(width: 4),
+                Text(
+                  ratingText,
+                  style: t.bodySmall?.copyWith(fontSize: 12, color: soft),
+                ),
+              ],
+            );
     } else {
       final name = (item.authorName ?? '').trim();
       final id = (item.authorEmployeeId ?? '').trim();
@@ -121,7 +99,7 @@ class FeedbackListCard extends StatelessWidget {
       );
     }
 
-    return Material(
+    final card = Material(
       color: Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(18),
@@ -146,9 +124,9 @@ class FeedbackListCard extends StatelessWidget {
                           Text(
                             FeedbackStatus.label(item.status).toUpperCase(),
                             style: t.labelSmall?.copyWith(
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 0.5,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.6,
                               color: color,
                             ),
                           ),
@@ -164,21 +142,27 @@ class FeedbackListCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        item.text.trim(),
+                        item.text.trim().isNotEmpty
+                            ? item.text.trim()
+                            : (ratingText == null
+                                ? ''
+                                : employeeView
+                                    ? 'You said $ratingText'
+                                    : 'Rated $ratingText'),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: t.bodyLarge?.copyWith(
-                          fontSize: 16,
-                          height: 1.42,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: -0.15,
-                          color: const Color(0xFF111827),
+                          fontSize: 15.5,
+                          height: 1.45,
+                          fontWeight: FontWeight.w500,
+                          color: const Color(0xFF1F2937),
                         ),
                       ),
+                      if (who != null || item.hasReply) ...[
                       const SizedBox(height: 8),
                       Row(
                         children: [
-                          Expanded(child: who),
+                          Expanded(child: who ?? const SizedBox.shrink()),
                           if (item.hasReply) ...[
                             const SizedBox(width: 8),
                             const Icon(
@@ -198,6 +182,7 @@ class FeedbackListCard extends StatelessWidget {
                           ],
                         ],
                       ),
+                      ],
                     ],
                   ),
                 ),
@@ -206,6 +191,11 @@ class FeedbackListCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+    if (!employeeView) return card;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+      child: card,
     );
   }
 }

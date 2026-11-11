@@ -935,8 +935,13 @@ class _SuggestionRow extends StatelessWidget {
   final FeedbackItem item;
 
   @override
-  Widget build(BuildContext context) =>
-      FeedbackListCard(item: item, onTap: null, employeeView: true);
+  Widget build(BuildContext context) => FeedbackListCard(
+    item: item,
+    onTap: () => Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => FeedbackThreadScreen(item: item)),
+    ),
+    employeeView: true,
+  );
 }
 
 /// One Weekly Pulse week: the comment, or "You said Great" when there
