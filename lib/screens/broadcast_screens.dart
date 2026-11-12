@@ -39,7 +39,7 @@ Widget _withInter(BuildContext context, Widget child) {
   final t = Theme.of(context);
   return Theme(
     data: t.copyWith(
-      textTheme: GoogleFonts.plusJakartaSansTextTheme(t.textTheme),
+      textTheme: GoogleFonts.figtreeTextTheme(t.textTheme),
     ),
     child: child,
   );

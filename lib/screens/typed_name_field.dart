@@ -33,7 +33,7 @@ class TypedNameField extends StatelessWidget {
       textCapitalization: TextCapitalization.words,
       autocorrect: false,
       onChanged: onChanged,
-      style: GoogleFonts.plusJakartaSans(
+      style: GoogleFonts.figtree(
         fontSize: compact ? 14 : 15,
         color: AppColors.ink,
       ),
@@ -41,13 +41,13 @@ class TypedNameField extends StatelessWidget {
         isDense: true,
         counterText: '',
         labelText: 'Your name',
-        labelStyle: GoogleFonts.plusJakartaSans(color: const Color(0xFF8E97AB)),
+        labelStyle: GoogleFonts.figtree(color: const Color(0xFF8E97AB)),
         helperText: compact
             ? null
             : 'Sent only with this message. Admin sees it as “name typed by '
                   'sender”.',
         helperMaxLines: 2,
-        helperStyle: GoogleFonts.plusJakartaSans(
+        helperStyle: GoogleFonts.figtree(
           fontSize: 12,
           color: const Color(0xFF8E97AB),
         ),
@@ -122,7 +122,7 @@ class SendAsChoice extends StatelessWidget {
               child: Center(
                 child: Text(
                   label,
-                  style: GoogleFonts.plusJakartaSans(
+                  style: GoogleFonts.figtree(
                     fontSize: compact ? 13 : 14,
                     color: selected ? AppColors.blue : const Color(0xFF5F6A84),
                   ),
@@ -147,7 +147,7 @@ class SendAsChoice extends StatelessWidget {
       children: [
         Text(
           'SEND AS',
-          style: GoogleFonts.plusJakartaSans(
+          style: GoogleFonts.figtree(
             fontSize: 12,
             letterSpacing: 0.7,
             color: const Color(0xFF8E97AB),
@@ -179,7 +179,7 @@ class SentAsLine extends StatelessWidget {
       textAlign: TextAlign.center,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
-      style: GoogleFonts.plusJakartaSans(
+      style: GoogleFonts.figtree(
         fontSize: 12.5,
         color: const Color(0xFF8E97AB),
       ),

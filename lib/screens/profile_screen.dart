@@ -19,7 +19,7 @@ Widget _inter(BuildContext context, Widget child) {
   final t = Theme.of(context);
   return Theme(
     data: t.copyWith(
-      textTheme: GoogleFonts.plusJakartaSansTextTheme(t.textTheme),
+      textTheme: GoogleFonts.figtreeTextTheme(t.textTheme),
     ),
     child: child,
   );
@@ -40,7 +40,7 @@ Future<void> confirmSignOut(BuildContext context) async {
       actionsPadding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
       title: Text(
         'Sign out?',
-        style: GoogleFonts.plusJakartaSans(
+        style: GoogleFonts.figtree(
           fontSize: 20,
           fontWeight: FontWeight.w600,
           color: AppColors.ink,
@@ -51,7 +51,7 @@ Future<void> confirmSignOut(BuildContext context) async {
             ? 'You’ll need your personal code to sign in again. Make sure '
                   'you saved it.'
             : 'You’ll need your email and password to sign in again.',
-        style: GoogleFonts.plusJakartaSans(
+        style: GoogleFonts.figtree(
           fontSize: 15,
           height: 1.45,
           color: AppColors.muted,
@@ -64,7 +64,7 @@ Future<void> confirmSignOut(BuildContext context) async {
             foregroundColor: AppColors.muted,
             minimumSize: const Size(0, 44),
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            textStyle: GoogleFonts.plusJakartaSans(
+            textStyle: GoogleFonts.figtree(
               fontSize: 15,
               fontWeight: FontWeight.w500,
             ),
@@ -80,7 +80,7 @@ Future<void> confirmSignOut(BuildContext context) async {
             minimumSize: const Size(0, 44),
             padding: const EdgeInsets.symmetric(horizontal: 20),
             shape: const StadiumBorder(),
-            textStyle: GoogleFonts.plusJakartaSans(
+            textStyle: GoogleFonts.figtree(
               fontSize: 15,
               fontWeight: FontWeight.w500,
             ),
@@ -805,7 +805,7 @@ TextStyle _s(
   FontWeight w = FontWeight.w400,
   Color c = AppColors.ink,
   double? h,
-}) => GoogleFonts.plusJakartaSans(
+}) => GoogleFonts.figtree(
   fontSize: size,
   fontWeight: w,
   color: c,

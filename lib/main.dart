@@ -52,8 +52,8 @@ class HaystekApp extends StatelessWidget {
 
       // Inter on every screen, whatever font style the phone uses.
       theme: base.copyWith(
-        textTheme: GoogleFonts.plusJakartaSansTextTheme(base.textTheme),
-        primaryTextTheme: GoogleFonts.plusJakartaSansTextTheme(
+        textTheme: GoogleFonts.figtreeTextTheme(base.textTheme),
+        primaryTextTheme: GoogleFonts.figtreeTextTheme(
           base.primaryTextTheme,
         ),
       ),

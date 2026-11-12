@@ -19,7 +19,7 @@ TextStyle _t(
   Color color = AppColors.ink,
   double? height,
   double? letterSpacing,
-}) => GoogleFonts.plusJakartaSans(
+}) => GoogleFonts.figtree(
   fontSize: size,
   fontWeight: weight,
   color: color,

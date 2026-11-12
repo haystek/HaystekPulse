@@ -17,7 +17,7 @@ Widget _withInter(BuildContext context, Widget child) {
   final t = Theme.of(context);
   return Theme(
     data: t.copyWith(
-      textTheme: GoogleFonts.plusJakartaSansTextTheme(t.textTheme),
+      textTheme: GoogleFonts.figtreeTextTheme(t.textTheme),
     ),
     child: child,
   );
@@ -28,7 +28,7 @@ TextStyle _t(
   FontWeight weight = FontWeight.w500,
   Color color = AppColors.ink,
   double? height,
-}) => GoogleFonts.plusJakartaSans(
+}) => GoogleFonts.figtree(
   fontSize: size,
   fontWeight: weight,
   color: color,
@@ -416,7 +416,7 @@ class _ShareDialogState extends State<_ShareDialog> {
     FontWeight w = FontWeight.w400,
     Color c = AppColors.ink,
     double? h,
-  }) => GoogleFonts.plusJakartaSans(
+  }) => GoogleFonts.figtree(
     fontSize: size,
     fontWeight: w,
     color: c,

@@ -14,7 +14,7 @@ TextStyle _t(
   FontWeight weight = FontWeight.w400,
   Color color = AppColors.ink,
   double? height,
-}) => GoogleFonts.plusJakartaSans(
+}) => GoogleFonts.figtree(
   fontSize: size,
   fontWeight: weight,
   color: color,

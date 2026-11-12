@@ -233,7 +233,7 @@ class _WeeklyPulseScreenState extends State<WeeklyPulseScreen>
     return Theme(
       // Inter for every text on this screen.
       data: theme.copyWith(
-        textTheme: GoogleFonts.plusJakartaSansTextTheme(theme.textTheme),
+        textTheme: GoogleFonts.figtreeTextTheme(theme.textTheme),
       ),
       child: AnnotatedRegion<SystemUiOverlayStyle>(
         value: SystemUiOverlayStyle.dark,
@@ -602,7 +602,7 @@ class _WeeklyPulseScreenState extends State<WeeklyPulseScreen>
         style: TextButton.styleFrom(
           foregroundColor: AppColors.blue,
           padding: const EdgeInsets.symmetric(horizontal: 4),
-          textStyle: GoogleFonts.plusJakartaSans(fontSize: 13.5),
+          textStyle: GoogleFonts.figtree(fontSize: 13.5),
         ),
       ),
     );
@@ -616,7 +616,7 @@ TextStyle _inter(
   Color color = AppColors.ink,
   double? height,
   double? letterSpacing,
-}) => GoogleFonts.plusJakartaSans(
+}) => GoogleFonts.figtree(
   fontSize: size,
   fontWeight: weight,
   color: color,
@@ -902,7 +902,7 @@ class _TitlePill extends StatelessWidget {
             const SizedBox(width: 9),
             Text(
               text,
-              style: GoogleFonts.plusJakartaSans(
+              style: GoogleFonts.figtree(
                 fontSize: 16,
                 fontWeight: FontWeight.normal,
                 color: AppColors.ink,

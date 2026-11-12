@@ -42,7 +42,7 @@ TextStyle _inter(
   Color color = AppColors.ink,
   double? height,
   double? letterSpacing,
-}) => GoogleFonts.plusJakartaSans(
+}) => GoogleFonts.figtree(
   fontSize: size,
   fontWeight: weight,
   color: color,
@@ -87,16 +87,12 @@ class EmployeeHomeScreen extends StatelessWidget {
         body: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 480),
-            child: ListView(
-              padding: EdgeInsets.fromLTRB(
-                16,
-                pad.top + 10,
-                16,
-                28 + pad.bottom,
-              ),
+            child: Column(
               children: [
-                // Top: logo, bell, account.
+                // Sticky top bar: logo + account stay while the page scrolls.
                 Padding(
+                  padding: EdgeInsets.fromLTRB(16, pad.top + 10, 16, 8),
+                  child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 4),
                   child: Row(
                     children: [
@@ -131,6 +127,11 @@ class EmployeeHomeScreen extends StatelessWidget {
                     ],
                   ),
                 ),
+                ),
+                Expanded(
+                  child: ListView(
+                    padding: EdgeInsets.fromLTRB(16, 8, 16, 28 + pad.bottom),
+                    children: [
                 const SizedBox(height: 22),
                 // Greeting.
                 Padding(
@@ -192,6 +193,9 @@ class EmployeeHomeScreen extends StatelessWidget {
                   child: _RecentActivity(
                     employee: employee,
                     onOpen: openFeedback,
+                  ),
+                ),
+                    ],
                   ),
                 ),
               ],
@@ -904,7 +908,7 @@ class _TimelineState extends State<_Timeline> {
     double size, {
     FontWeight weight = FontWeight.w400,
     Color color = Colors.white,
-  }) => GoogleFonts.plusJakartaSans(
+  }) => GoogleFonts.figtree(
     fontSize: size,
     fontWeight: weight,
     color: color,
@@ -1880,9 +1884,7 @@ class _RecentActivityState extends State<_RecentActivity> {
       child: InkWell(
         // A suggestion or comment opens in a bottom sheet. "You said
         // Good" has nothing more to show, so it can't be tapped.
-        onTap: r.item == null
-            ? null
-            : () => Navigator.of(context).push(
+        onTap: r.item == null ? () => widget.onOpen(1) : () => Navigator.of(context).push(
                 MaterialPageRoute<void>(
                   builder: (_) => FeedbackThreadScreen(item: r.item!),
                 ),
@@ -1967,19 +1969,9 @@ class _RecentActivityState extends State<_RecentActivity> {
 
 /// Text colour and light background of each status chip.
 (Color, Color) _statusColors(String status) {
-  switch (status) {
-    case FeedbackStatus.newItem:
-      return (const Color(0xFFB7791F), const Color(0xFFFFF6E5));
-    case FeedbackStatus.underReview:
-    case FeedbackStatus.inProgress:
-      return (AppColors.blue, AppColors.blueTint);
-    case FeedbackStatus.planned:
-      return (const Color(0xFF0F766E), const Color(0xFFE6F6F5));
-    case FeedbackStatus.noted:
-      return (const Color(0xFF5B6478), const Color(0xFFEEF0F4));
-    default:
-      return (const Color(0xFF15803D), const Color(0xFFE8F7EE));
-  }
+  // Same colours as inside the suggestion (FeedbackStatus.color).
+  final c = FeedbackStatus.color(status);
+  return (c, c.withValues(alpha: 0.12));
 }
 
 /// A small coloured chip with the status, e.g. "New" or "Implemented".
@@ -2383,5 +2375,6 @@ class _TourArrowPainter extends CustomPainter {
 void replayHomeTour() {
   Future<void>.delayed(const Duration(milliseconds: 450), () {
     _HomeTour.replay.value++;
+
   });
 }

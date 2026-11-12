@@ -23,7 +23,7 @@ TextStyle _t(
   Color color = AppColors.ink,
   double? height,
   double? letterSpacing,
-}) => GoogleFonts.plusJakartaSans(
+}) => GoogleFonts.figtree(
   fontSize: size,
   fontWeight: weight,
   color: color,
@@ -33,7 +33,7 @@ TextStyle _t(
 
 /// Inter for titles on this screen (same as the home screen).
 TextStyle _title(double size, {Color color = AppColors.ink}) =>
-    GoogleFonts.plusJakartaSans(
+    GoogleFonts.figtree(
       fontSize: size,
       fontWeight: FontWeight.w800,
       color: color,
@@ -173,7 +173,7 @@ class _SuggestionBoxScreenState extends State<SuggestionBoxScreen>
     // Inter for every text on this screen, buttons and the text box too.
     return Theme(
       data: theme.copyWith(
-        textTheme: GoogleFonts.plusJakartaSansTextTheme(theme.textTheme),
+        textTheme: GoogleFonts.figtreeTextTheme(theme.textTheme),
       ),
       child: Scaffold(
         backgroundColor: Colors.white,
@@ -194,157 +194,249 @@ class _SuggestionBoxScreenState extends State<SuggestionBoxScreen>
   }
 
   Widget _buildForm(BuildContext context) {
-    final theme = Theme.of(context);
-    // Keyboard open: fold the title away to make room.
-    final typing = MediaQuery.viewInsetsOf(context).bottom > 0;
+    // SB2 design: intro + tappable examples on top, chat-style box at the
+    // bottom. The box sits above the keyboard, so it moves up with it.
+    TextStyle t(double size, {FontWeight weight = FontWeight.w400, Color? color, double? height}) =>
+        GoogleFonts.figtree(fontSize: size, fontWeight: weight, color: color ?? AppColors.ink, height: height);
+    const line = Color(0xFFE3E8F1);
+    const soft = Color(0xFFF5F7FB);
+    final keyboard = MediaQuery.viewInsetsOf(context).bottom > 0;
+    final named = !_anonymous;
+    final count = _text.text.length;
+
+    const examples = [
+      'A quiet room for phone calls',
+      'Drinking water bottles in every meeting room',
+      'Better Wi-Fi in the conference room',
+      'Healthy snacks in the pantry',
+    ];
+
+    void useExample(String e) {
+      _text.text = e;
+      _text.selection = TextSelection.collapsed(offset: e.length);
+      _focus.requestFocus();
+      setState(() {});
+    }
+
+    Widget pill(String label, IconData icon, bool on, VoidCallback onTap) {
+      return Material(
+        color: on ? AppColors.blueTint : Colors.white,
+        shape: StadiumBorder(side: BorderSide(color: on ? AppColors.blue : line)),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: _busy ? null : onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(on ? Icons.check : icon, size: 15, color: on ? AppColors.blue : AppColors.muted),
+                const SizedBox(width: 6),
+                Text(label, style: t(13, weight: FontWeight.w600, color: on ? AppColors.blue : AppColors.muted)),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    final canSend = !_busy && !_empty;
 
     return Form(
       key: _formKey,
       child: Column(
         children: [
           Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 480),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      AnimatedSize(
-                        duration: const Duration(milliseconds: 220),
-                        curve: Curves.easeOutCubic,
-                        alignment: Alignment.topCenter,
-                        child: typing
-                            ? const SizedBox(width: double.infinity)
-                            : Padding(
-                                padding: const EdgeInsets.only(bottom: 18),
-                                child: _header(),
-                              ),
+            child: GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onTap: () => FocusScope.of(context).unfocus(),
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(28, 28, 28, 16),
+                children: [
+                  Container(
+                    width: 56,
+                    height: 56,
+                    alignment: Alignment.centerLeft,
+                    child: Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        color: AppColors.blueTint,
+                        borderRadius: BorderRadius.circular(18),
                       ),
-                      Text(
-                        'YOUR MESSAGE',
-                        style: _t(
-                          13,
-                          weight: FontWeight.w700,
-                          color: AppColors.muted,
-                          letterSpacing: 0.4,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      _writingBox(),
-                      const SizedBox(height: 14),
-                      SendAsChoice(
-                        named: !_anonymous,
-                        enabled: !_busy,
-                        onChanged: (named) => setState(() {
-                          _anonymous = !named;
-                          _nameError = null;
-                        }),
-                      ),
-                      if (!_anonymous) ...[
-                        const SizedBox(height: 12),
-                        if (_needsName)
-                          TypedNameField(
-                            controller: _name,
-                            enabled: !_busy,
-                            error: _nameError,
-                            onChanged: (_) => setState(() => _nameError = null),
-                          )
-                        else
-                          Text(
-                            'Admin will see: ${widget.employee.name}',
-                            style: _t(13, color: AppColors.muted),
-                          ),
-                      ],
-                      _privacyLink(),
-                      if (_error != null) ...[
-                        const SizedBox(height: 12),
-                        Text(
-                          _error!,
-                          style: _t(14, color: theme.colorScheme.error),
-                        ),
-                      ],
-                    ],
+                      child: const Icon(Icons.lightbulb_outline, color: AppColors.blue, size: 26),
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 18),
+                  Text('Share an idea or a concern',
+                      style: t(24, weight: FontWeight.w700, height: 1.2)),
+                  const SizedBox(height: 6),
+                  Text('Write below and send. You can follow the reply in My Feedback.',
+                      style: t(15, color: AppColors.muted, height: 1.5)),
+                  if (!keyboard) ...[
+                    const SizedBox(height: 26),
+                    Text('FOR EXAMPLE',
+                        style: t(12, weight: FontWeight.w600, color: AppColors.muted)
+                            .copyWith(letterSpacing: 1)),
+                    const SizedBox(height: 10),
+                    for (final e in examples)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Material(
+                          color: soft,
+                          borderRadius: BorderRadius.circular(14),
+                          clipBehavior: Clip.antiAlias,
+                          child: InkWell(
+                            onTap: _busy ? null : () => useExample(e),
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(14, 13, 12, 13),
+                              child: Row(
+                                children: [
+                                  Expanded(child: Text(e, style: t(14.5, color: const Color(0xFF475467)))),
+                                  const Icon(Icons.north_west, size: 16, color: AppColors.muted),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ],
               ),
             ),
           ),
-
-          // Button and note stay at the bottom, above the keyboard.
-          SafeArea(
-            top: false,
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 480),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 6, 20, 12),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+          // The box: always at the bottom, above the keyboard.
+          Container(
+            key: _boxKey,
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              border: Border(top: BorderSide(color: Color(0xFFEEF1F6))),
+            ),
+            padding: EdgeInsets.fromLTRB(
+              16, 12, 16, 12 + (keyboard ? 0 : MediaQuery.paddingOf(context).bottom),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text('Send as', style: t(13, color: AppColors.muted)),
+                    const SizedBox(width: 8),
+                    pill('Anonymous', Icons.lock_outline, _anonymous,
+                        () => setState(() => _anonymous = true)),
+                    const SizedBox(width: 8),
+                    pill('With my name', Icons.person_outline, named, () {
+                      setState(() => _anonymous = false);
+                    }),
+                  ],
+                ),
+                if (named && _needsName) ...[
+                  const SizedBox(height: 10),
+                  TextFormField(
+                    controller: _name,
+                    enabled: !_busy,
+                    textCapitalization: TextCapitalization.words,
+                    style: t(15),
+                    decoration: InputDecoration(
+                      hintText: 'Your name',
+                      hintStyle: t(15, color: const Color(0xFF98A2B3)),
+                      prefixIcon: const Icon(Icons.person_outline, size: 20, color: AppColors.muted),
+                      isDense: true,
+                      filled: true,
+                      fillColor: soft,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                    validator: (v) => !_anonymous && _needsName && (v == null || v.trim().isEmpty)
+                        ? 'Please type your name'
+                        : null,
+                  ),
+                ],
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 6, 6),
+                  decoration: BoxDecoration(
+                    color: _focus.hasFocus || !_empty ? Colors.white : soft,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(
+                      color: _focus.hasFocus || !_empty ? AppColors.blue : line,
+                      width: 1.5,
+                    ),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      DecoratedBox(
-                        // Soft blue glow under the button when it's ready.
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(28),
-                          boxShadow: _empty || _busy
-                              ? null
-                              : [
-                                  BoxShadow(
-                                    color: AppColors.blue.withValues(
-                                      alpha: 0.28,
-                                    ),
-                                    blurRadius: 20,
-                                    offset: const Offset(0, 8),
-                                  ),
-                                ],
-                        ),
-                        child: FilledButton(
-                          onPressed: _busy || _empty ? null : _submit,
-                          style: FilledButton.styleFrom(
-                            backgroundColor: AppColors.blue,
-                            foregroundColor: Colors.white,
-                            disabledBackgroundColor: _line,
-                            disabledForegroundColor: _soft,
-                            minimumSize: const Size.fromHeight(56),
-                            shape: const StadiumBorder(),
-                            textStyle: _t(16, weight: FontWeight.w700),
+                      Expanded(
+                        child: TextFormField(
+                          controller: _text,
+                          focusNode: _focus,
+                          enabled: !_busy,
+                          minLines: 1,
+                          maxLines: 6,
+                          maxLength: FeedbackService.maxTextLength,
+                          textCapitalization: TextCapitalization.sentences,
+                          style: t(16, height: 1.45),
+                          onChanged: (_) => setState(() {}),
+                          onTap: () => setState(() {}),
+                          decoration: InputDecoration(
+                            hintText: 'Write your suggestion…',
+                            hintStyle: t(16, color: const Color(0xFF98A2B3)),
+                            border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            disabledBorder: InputBorder.none,
+                            errorBorder: InputBorder.none,
+                            focusedErrorBorder: InputBorder.none,
+                            filled: false,
+                            counterText: '',
+                            isDense: true,
+                            contentPadding: const EdgeInsets.symmetric(vertical: 10),
                           ),
-                          child: _busy
-                              ? const Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    SizedBox(
-                                      height: 18,
-                                      width: 18,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                    SizedBox(width: 10),
-                                    Text('Sending…'),
-                                  ],
-                                )
-                              : Text('Send suggestion'),
+                          validator: (v) => (v == null || v.trim().isEmpty)
+                              ? 'Please write your suggestion'
+                              : null,
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      SentAsLine(named: !_anonymous, name: _shownName),
-                      // Hidden while typing, to give the box more room.
-                      if (!typing) ...[
-                        const SizedBox(height: 12),
-                        Text(
-                          'You can follow it in My Feedback',
-                          textAlign: TextAlign.center,
-                          style: _t(13.5, color: _soft),
+                      const SizedBox(width: 6),
+                      Material(
+                        color: canSend ? AppColors.blue : const Color(0xFFE4E8F0),
+                        shape: const CircleBorder(),
+                        child: InkWell(
+                          customBorder: const CircleBorder(),
+                          onTap: canSend ? _submit : null,
+                          child: SizedBox(
+                            width: 42,
+                            height: 42,
+                            child: _busy
+                                ? const Padding(
+                                    padding: EdgeInsets.all(12),
+                                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                  )
+                                : Icon(Icons.send_rounded,
+                                    size: 19,
+                                    color: canSend ? Colors.white : const Color(0xFF8A94A8)),
+                          ),
                         ),
-                      ],
+                      ),
                     ],
                   ),
                 ),
-              ),
+                if (count > 0) ...[
+                  const SizedBox(height: 6),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                    child: Text(
+                      '${named ? 'Admin will see your name' : 'Your name stays hidden'}'
+                      '  ·  $count / ${FeedbackService.maxTextLength}',
+                      style: t(12.5, color: AppColors.muted),
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
         ],
@@ -441,7 +533,7 @@ class _SuggestionBoxScreenState extends State<SuggestionBoxScreen>
         style: TextButton.styleFrom(
           foregroundColor: AppColors.blue,
           padding: const EdgeInsets.symmetric(horizontal: 4),
-          textStyle: GoogleFonts.plusJakartaSans(fontSize: 13.5),
+          textStyle: GoogleFonts.figtree(fontSize: 13.5),
         ),
       ),
     );
@@ -533,7 +625,7 @@ class _TitlePill extends StatelessWidget {
             const SizedBox(width: 9),
             Text(
               text,
-              style: GoogleFonts.plusJakartaSans(
+              style: GoogleFonts.figtree(
                 fontSize: 16,
                 fontWeight: FontWeight.normal,
                 color: AppColors.ink,

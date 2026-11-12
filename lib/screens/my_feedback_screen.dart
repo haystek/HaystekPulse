@@ -46,12 +46,12 @@ class MyFeedbackScreen extends StatefulWidget {
 ThemeData _interTheme(BuildContext context) {
   final t = Theme.of(context);
   return t.copyWith(
-    textTheme: GoogleFonts.plusJakartaSansTextTheme(t.textTheme),
+    textTheme: GoogleFonts.figtreeTextTheme(t.textTheme),
   );
 }
 
 /// Inter for the few titles that set their own style.
-TextStyle _title(double size) => GoogleFonts.plusJakartaSans(
+TextStyle _title(double size) => GoogleFonts.figtree(
   fontSize: size,
   fontWeight: FontWeight.w600,
   color: AppColors.ink,
@@ -581,7 +581,7 @@ TextStyle _t(
   Color color = AppColors.ink,
   double? height,
   double? letterSpacing,
-}) => GoogleFonts.plusJakartaSans(
+}) => GoogleFonts.figtree(
   fontSize: size,
   fontWeight: weight,
   color: color,
@@ -822,6 +822,7 @@ class _Card extends StatelessWidget {
     this.status,
     this.replied = false,
     this.onTap,
+    this.label,
   });
 
   final IconData icon;
@@ -834,91 +835,98 @@ class _Card extends StatelessWidget {
   final String? status;
   final bool replied;
 
+  /// Top label in capitals, e.g. GREAT. Defaults to [kind].
+  final String? label;
+
   /// Opens the conversation. Null: nothing more to show (Great / Good),
   /// so the card can't be tapped and has no arrow.
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
+    // S2 pulse card: same look as the Suggestion cards.
+    final top = (label ?? kind).toUpperCase();
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
       child: Material(
         color: Colors.white,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(22),
           side: const BorderSide(color: _line, width: 1.5),
         ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 10, 12),
+          child: IntrinsicHeight(
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: iconBg,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(icon, color: iconColor, size: 20),
-                ),
-                const SizedBox(width: 12),
+                Container(width: 4, color: iconColor),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Text(
-                            kind,
-                            style: _t(
-                              12,
-                              weight: FontWeight.w500,
-                              color: AppColors.blue,
-                            ),
-                          ),
-                          if (status != null) ...[
-                            const SizedBox(width: 6),
-                            _StatusChip(status: status!),
-                          ],
-                        ],
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: _t(15, color: titleColor),
-                      ),
-                      const SizedBox(height: 3),
-                      Text.rich(
-                        TextSpan(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
                           children: [
-                            TextSpan(text: sub),
-                            if (replied)
-                              TextSpan(
-                                text: '  ·  Admin replied',
+                            Expanded(
+                              child: Text(
+                                top,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                                 style: _t(
                                   12.5,
-                                  weight: FontWeight.w500,
+                                  weight: FontWeight.w600,
+                                  color: iconColor,
+                                ).copyWith(letterSpacing: 1.1),
+                              ),
+                            ),
+                            if (status != null) _StatusChip(status: status!),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: _t(16, color: AppColors.ink)
+                              .copyWith(height: 1.4),
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                sub,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: _t(13, color: _soft),
+                              ),
+                            ),
+                            if (replied) ...[
+                              const SizedBox(width: 8),
+                              const Icon(
+                                Icons.chat_bubble_outline,
+                                size: 16,
+                                color: _replyFg,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Admin replied',
+                                style: _t(
+                                  13,
+                                  weight: FontWeight.w600,
                                   color: _replyFg,
                                 ),
                               ),
+                            ],
                           ],
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: _t(12.5, color: _soft),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
-                if (onTap != null)
-                  const Icon(Icons.chevron_right, color: _soft)
-                else
-                  const SizedBox(width: 8),
               ],
             ),
           ),
@@ -960,8 +968,7 @@ class _WeekRow extends StatelessWidget {
     final week = weekId == null
         ? ''
         : (name.isNotEmpty
-              ? name
-              : 'Week of ${PulseService.weekLabel(weekId)}');
+              ? name : PulseService.weekLabel(weekId));
     final color = rating == null ? AppColors.blue : PulseRating.color(rating);
     final said = rating == null ? '' : 'You said ${PulseRating.label(rating)}';
 
@@ -970,13 +977,13 @@ class _WeekRow extends StatelessWidget {
       iconColor: color,
       iconBg: color.withValues(alpha: 0.12),
       kind: 'Weekly Pulse',
+      label: rating == null ? 'Weekly Pulse' : PulseRating.label(rating),
       status: comment?.status,
       title: comment?.text ?? (said.isEmpty ? 'Weekly Pulse' : said),
       titleColor: comment == null && rating != null
           ? _moodText(rating)
           : AppColors.ink,
       sub: [
-        if (comment != null && said.isNotEmpty) said,
         week,
       ].where((x) => x.isNotEmpty).join(' · '),
       replied: comment?.hasReply ?? false,
@@ -1058,7 +1065,7 @@ class _TitlePill extends StatelessWidget {
             const SizedBox(width: 9),
             Text(
               text,
-              style: GoogleFonts.plusJakartaSans(
+              style: GoogleFonts.figtree(
                 fontSize: 16,
                 fontWeight: FontWeight.normal,
                 color: AppColors.ink,

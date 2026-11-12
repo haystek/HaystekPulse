@@ -10,7 +10,7 @@ TextStyle _t(
   FontWeight weight = FontWeight.w400,
   Color color = AppColors.ink,
   double? height,
-}) => GoogleFonts.plusJakartaSans(
+}) => GoogleFonts.figtree(
   fontSize: size,
   fontWeight: weight,
   color: color,
@@ -110,7 +110,7 @@ class HelpScreen extends StatelessWidget {
     final t = Theme.of(context);
     return Theme(
       data: t.copyWith(
-        textTheme: GoogleFonts.plusJakartaSansTextTheme(t.textTheme),
+        textTheme: GoogleFonts.figtreeTextTheme(t.textTheme),
         dividerColor: Colors.transparent,
       ),
       child: Scaffold(

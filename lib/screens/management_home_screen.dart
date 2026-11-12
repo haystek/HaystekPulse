@@ -32,7 +32,7 @@ Widget _withInter(BuildContext context, Widget child) {
   final t = Theme.of(context);
   return Theme(
     data: t.copyWith(
-      textTheme: GoogleFonts.plusJakartaSansTextTheme(t.textTheme),
+      textTheme: GoogleFonts.figtreeTextTheme(t.textTheme),
     ),
     child: child,
   );
@@ -44,7 +44,7 @@ TextStyle _h(
   FontWeight weight = FontWeight.w800,
   Color color = AppColors.ink,
   double? height,
-}) => GoogleFonts.plusJakartaSans(
+}) => GoogleFonts.figtree(
   fontSize: size,
   fontWeight: weight,
   color: color,
@@ -915,7 +915,7 @@ class _WeekHeroState extends State<_WeekHero> {
     Color color = Colors.white,
     double? letterSpacing,
     double? height,
-  }) => GoogleFonts.plusJakartaSans(
+  }) => GoogleFonts.figtree(
     fontSize: size,
     fontWeight: weight,
     color: color,
@@ -1423,7 +1423,7 @@ class _TimelineState extends State<_Timeline> {
     double size, {
     FontWeight weight = FontWeight.w400,
     Color color = Colors.white,
-  }) => GoogleFonts.plusJakartaSans(
+  }) => GoogleFonts.figtree(
     fontSize: size,
     fontWeight: weight,
     color: color,
@@ -1628,7 +1628,7 @@ class _HeroChip extends StatelessWidget {
           ],
           Text(
             text,
-            style: GoogleFonts.plusJakartaSans(
+            style: GoogleFonts.figtree(
               fontSize: 12.5,
               fontWeight: outline ? FontWeight.w400 : FontWeight.w600,
               color: fg,
@@ -1683,7 +1683,7 @@ class _SoonNote extends StatelessWidget {
                       : total == 1
                       ? '1 person can answer'
                       : '$total people can answer',
-                  style: GoogleFonts.plusJakartaSans(
+                  style: GoogleFonts.figtree(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
                     color: AppColors.ink,
@@ -1692,7 +1692,7 @@ class _SoonNote extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   'Answers and the summary show here once it opens.',
-                  style: GoogleFonts.plusJakartaSans(
+                  style: GoogleFonts.figtree(
                     fontSize: 13,
                     height: 1.4,
                     color: const Color(0xFF69728A),
@@ -1899,7 +1899,7 @@ class _RemindRow extends StatelessWidget {
             children: [
               Text(
                 title,
-                style: GoogleFonts.plusJakartaSans(
+                style: GoogleFonts.figtree(
                   fontSize: 14.5,
                   fontWeight: FontWeight.w600,
                   color: AppColors.ink,
@@ -1909,7 +1909,7 @@ class _RemindRow extends StatelessWidget {
               Text(
                 sub,
                 maxLines: 2,
-                style: GoogleFonts.plusJakartaSans(
+                style: GoogleFonts.figtree(
                   fontSize: 12.5,
                   color: const Color(0xFF8E97AB),
                 ),
@@ -1958,7 +1958,7 @@ class _RemindPill extends StatelessWidget {
               ],
               Text(
                 label,
-                style: GoogleFonts.plusJakartaSans(
+                style: GoogleFonts.figtree(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                   color: fg,
@@ -4194,7 +4194,7 @@ class _BottomTabs extends StatelessWidget {
                               ),
                               child: Text(
                                 badge > 99 ? '99+' : '$badge',
-                                style: GoogleFonts.plusJakartaSans(
+                                style: GoogleFonts.figtree(
                                   fontSize: 10.5,
                                   fontWeight: FontWeight.w600,
                                   color: Colors.white,
@@ -4208,7 +4208,7 @@ class _BottomTabs extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       label,
-                      style: GoogleFonts.plusJakartaSans(
+                      style: GoogleFonts.figtree(
                         fontSize: 12.5,
                         fontWeight: selected
                             ? FontWeight.w600

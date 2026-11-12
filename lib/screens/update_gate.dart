@@ -120,7 +120,7 @@ class _UpdateScreen extends StatelessWidget {
     FontWeight w = FontWeight.w400,
     Color c = AppColors.ink,
     double? h,
-  }) => GoogleFonts.plusJakartaSans(
+  }) => GoogleFonts.figtree(
     fontSize: size,
     fontWeight: w,
     color: c,

@@ -27,7 +27,7 @@ Widget _withInter(BuildContext context, Widget child) {
   final t = Theme.of(context);
   return Theme(
     data: t.copyWith(
-      textTheme: GoogleFonts.plusJakartaSansTextTheme(t.textTheme),
+      textTheme: GoogleFonts.figtreeTextTheme(t.textTheme),
     ),
     child: child,
   );
@@ -39,7 +39,7 @@ TextStyle _h(
   FontWeight weight = FontWeight.w700,
   Color color = AppColors.ink,
   double? height,
-}) => GoogleFonts.plusJakartaSans(
+}) => GoogleFonts.figtree(
   fontSize: size,
   fontWeight: weight,
   color: color,
@@ -49,7 +49,7 @@ TextStyle _h(
 
 /// The small blue text buttons.
 final ButtonStyle _linkButton = TextButton.styleFrom(
-  textStyle: GoogleFonts.plusJakartaSans(
+  textStyle: GoogleFonts.figtree(
     fontSize: 14.5,
     fontWeight: FontWeight.w500,
   ),
@@ -227,7 +227,7 @@ class _LoginScreenState extends State<LoginScreen> {
             'This phone already has another account. If you switch, you’ll '
             'need that account’s personal code to open it again.',
             textAlign: TextAlign.center,
-            style: GoogleFonts.plusJakartaSans(
+            style: GoogleFonts.figtree(
               fontSize: 14.5,
               height: 1.45,
               color: AppColors.muted,
@@ -536,8 +536,8 @@ class _LoginScreenState extends State<LoginScreen> {
   /// A field with no box of its own (the card is the box).
   static InputDecoration _plain(String label) => InputDecoration(
     labelText: label,
-    labelStyle: GoogleFonts.plusJakartaSans(color: const Color(0xFF8E97AB)),
-    floatingLabelStyle: GoogleFonts.plusJakartaSans(
+    labelStyle: GoogleFonts.figtree(color: const Color(0xFF8E97AB)),
+    floatingLabelStyle: GoogleFonts.figtree(
       color: const Color(0xFF8E97AB),
     ),
     border: InputBorder.none,
@@ -550,7 +550,7 @@ class _LoginScreenState extends State<LoginScreen> {
     contentPadding: const EdgeInsets.symmetric(vertical: 12),
     // Long errors wrap instead of being cut off.
     errorMaxLines: 3,
-    errorStyle: GoogleFonts.plusJakartaSans(fontSize: 12.5, height: 1.3),
+    errorStyle: GoogleFonts.figtree(fontSize: 12.5, height: 1.3),
   );
 
   /// The small grey line with a blue link: "Trouble signing in? Reset".
@@ -597,14 +597,14 @@ class _LoginScreenState extends State<LoginScreen> {
           textInputAction: TextInputAction.done,
           onChanged: (_) => _clearError(),
           onSubmitted: (_) => onDone(),
-          style: GoogleFonts.plusJakartaSans(
+          style: GoogleFonts.figtree(
             fontSize: 16,
             color: AppColors.ink,
             letterSpacing: capitals ? 1.2 : 0.3,
           ),
           decoration: _plain(label).copyWith(
             hintText: hint,
-            hintStyle: GoogleFonts.plusJakartaSans(
+            hintStyle: GoogleFonts.figtree(
               color: const Color(0xFFC3C9D6),
               letterSpacing: 1.2,
             ),
@@ -623,7 +623,7 @@ class _LoginScreenState extends State<LoginScreen> {
         minimumSize: const Size.fromHeight(54),
         side: const BorderSide(color: Color(0xFFE3E8F1), width: 1.5),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        textStyle: GoogleFonts.plusJakartaSans(
+        textStyle: GoogleFonts.figtree(
           fontSize: 16,
           fontWeight: FontWeight.w600,
         ),
@@ -658,7 +658,7 @@ class _LoginScreenState extends State<LoginScreen> {
             Text(
               'Your account is on this phone.\nNo code needed.',
               textAlign: TextAlign.center,
-              style: GoogleFonts.plusJakartaSans(
+              style: GoogleFonts.figtree(
                 fontSize: 14.5,
                 height: 1.5,
                 color: AppColors.muted,
@@ -686,7 +686,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(width: 6),
                     Text(
                       'Anonymous account',
-                      style: GoogleFonts.plusJakartaSans(
+                      style: GoogleFonts.figtree(
                         fontSize: 12.5,
                         color: AppColors.blue,
                       ),
@@ -847,7 +847,7 @@ class _LoginScreenState extends State<LoginScreen> {
       autofillHints: const [AutofillHints.email],
       onFieldSubmitted: _resetMode ? (_) => _sendReset() : null,
       onChanged: _resetMode ? (_) => _clearError() : null,
-      style: GoogleFonts.plusJakartaSans(fontSize: 15.5, color: AppColors.ink),
+      style: GoogleFonts.figtree(fontSize: 15.5, color: AppColors.ink),
       decoration: _plain('Office email'),
       validator: (v) {
         if (!_looksLikeEmail(v)) return 'Enter your office email';
@@ -929,7 +929,7 @@ class _LoginScreenState extends State<LoginScreen> {
           _signUpMode ? AutofillHints.newPassword : AutofillHints.password,
         ],
         onFieldSubmitted: (_) => _signUpMode ? _signUp() : _signIn(),
-        style: GoogleFonts.plusJakartaSans(
+        style: GoogleFonts.figtree(
           fontSize: 15.5,
           color: AppColors.ink,
         ),
@@ -954,7 +954,7 @@ class _LoginScreenState extends State<LoginScreen> {
         padding: const EdgeInsets.fromLTRB(4, 14, 4, 8),
         child: Text(
           t,
-          style: GoogleFonts.plusJakartaSans(
+          style: GoogleFonts.figtree(
             fontSize: 12,
             letterSpacing: 0.7,
             color: const Color(0xFF8E97AB),
@@ -980,7 +980,7 @@ class _LoginScreenState extends State<LoginScreen> {
             const SizedBox(height: 4),
             Text(
               'Only for managers and HR.',
-              style: GoogleFonts.plusJakartaSans(
+              style: GoogleFonts.figtree(
                 fontSize: 14,
                 color: AppColors.muted,
               ),
@@ -994,7 +994,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   textCapitalization: TextCapitalization.words,
                   textInputAction: TextInputAction.next,
                   autofillHints: const [AutofillHints.name],
-                  style: GoogleFonts.plusJakartaSans(
+                  style: GoogleFonts.figtree(
                     fontSize: 15.5,
                     color: AppColors.ink,
                   ),
@@ -1046,7 +1046,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   now.copyWith(text: now.text.toUpperCase()),
                             ),
                           ],
-                          style: GoogleFonts.plusJakartaSans(
+                          style: GoogleFonts.figtree(
                             fontSize: 15.5,
                             color: AppColors.ink,
                           ),
@@ -1070,7 +1070,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: Text(
                         'This makes sure only real admins can sign up. '
                         'Employees join with the entry code instead.',
-                        style: GoogleFonts.plusJakartaSans(
+                        style: GoogleFonts.figtree(
                           fontSize: 12.5,
                           height: 1.4,
                           color: AppColors.muted,
@@ -1396,7 +1396,7 @@ class _TopBar extends StatelessWidget {
                 const SizedBox(width: 9),
                 Text(
                   label,
-                  style: GoogleFonts.plusJakartaSans(
+                  style: GoogleFonts.figtree(
                     fontSize: 16,
                     color: AppColors.ink,
                   ),
@@ -1442,7 +1442,7 @@ class _AdminPicture extends StatelessWidget {
             const SizedBox(width: 6),
             Text(
               text,
-              style: GoogleFonts.plusJakartaSans(
+              style: GoogleFonts.figtree(
                 fontSize: 12,
                 color: AppColors.ink,
               ),
@@ -1533,7 +1533,7 @@ class _GradientButton extends StatelessWidget {
           foregroundColor: Colors.white,
           disabledForegroundColor: Colors.white,
           shape: const StadiumBorder(),
-          textStyle: GoogleFonts.plusJakartaSans(
+          textStyle: GoogleFonts.figtree(
             fontSize: 16,
             fontWeight: FontWeight.w600,
           ),
@@ -1550,7 +1550,7 @@ class _Footer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final small = GoogleFonts.plusJakartaSans(
+    final small = GoogleFonts.figtree(
       fontSize: 12.5,
       color: const Color(0xFF8E97AB),
     );
@@ -1614,7 +1614,7 @@ class _ErrorBox extends StatelessWidget {
               Expanded(
                 child: Text(
                   message,
-                  style: GoogleFonts.plusJakartaSans(
+                  style: GoogleFonts.figtree(
                     fontSize: 13.5,
                     color: red,
                     height: 1.4,
@@ -1645,7 +1645,7 @@ class _ErrorBox extends StatelessWidget {
                         ),
                         child: Text(
                           a.$1,
-                          style: GoogleFonts.plusJakartaSans(
+                          style: GoogleFonts.figtree(
                             fontSize: 13,
                             color: AppColors.blue,
                           ),
@@ -1790,7 +1790,7 @@ class _WelcomeViewState extends State<_WelcomeView> {
     FontWeight w = FontWeight.w400,
     Color c = _ink,
     double? h,
-  }) => GoogleFonts.plusJakartaSans(
+  }) => GoogleFonts.figtree(
     fontSize: size,
     fontWeight: w,
     color: c,
@@ -2198,7 +2198,7 @@ class _JoinViewState extends State<_JoinView> {
     FontWeight w = FontWeight.w400,
     Color c = _ink,
     double? h,
-  }) => GoogleFonts.plusJakartaSans(
+  }) => GoogleFonts.figtree(
     fontSize: size,
     fontWeight: w,
     color: c,
@@ -2776,7 +2776,7 @@ class _FoundView extends StatelessWidget {
     FontWeight w = FontWeight.w400,
     Color c = AppColors.ink,
     double? h,
-  }) => GoogleFonts.plusJakartaSans(
+  }) => GoogleFonts.figtree(
     fontSize: size,
     fontWeight: w,
     color: c,
@@ -2992,7 +2992,7 @@ class _MovedView extends StatelessWidget {
     FontWeight w = FontWeight.w400,
     Color c = AppColors.ink,
     double? h,
-  }) => GoogleFonts.plusJakartaSans(
+  }) => GoogleFonts.figtree(
     fontSize: size,
     fontWeight: w,
     color: c,

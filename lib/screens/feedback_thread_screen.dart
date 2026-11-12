@@ -129,7 +129,7 @@ class _FeedbackThreadScreenState extends State<FeedbackThreadScreen> {
     final t = Theme.of(context);
     return Theme(
       data: t.copyWith(
-        textTheme: GoogleFonts.plusJakartaSansTextTheme(t.textTheme),
+        textTheme: GoogleFonts.figtreeTextTheme(t.textTheme),
       ),
       child: StreamBuilder<FeedbackItem?>(
         stream: _itemStream,
@@ -229,7 +229,7 @@ TextStyle threadText(
   FontWeight weight = FontWeight.w400,
   Color color = AppColors.ink,
   double? height,
-}) => GoogleFonts.plusJakartaSans(
+}) => GoogleFonts.figtree(
   fontSize: size,
   fontWeight: weight,
   color: color,
