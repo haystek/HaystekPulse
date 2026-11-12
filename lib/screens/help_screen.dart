@@ -50,6 +50,12 @@ const List<_Qa> _questions = [
         'ones are yours: not admin, not the developer.',
   ),
   _Qa(
+    'Does the app store anything about my phone?',
+    'Only a scrambled phone ID, so each phone has one account and the app '
+        'can find your account after a reinstall. It is never used for ads or '
+        'tracking, and it is deleted when you delete your account.',
+  ),
+  _Qa(
     'Is my data encrypted?',
     'Yes. Messages are stored encrypted, so in the database they look like '
         'scrambled text. Admin reads them in the app. Your list of sent '
