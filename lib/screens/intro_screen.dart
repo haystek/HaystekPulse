@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../services/fresh_install.dart';
 
 const Color _sky1 = Color(0xFF0B1B4D);
 
@@ -33,7 +34,8 @@ class _IntroGateState extends State<IntroGate> {
   Future<void> _load() async {
     bool seen;
     try {
-      seen = await _store.read(key: _key) == '1';
+      seen = !FreshInstall.showAgain(_key) &&
+          await _store.read(key: _key) == '1';
     } catch (_) {
       seen = false;
     }

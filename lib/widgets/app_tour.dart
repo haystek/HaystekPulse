@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../services/fresh_install.dart';
 
 /// One stop of a tour: the widget to highlight (by its key) and a tip.
 class TourStep {
@@ -46,7 +47,9 @@ class _TourStarterState extends State<TourStarter> {
   Future<void> _maybeStart() async {
     String? seen;
     try {
-      seen = await _store.read(key: widget.id);
+      seen = FreshInstall.showAgain(widget.id)
+          ? null
+          : await _store.read(key: widget.id);
     } catch (_) {}
     if (seen == '1') return;
     await Future<void>.delayed(widget.delay);

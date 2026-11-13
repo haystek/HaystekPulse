@@ -28,6 +28,7 @@ import 'my_feedback_screen.dart';
 import 'profile_screen.dart';
 import 'suggestion_box_screen.dart';
 import 'weekly_pulse_screen.dart';
+import '../services/fresh_install.dart';
 
 /// Thin borders around the feedback rows.
 const Color _line = Color(0xFFE3E8F1);
@@ -2078,7 +2079,9 @@ class _TourHostState extends State<_TourHost> {
   Future<void> _maybeStart() async {
     String? seen;
     try {
-      seen = await _store.read(key: _HomeTour.storeKey);
+      seen = FreshInstall.showAgain(_HomeTour.storeKey)
+          ? null
+          : await _store.read(key: _HomeTour.storeKey);
     } catch (_) {}
     if (seen == '1') return;
     // Let the cards load first.
