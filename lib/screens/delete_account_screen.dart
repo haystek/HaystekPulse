@@ -109,7 +109,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
         ),
         content: Text(
           _codeAccount
-              ? 'Your account and personal code will be deleted for good. '
+              ? 'Your account and recovery code will be deleted for good. '
                     'You can’t get them back.'
               : 'Your account will be deleted for good. You can’t get it back.',
           textAlign: TextAlign.center,
@@ -254,7 +254,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                       if (_codeAccount)
                         _point(
                           Icons.key_off_outlined,
-                          'Your personal code. It will stop working.',
+                          'Your recovery code. It will stop working.',
                           color: _red,
                         ),
                       _point(
@@ -315,7 +315,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                     style: _t(15.5),
                     decoration: InputDecoration(
                       labelText: _codeAccount
-                          ? 'Your personal code'
+                          ? 'Your recovery code'
                           : 'Your password',
                       hintText: _codeAccount ? 'XXXXX-XXXXX' : null,
                     ),

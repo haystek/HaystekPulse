@@ -49,7 +49,7 @@ Future<void> confirmSignOut(BuildContext context) async {
       ),
       content: Text(
         AuthService.instance.isCodeAccount
-            ? 'You’ll need your personal code to sign in again. Make sure '
+            ? 'You’ll need your recovery code to sign in again. Make sure '
                   'you saved it.'
             : 'You’ll need your email and password to sign in again.',
         style: GoogleFonts.figtree(
@@ -855,7 +855,7 @@ class _CodeProfileState extends State<_CodeProfile> {
     Clipboard.setData(ClipboardData(text: c));
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text('Personal code copied')));
+    ).showSnackBar(const SnackBar(content: Text('Recovery code copied')));
   }
 
   Widget _label(String t) => Padding(
@@ -1175,7 +1175,7 @@ class _CodeProfileState extends State<_CodeProfile> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'My personal code',
+                                    'My recovery code',
                                     style: _s(15, w: FontWeight.w500),
                                   ),
                                   Text(
@@ -1347,7 +1347,7 @@ class _ProfileTour {
     ),
     TourStep(
       code,
-      'Your personal code',
+      'Your recovery code',
       'Tap Show to see it and Copy to save it. You need it only when '
           'you move to a new phone.',
     ),

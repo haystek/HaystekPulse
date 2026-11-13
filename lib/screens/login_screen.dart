@@ -229,7 +229,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           content: Text(
             'This phone already has another account. If you switch, you’ll '
-            'need that account’s personal code to open it again.',
+            'need that account’s recovery code to open it again.',
             textAlign: TextAlign.center,
             style: GoogleFonts.figtree(
               fontSize: 14.5,
@@ -312,7 +312,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _signInWithCode() async {
     FocusScope.of(context).unfocus();
     if (_personalCode.text.trim().isEmpty) {
-      setState(() => _error = 'Enter your personal code.');
+      setState(() => _error = 'Enter your recovery code.');
       return;
     }
     // This phone has a different account: ask before switching.
@@ -468,7 +468,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _sendReset() async {
     FocusScope.of(context).unfocus(); // closes the keyboard
     if (!_looksLikeEmail(_email.text)) {
-      setState(() => _error = 'Enter your office email.');
+      setState(() => _error = 'Enter your work email.');
       return;
     }
     setState(() {
@@ -645,7 +645,7 @@ class _LoginScreenState extends State<LoginScreen> {
             _ErrorBox(
               message: _error!,
               actions: _errorCode == 'device-has-account'
-                  ? [('Use personal code', () => _go(_Entry.personal))]
+                  ? [('Use your recovery code', () => _go(_Entry.personal))]
                   : const [],
             ),
           ];
@@ -729,12 +729,12 @@ class _LoginScreenState extends State<LoginScreen> {
             const SizedBox(height: 20),
             _GradientButton(
               onPressed: _busy ? null : _join,
-              child: _busy ? _busyDot() : const Text('Join'),
+              child: _busy ? _busyDot() : const Text('Join Haystek Pulse'),
             ),
             const SizedBox(height: 8),
             _helpLine(
               'Already joined?',
-              'Use personal code',
+              'Use your recovery code',
               _busy ? null : () => _go(_Entry.personal),
             ),
           ],
@@ -746,14 +746,14 @@ class _LoginScreenState extends State<LoginScreen> {
             Text('Sign in', style: _h(24)),
             const SizedBox(height: 4),
             const Text(
-              'New phone? Enter the personal code you saved when you joined.',
+              'New phone? Enter the recovery code you saved when you joined.',
               style: _sub,
             ),
             const SizedBox(height: 18),
             _codeField(
               controller: _personalCode,
               icon: Icons.key_outlined,
-              label: 'Personal code',
+              label: 'Recovery code',
               hint: 'XXXXX-XXXXX',
               capitals: false,
               onDone: _signInWithCode,
@@ -800,7 +800,7 @@ class _LoginScreenState extends State<LoginScreen> {
             KeyedSubtree(
               key: _WelcomeTour.personal,
               child: _lightButton(
-                'I have my personal code',
+                'I have my recovery code',
                 () => _go(_Entry.personal),
               ),
             ),
@@ -852,9 +852,9 @@ class _LoginScreenState extends State<LoginScreen> {
       onFieldSubmitted: _resetMode ? (_) => _sendReset() : null,
       onChanged: _resetMode ? (_) => _clearError() : null,
       style: GoogleFonts.figtree(fontSize: 15.5, color: AppColors.ink),
-      decoration: _plain('Office email'),
+      decoration: _plain('Work email'),
       validator: (v) {
-        if (!_looksLikeEmail(v)) return 'Enter your office email';
+        if (!_looksLikeEmail(v)) return 'Enter your work email';
         if (_signUpMode &&
             !v!.trim().toLowerCase().endsWith(AuthService.officeDomain)) {
           return 'Use your ${AuthService.officeDomain} email';
@@ -902,7 +902,7 @@ class _LoginScreenState extends State<LoginScreen> {
           Text('Reset password', style: _h(24)),
           const SizedBox(height: 4),
           const Text(
-            'Enter your office email. We will send you a link to set a new '
+            'Enter your work email. We will send you a link to set a new '
             'password.',
             style: _sub,
           ),
@@ -1114,7 +1114,7 @@ class _LoginScreenState extends State<LoginScreen> {
         children: [
           Text('Admin sign in', style: _h(24)),
           const SizedBox(height: 2),
-          const Text('Use your office email.', style: _sub),
+          const Text('Use your work email.', style: _sub),
           const SizedBox(height: 18),
           _card([emailRow, passwordRow]),
           ...error,
@@ -1209,7 +1209,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     _ErrorBox(
                       message: _error!,
                       actions: _errorCode == 'device-has-account'
-                          ? [('Use personal code', () => _go(_Entry.personal))]
+                          ? [('Use your recovery code', () => _go(_Entry.personal))]
                           : const [],
                     ),
                   ],
@@ -1505,7 +1505,7 @@ class _AdminPicture extends StatelessWidget {
               size: 36,
             ),
           ),
-          Positioned(left: 14, top: 22, child: tag('🏢', 'Office email', -0.1)),
+          Positioned(left: 14, top: 22, child: tag('🏢', 'Work email', -0.1)),
           Positioned(
             right: 10,
             bottom: 26,
@@ -2044,7 +2044,7 @@ class _WelcomeViewState extends State<_WelcomeView> {
                   ),
                   const SizedBox(height: 22),
                   Text(
-                    'Say it honestly.\nStay anonymous.',
+                    'Speak openly.\nStay anonymous.',
                     textAlign: TextAlign.center,
                     style: _s(26, w: FontWeight.w600, h: 1.2),
                   ),
@@ -2095,7 +2095,7 @@ class _WelcomeViewState extends State<_WelcomeView> {
                                 shape: const StadiumBorder(),
                                 textStyle: _s(16, w: FontWeight.w600),
                               ),
-                              child: const Text('I have my personal code'),
+                              child: const Text('I have my recovery code'),
                             ),
                           ),
                         ),
@@ -2157,7 +2157,7 @@ class _JoinView extends StatefulWidget {
     this.personal = false,
   });
 
-  /// True: the same screen for "I have my personal code" (new phone).
+  /// True: the same screen for "I have my recovery code" (new phone).
   final bool personal;
   final TextEditingController controller;
   final bool busy;
@@ -2263,7 +2263,7 @@ class _JoinViewState extends State<_JoinView> {
                     const SizedBox(height: 20),
                     Text(
                       widget.personal
-                          ? 'Use your personal code'
+                          ? 'Use your recovery code'
                           : 'Unlock Haystek Pulse',
                       textAlign: TextAlign.center,
                       style: _s(24, w: FontWeight.w600),
@@ -2273,10 +2273,10 @@ class _JoinViewState extends State<_JoinView> {
                       padding: const EdgeInsets.symmetric(horizontal: 24),
                       child: Text(
                         widget.personal
-                            ? 'Enter your personal code to get your account back on this phone.\n'
-                                  'Don’t have it? Find it on your old phone in Profile → My personal code.'
+                            ? 'Enter your recovery code to get your account back on this phone.\n'
+                                  'Don’t have it? Find it on your old phone in Profile → My recovery code.'
                             : 'Pick any code from Pulse Codes in Zoho.\n'
-                                  'Each code works only once.',
+                                  'Each code can be used only once.',
                         textAlign: TextAlign.center,
                         style: _s(14, c: AppColors.muted, h: 1.45),
                       ),
@@ -2318,7 +2318,7 @@ class _JoinViewState extends State<_JoinView> {
                                     color: Colors.white,
                                   ),
                                 )
-                              : Text(widget.personal ? 'Sign in' : 'Join'),
+                              : Text(widget.personal ? 'Sign in' : 'Join Haystek Pulse'),
                         ),
                       ),
                     ),
@@ -2334,7 +2334,7 @@ class _JoinViewState extends State<_JoinView> {
                           child: Text(
                             widget.personal
                                 ? 'Join with entry code'
-                                : 'Use personal code',
+                                : 'Use your recovery code',
                             style: _s(13.5, c: AppColors.blue),
                           ),
                         ),
@@ -2397,7 +2397,7 @@ class _JoinViewState extends State<_JoinView> {
                   ),
                 ),
                 const SizedBox(width: 9),
-                Text(widget.personal ? 'Sign in' : 'Join', style: _s(16)),
+                Text(widget.personal ? 'Sign in' : 'Join Haystek Pulse', style: _s(16)),
               ],
             ),
           ),
@@ -2516,14 +2516,14 @@ class _JoinViewState extends State<_JoinView> {
             top: h * 0.11,
             child: widget.personal
                 ? _tag('📱', 'New phone', -0.1)
-                : _tag('🏢', 'Haystek only', -0.1),
+                : _tag('🏢', 'Haystek Employees only', -0.1),
           ),
           Positioned(
             right: 0,
             top: h * 0.46,
             child: widget.personal
                 ? _tag('🔁', 'Same account', 0.1)
-                : _tag('🙈', 'No name', 0.1),
+                : _tag('🙈', 'Anonymous', 0.1),
           ),
         ],
       ),
@@ -2891,7 +2891,7 @@ class _FoundView extends StatelessWidget {
                                 Positioned(
                                   right: 12,
                                   bottom: h * 0.14,
-                                  child: _Floaty(phase: 0.5, child: _tag('🙈', 'No name', 0.08)),
+                                  child: _Floaty(phase: 0.5, child: _tag('🙈', 'Anonymous', 0.08)),
                                 ),
                               ],
                             );
@@ -3115,7 +3115,7 @@ class _MovedView extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Your personal code was used on another phone, so this '
+                      'Your recovery code was used on another phone, so this '
                       'phone was signed out. One account works on one phone '
                       'at a time.',
                       textAlign: TextAlign.center,
@@ -3129,7 +3129,7 @@ class _MovedView extends StatelessWidget {
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Text(
-                        'Wasn’t you? Sign in again with your personal code to '
+                        'Wasn’t you? Sign in again with your recovery code to '
                         'bring it back here, and keep the code private.',
                         textAlign: TextAlign.center,
                         style: _s(13, c: AppColors.muted, h: 1.45),
@@ -3152,7 +3152,7 @@ class _MovedView extends StatelessWidget {
                     TextButton(
                       onPressed: onPersonal,
                       child: Text(
-                        'Sign in with personal code',
+                        'Sign in with recovery code',
                         style: _s(14, c: AppColors.blue),
                       ),
                     ),
@@ -3187,7 +3187,7 @@ class _WelcomeTour {
       TourStep(
         k,
         'Changed your phone?',
-        'Enter the personal code you saved when you joined. Do not have it? Open Profile on your old phone to see it. Enter it here and your account moves to this phone.',
+        'Enter the recovery code you saved when you joined. Do not have it? Open Profile on your old phone to see it. Enter it here and your account moves to this phone.',
       ),
     for (final k in [admin, admin2])
       TourStep(

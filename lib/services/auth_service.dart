@@ -57,7 +57,7 @@ class AuthService {
   String? pendingCode;
 
   /// A personal code made by [joinWithEntryCode]. Shown once on the
-  /// "Save your personal code" screen, then cleared.
+  /// "Save your recovery code" screen, then cleared.
   String? newPersonalCode;
 
   /// The entry code just used. Kept in memory until the account record is
@@ -303,7 +303,7 @@ class AuthService {
     await _markPhoneUsed(pendingCode ?? await savedCode());
   }
 
-  /// "I have my personal code": signs in on any phone. Never blocked by
+  /// "I have my recovery code": signs in on any phone. Never blocked by
   /// the phone check; it only marks this phone as used too.
   /// [claim]: true when the person typed the code (or joined): this phone
   /// takes the account, any other phone signs out. False when the phone
@@ -387,7 +387,7 @@ class AuthService {
         value: PersonalCode.normalize(code),
       );
     } catch (e) {
-      debugPrint('[Auth] could not keep the personal code: $e');
+      debugPrint('[Auth] could not keep the recovery code: $e');
     }
   }
 
@@ -879,7 +879,7 @@ class AuthService {
         case 'invalid-email':
           return 'Please enter a valid email address.';
         case 'not-office-email':
-          return 'Please use your $officeDomain office email.';
+          return 'Please use your $officeDomain work email.';
         case 'email-already-in-use':
           return 'An account with this email already exists. Please sign in, '
               'or use Reset password.';
@@ -909,16 +909,16 @@ class AuthService {
               'from Pulse Codes in Zoho.';
         case 'account-moved':
           return 'Your account is now on another phone. Sign in with your '
-              'personal code to use it here.';
+              'recovery code to use it here.';
         case 'device-has-account':
           return 'This phone already has an account. Please sign in with '
-              'your personal code.';
+              'your recovery code.';
         case 'personal-code-needed':
-          return 'Please enter your personal code to delete your account.';
+          return 'Please enter your recovery code to delete your account.';
         case 'password-needed':
           return 'Please enter your password to delete your account.';
         case 'personal-code-wrong':
-          return 'This personal code is not correct. It looks like '
+          return 'This recovery code is not correct. It looks like '
               'K7M2P-X9F4R. Please check it and try again.';
       }
     }

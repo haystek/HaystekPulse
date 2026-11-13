@@ -154,7 +154,7 @@ class _VaultGateState extends State<VaultGate> {
       if (!mounted) return;
       setState(() {
         _step = _Step.askCode;
-        _error = 'This personal code is not correct.';
+        _error = 'This recovery code is not correct.';
       });
     }
   }
@@ -164,7 +164,7 @@ class _VaultGateState extends State<VaultGate> {
     final email = FirebaseAuth.instance.currentUser?.email?.toLowerCase();
     if (email != await AuthService.codeEmail(code)) {
       if (mounted) {
-        setState(() => _error = 'This personal code is not correct.');
+        setState(() => _error = 'This recovery code is not correct.');
       }
       return;
     }
@@ -307,11 +307,11 @@ class _VaultGateState extends State<VaultGate> {
         return _AskScreen(
           key: const ValueKey('ask-code'),
           icon: Icons.key_outlined,
-          title: 'Enter your personal code',
+          title: 'Enter your recovery code',
           text:
-              'Your history is locked with your personal code. Enter it '
+              'Your history is locked with your recovery code. Enter it '
               'to open it on this phone.',
-          label: 'Personal code',
+          label: 'Recovery code',
           hint: 'XXXXX-XXXXX',
           obscure: false,
           button: 'Unlock',
@@ -611,7 +611,7 @@ class _BackupCodeScreenState extends State<BackupCodeScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          widget.personal ? 'Personal code copied' : 'Backup code copied',
+          widget.personal ? 'Recovery code copied' : 'Backup code copied',
         ),
       ),
     );
@@ -685,7 +685,7 @@ class _BackupCodeScreenState extends State<BackupCodeScreen> {
                     const SizedBox(height: 18),
                     Text(
                       widget.personal
-                          ? 'Your personal code'
+                          ? 'Your recovery code'
                           : 'Your backup code',
                       textAlign: TextAlign.center,
                       style: _t(22, weight: FontWeight.w500),
@@ -987,13 +987,13 @@ class _BackupCodeScreenState extends State<BackupCodeScreen> {
                         ),
                         const SizedBox(height: 10),
                         Text(
-                          'Save your personal code',
+                          'Save your recovery code',
                           textAlign: TextAlign.center,
                           style: _t(23, weight: FontWeight.w600),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'You need it only if you change your phone.',
+                          'Use to restore access after switching phones or reinstalling.',
                           textAlign: TextAlign.center,
                           style: _t(14, color: AppColors.muted),
                         ),
@@ -1029,14 +1029,14 @@ class _BackupCodeScreenState extends State<BackupCodeScreen> {
                                           step(
                                             2,
                                             'Changing your phone?',
-                                            'Install the app on the new phone, tap “I have my personal code” '
-                                                'and enter this code. Your account comes back there.',
+                                            'Install the app on the new phone, tap “I have my recovery code” '
+                                                'and enter this code. Your account will be restored on your new phone.',
                                           ),
                                           const SizedBox(height: 12),
                                           step(
                                             3,
-                                            'Forgot it?',
-                                            'Find it anytime in Profile → My personal code.',
+                                            'Need to find your code?',
+                                            'Find it anytime in Profile → My recovery code.',
                                           ),
                                         ],
                                       ),
@@ -1090,7 +1090,7 @@ class _BackupCodeScreenState extends State<BackupCodeScreen> {
                                   ),
                                   cursorColor: AppColors.blue,
                                   decoration: InputDecoration(
-                                    hintText: 'Paste or type it to confirm',
+                                    hintText: 'Enter your code to confirm',
                                     hintStyle: _t(
                                       15,
                                       color: const Color(0xFFC3C9D6),

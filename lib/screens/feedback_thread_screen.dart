@@ -1595,7 +1595,7 @@ class _NoRepliesYet extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            'Admin reads every message and will reply here. You will get a notification.',
+            'Admin team reads and responds to every message. You will get a notification when they reply.',
             textAlign: TextAlign.center,
             style: threadText(14, color: _v1Soft, height: 1.5),
           ),

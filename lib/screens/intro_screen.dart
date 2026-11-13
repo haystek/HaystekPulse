@@ -148,37 +148,36 @@ class _IntroScreenState extends State<IntroScreen>
         return _IPage(
           a: a,
           hero: _HeroWelcome(a: a, float: _float, beat: _beat),
-          title: 'Your voice at Haystek, heard.',
+          title: 'Your voice matters at Haystek.',
           sub:
-              'Share ideas, raise problems and tell us how your week '
-              'went. Admin reads every message and replies.',
+              'Share ideas, raise concerns and tell us how your week went. Admin team reads and responds to every message.',
         );
       case 1:
         return _IPage(
           a: a,
           hero: _HeroTiles(a: a, float: _float),
-          title: 'Three simple things',
+          title: 'Three ways to stay connected',
           body: const [
             _IItem(
               icon: Icons.lightbulb_outline_rounded,
               color: Color(0xFFB7791F),
               bg: Color(0xFFFEF3C7),
               title: 'Suggestion Box',
-              text: 'Ideas or problems, any day. Admin replies.',
+              text: 'Share ideas or raise concerns anytime. Get replies from the admin team.',
             ),
             _IItem(
               icon: Icons.monitor_heart_outlined,
               color: _iNavy,
               bg: Color(0xFFEAF0FF),
               title: 'Weekly Pulse',
-              text: 'Once a week, tell us how your week went. Takes 5 seconds.',
+              text: 'Tell us how your week went in a quick weekly check-in.',
             ),
             _IItem(
               icon: Icons.campaign_outlined,
               color: Color(0xFFC2410C),
               bg: Color(0xFFFFEDD5),
               title: 'Broadcast',
-              text: 'News and updates for everyone.',
+              text: 'Stay informed with the latest news and announcements.',
             ),
           ],
         );
@@ -192,8 +191,8 @@ class _IntroScreenState extends State<IntroScreen>
               icon: Icons.lock_outline_rounded,
               color: _iNavy,
               bg: Color(0xFFEAF0FF),
-              title: 'Nobody knows it’s you',
-              text: 'Not admin, not the developer.',
+              title: 'Your identity stays hidden',
+              text: 'Your name isn’t shown to the admin team.',
               size: 36,
             ),
             _IItem(
@@ -201,15 +200,15 @@ class _IntroScreenState extends State<IntroScreen>
               color: _iNavy,
               bg: Color(0xFFEAF0FF),
               title: 'Stored encrypted',
-              text: 'Your messages are encrypted in the database.',
+              text: 'Messages are encrypted when stored.',
               size: 36,
             ),
             _IItem(
               icon: Icons.vpn_key_outlined,
               color: _iNavy,
               bg: Color(0xFFEAF0FF),
-              title: 'Your name only if you choose',
-              text: 'Pick “With my name” for one message.',
+              title: 'Share your name when you choose',
+              text: 'Select “With my name” to identify yourself on an individual message.',
               size: 36,
             ),
           ],
@@ -218,25 +217,24 @@ class _IntroScreenState extends State<IntroScreen>
         return _IPage(
           a: a,
           hero: _HeroJoin(a: a),
-          title: 'Join in 10 seconds',
+          title: 'Get started in seconds',
           body: const [
             _IStep(
               n: 1,
               title: 'Enter your entry code',
               text:
-                  'You will find it on Zoho. Only Haystek staff can see it, '
-                  'so outsiders cannot join.',
+                  'Find your entry code in Zoho: More → General in the left menu. Your entry code is for Haystek employees only. Please don’t share it.',
             ),
             _IStep(
               n: 2,
-              title: 'Save your personal code',
+              title: 'Save your recovery code',
               text:
-                  'The app gives you this code after you join. Keep it safe. You need it only if you move to a new phone.',
+                  'The app gives you this code after you join. Keep it safe. Use it to restore access on a new phone.',
             ),
             _IStep(
               n: 3,
               title: 'You are in',
-              text: 'No email and no password. This phone is your account.',
+              text: 'No email or password required. Use your recovery code to restore access on a new phone.',
               last: true,
             ),
           ],
@@ -1007,7 +1005,7 @@ class _HeroJoin extends StatelessWidget {
               const Icon(Icons.schedule_rounded, size: 15, color: Colors.white),
               const SizedBox(width: 6),
               Text(
-                'Takes about 10 seconds',
+                'Takes a few seconds',
                 style: t.labelLarge?.copyWith(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,

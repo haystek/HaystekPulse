@@ -59,7 +59,7 @@ const List<_Qa> _questions = [
     'Is my data encrypted?',
     'Yes. Messages are stored encrypted, so in the database they look like '
         'scrambled text. Admin reads them in the app. Your list of sent '
-        'messages is locked with your personal code.',
+        'messages is locked with your recovery code.',
   ),
   _Qa(
     'What does admin see in Weekly Pulse?',
@@ -80,16 +80,16 @@ const List<_Qa> _questions = [
         'Haystek, not who you are.',
   ),
   _Qa(
-    'What is my personal code?',
+    'What is my recovery code?',
     '10 letters and numbers, like K7M2P-X9F4R. The app gives it '
         'to you when you join.\n\n'
         'You need it only when you change to a new phone. You can see it any '
-        'time in Profile → My personal code. Keep it safe and don’t share it.',
+        'time in Profile → My recovery code. Keep it safe and don’t share it.',
   ),
   _Qa(
     'I reinstalled the app or got a new phone.',
     '• Same phone: the app finds your account. Tap Continue.\n'
-        '• New phone: tap “I have my personal code” and enter it.',
+        '• New phone: tap “I have my recovery code” and enter it.',
   ),
   _Qa(
     'I lost my phone and my code.',
@@ -100,7 +100,7 @@ const List<_Qa> _questions = [
     'When should I delete my account?',
     'Only when you leave Haystek. You don’t need to delete it for a new '
         'phone or a reinstall.\n\n'
-        'Profile → Delete my account. Your personal code stops working and '
+        'Profile → Delete my account. Your recovery code stops working and '
         'your history in the app is removed. Messages you sent stay with '
         'admin exactly as you sent them: anonymous ones stay anonymous, and '
         'ones sent “With my name” keep that name.',

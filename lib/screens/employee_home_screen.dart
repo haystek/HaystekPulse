@@ -1854,7 +1854,7 @@ class _RecentActivityState extends State<_RecentActivity> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Nothing here yet',
+                  'No feedback yet',
                   style: _inter(15, weight: FontWeight.w700),
                 ),
                 const SizedBox(height: 4),
@@ -2037,7 +2037,7 @@ class _HomeTour {
     (
       pulse,
       'Weekly Pulse',
-      'Once a week, tell us how your week went. Takes 5 seconds.',
+      'Tell us how your week went in a quick weekly check-in.',
     ),
     (
       suggest,
