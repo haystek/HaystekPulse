@@ -51,7 +51,17 @@ ThemeData buildAppTheme() {
     error: const Color(0xFFC0341D),
   );
 
-  final base = ThemeData(useMaterial3: true, colorScheme: scheme);
+  final base = ThemeData(
+    useMaterial3: true,
+    colorScheme: scheme,
+    // Screens slide in from the right and back to the right, on both phones.
+    pageTransitionsTheme: const PageTransitionsTheme(
+      builders: {
+        TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+        TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+      },
+    ),
+  );
   final textTheme = GoogleFonts.figtreeTextTheme(
     base.textTheme,
   ).apply(bodyColor: AppColors.ink, displayColor: AppColors.ink);

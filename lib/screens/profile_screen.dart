@@ -12,6 +12,7 @@ import '../widgets/app_tour.dart';
 import 'delete_account_screen.dart';
 import 'help_screen.dart';
 import 'vault_screens.dart';
+import 'reset_admin_code.dart';
 
 /// Inter font for everything on these screens and dialogs
 /// (same as the home screen).
@@ -246,6 +247,18 @@ class _AdminProfile extends StatelessWidget {
                         ),
                       ),
                       divider(),
+                      // Reset admin code (admins only).
+                      if (isAdmin) ...[
+                        const AdminCodeRow(),
+                        divider(),
+                        _ListRow(
+                          icon: Icons.vpn_key_outlined,
+                          title: 'Reset admin code',
+                          sub: 'Make a new code and share it with HR',
+                          onTap: () => showResetAdminCode(context),
+                        ),
+                        divider(),
+                      ],
                       // Backup code (older email employee accounts only).
                       if (!isAdmin) ...[
                         _ListRow(

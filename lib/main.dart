@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -11,9 +12,11 @@ import 'services/error_log.dart';
 import 'services/notification_service.dart';
 import 'theme/app_theme.dart';
 import 'services/schedule_service.dart';
+import 'services/fresh_install.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await FreshInstall.resetSeenMarksIfNew();
   final firebaseOptions = appFlavor == 'dev'
         ? DevFirebaseOptions.currentPlatform
         : DefaultFirebaseOptions.currentPlatform;
@@ -35,6 +38,11 @@ Future<void> main() async {
   // If something breaks: save only the error and app version (no phone details).
   await ErrorLog.start();
   await ScheduleService.start();
+  if (FreshInstall.wasFresh) {
+    try {
+      await FirebaseAuth.instance.signOut();
+    } catch (_) {}
+  }
   runApp(const HaystekApp());
 }
 
@@ -63,7 +71,7 @@ class HaystekApp extends StatelessWidget {
         final page = MediaQuery(
           data: MediaQuery.of(
             context,
-          ).copyWith(textScaler: TextScaler.noScaling),
+          ).copyWith(textScaler: TextScaler.noScaling, boldText: false),
           child: child!,
         );
         // DEV build: an orange "DEV" ribbon on every screen, so a test

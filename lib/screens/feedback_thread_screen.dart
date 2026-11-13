@@ -1252,7 +1252,6 @@ class ThreadQuoteHeader extends StatelessWidget {
   final VoidCallback? onAction;
 
   String get _meta {
-    final rating = item.rating;
     final String who;
     if (management) {
       final name = (item.authorName ?? '').trim();
@@ -1266,7 +1265,6 @@ class ThreadQuoteHeader extends StatelessWidget {
     return [
       who,
       if (item.createdAt != null) threadDate(item.createdAt!),
-      if (!item.isFromBox && rating != null) PulseRating.label(rating),
     ].join(' · ');
   }
 
@@ -1276,7 +1274,6 @@ class ThreadQuoteHeader extends StatelessWidget {
     void back() => Navigator.of(context).maybePop();
     final type = item.isFromBox ? 'Suggestion' : 'Weekly Pulse';
     final color = FeedbackStatus.color(item.status);
-    final step = threadStep(item.status);
     final action = onAction == null
         ? null
         : _W3Button(
@@ -1393,25 +1390,15 @@ class ThreadQuoteHeader extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           _V1Text(text: item.text),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              for (var i = 0; i < 5; i++) ...[
-                if (i > 0) const SizedBox(width: 4),
-                Expanded(
-                  child: Container(
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: i < step ? color : const Color(0xFFE5E7EB),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text('Step $step of 5', style: threadText(11.5, color: _v1Faint)),
+          if (!item.isFromBox && item.rating != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              management
+                  ? 'Said ${PulseRating.label(item.rating!)}'
+                  : 'You said ${PulseRating.label(item.rating!)}',
+              style: threadText(13, weight: FontWeight.w600, color: PulseRating.color(item.rating!)),
+            ),
+          ],
         ],
       ),
     );
@@ -1608,7 +1595,7 @@ class _NoRepliesYet extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            'Admin will reply here. You will get a notification.',
+            'Admin reads every message and will reply here. You will get a notification.',
             textAlign: TextAlign.center,
             style: threadText(14, color: _v1Soft, height: 1.5),
           ),

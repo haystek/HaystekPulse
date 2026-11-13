@@ -110,8 +110,40 @@ service cloud.firestore {
     // them, and the code itself is never stored.
     // ---------------------------------------------------------------
     match /admin_codes/{hash} {
+      // Reset admin code (Profile): an active admin may list, add and
+      // delete codes. Only the SHA-256 is stored, never the code.
+      function adminCodeAdmin() {
+        return signedIn()
+          && get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.type == 'm'
+          && get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.active == true;
+      }
       allow get: if true;
-      allow list, write: if false;
+      allow list, delete: if adminCodeAdmin();
+      allow create: if adminCodeAdmin()
+        && hash.size() == 64
+        && request.resource.data.keys().hasOnly(['createdAt', 'by'])
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.by == request.auth.uid;
+      allow update: if false;
+    }
+
+    // admin_secret/current: the current admin code, readable only by
+    // active admins (Profile -> Admin code: Show / Copy).
+    match /admin_secret/{doc} {
+      function adminSecretAdmin() {
+        return signedIn()
+          && get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.type == 'm'
+          && get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.active == true;
+      }
+      allow get: if adminSecretAdmin();
+      allow create, update: if adminSecretAdmin()
+        && doc == 'current'
+        && request.resource.data.keys().hasOnly(['code', 'createdAt', 'by'])
+        && request.resource.data.code is string
+        && request.resource.data.code.size() == 6
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.by == request.auth.uid;
+      allow list, delete: if false;
     }
 
     // ---------------------------------------------------------------
