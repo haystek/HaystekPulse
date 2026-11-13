@@ -276,6 +276,9 @@ class _AllWeeksScreenState extends State<AllWeeksScreen> {
       );
     });
 
+    // No past weeks yet: a short message instead of an empty screen.
+    if (pastIds.isEmpty) children.add(const _NoWeeksYet());
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 28),
       children: children,
@@ -343,14 +346,14 @@ class _ThisWeekCard extends StatelessWidget {
       title = 'Not open yet';
       timing = 'Opens ${PulseService.dateTimeLabel(PulseService.opensAt(now))}';
     } else if (open) {
-      title = _result(totals, total);
+      title = total == 0 ? 'No employees yet' : _result(totals, total);
       // The window ends at midnight; show it as 11:59 PM of the last day.
       final last = PulseService.closesAt(
         now,
       ).subtract(const Duration(minutes: 1));
       timing = 'Open until ${PulseService.dateTimeLabel(last)}';
     } else {
-      title = _result(totals, total);
+      title = total == 0 ? 'No employees yet' : _result(totals, total);
       timing = 'Closed';
     }
 
@@ -380,7 +383,14 @@ class _ThisWeekCard extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(timing, style: const TextStyle(fontSize: 13, color: onBlue)),
-              if (!notOpenYet) ...[
+              if (!notOpenYet && total == 0) ...[
+                const SizedBox(height: 10),
+                const Text(
+                  'Answers show here once employees join.',
+                  style: TextStyle(fontSize: 13, color: onBlue),
+                ),
+              ],
+              if (!notOpenYet && total > 0) ...[
                 const SizedBox(height: 14),
                 _AnswerBlocks(answered: submitted, total: total),
                 const SizedBox(height: 8),
@@ -1206,4 +1216,45 @@ String _monthTitle(String weekId) {
   final friday = DateTime(monday.year, monday.month, monday.day + 4);
   final name = _longMonthNames[friday.month - 1];
   return friday.year == DateTime.now().year ? name : '$name ${friday.year}';
+}
+
+/// Shown under the blue card when there are no past weeks yet.
+class _NoWeeksYet extends StatelessWidget {
+  const _NoWeeksYet();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 56, 24, 24),
+      child: Column(
+        children: [
+          Container(
+            width: 72,
+            height: 72,
+            decoration: const BoxDecoration(
+              color: Color(0xFFEAF0FF),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.insights_outlined,
+              size: 32,
+              color: AppColors.blue,
+            ),
+          ),
+          const SizedBox(height: 18),
+          const Text(
+            'No past weeks yet',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'After the first Weekly Pulse closes, each week and the mood chart show here.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 14, height: 1.45, color: _muted),
+          ),
+        ],
+      ),
+    );
+  }
 }
