@@ -11,6 +11,7 @@ import '../services/personal_code.dart';
 import '../theme/app_theme.dart';
 import '../widgets/pulse_loading.dart';
 import '../widgets/app_tour.dart';
+import '../services/fresh_install.dart';
 
 /// Which part of the sign-in screen shows.
 /// welcome:  Join with entry code / I have my personal code / Admin
@@ -140,7 +141,10 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _checkThisPhone() async {
     final auth = AuthService.instance;
     _autoTrying = true; // Called from initState: no setState needed.
-    if (await auth.savedCode() != null && await auth.autoSignIn()) {
+    // After a reinstall (iPhone), show "Welcome back" like Android.
+    if (!FreshInstall.wasFresh &&
+        await auth.savedCode() != null &&
+        await auth.autoSignIn()) {
       return; // Signed in: AuthGate shows the home screen.
     }
     final found = await auth.codeOnThisPhone();
