@@ -1702,6 +1702,8 @@ class _FoundBadge extends StatelessWidget {
           Positioned(
             right: 4,
             bottom: 4,
+            child: _PopIn(
+            delayMs: 600,
             child: Container(
               width: 26,
               height: 26,
@@ -1715,6 +1717,7 @@ class _FoundBadge extends StatelessWidget {
                 color: Colors.white,
                 size: 14,
               ),
+            ),
             ),
           ),
         ],
@@ -2878,17 +2881,17 @@ class _FoundView extends StatelessWidget {
                                 ),
                                 Transform.scale(
                                   scale: (h / 220).clamp(0.8, 1.4),
-                                  child: const _FoundBadge(),
+                                  child: const _PulseRing(child: _PopIn(child: _FoundBadge())),
                                 ),
                                 Positioned(
                                   left: 16,
                                   top: h * 0.12,
-                                  child: _tag('📱', 'This phone', -0.1),
+                                  child: _Floaty(phase: 0, child: _tag('📱', 'This phone', -0.1)),
                                 ),
                                 Positioned(
                                   right: 12,
                                   bottom: h * 0.14,
-                                  child: _tag('🙈', 'No name', 0.08),
+                                  child: _Floaty(phase: 0.5, child: _tag('🙈', 'No name', 0.08)),
                                 ),
                               ],
                             );
@@ -2898,19 +2901,27 @@ class _FoundView extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 24),
-                  Text(
+                  _FadeUp(
+                    delayMs: 250,
+                    child: Text(
                     'Welcome back',
                     textAlign: TextAlign.center,
                     style: _s(26, w: FontWeight.w600),
                   ),
+                  ),
                   const SizedBox(height: 8),
-                  Text(
+                  _FadeUp(
+                    delayMs: 380,
+                    child: Text(
                     'Your account is on this phone.\nNo code needed.',
                     textAlign: TextAlign.center,
                     style: _s(14.5, c: AppColors.muted, h: 1.5),
                   ),
+                  ),
                   const SizedBox(height: 14),
-                  Center(
+                  _FadeUp(
+                    delayMs: 500,
+                    child: Center(
                     child: Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 12,
@@ -2936,6 +2947,7 @@ class _FoundView extends StatelessWidget {
                         ],
                       ),
                     ),
+                  ),
                   ),
                   if (error != null)
                     Padding(
@@ -3184,4 +3196,210 @@ class _WelcomeTour {
         'Admins sign in with email. Employees do not need email.',
       ),
   ];
+}
+
+// ---------------------------------------------------------------------
+// Small animations for the "Welcome back" screen.
+// ---------------------------------------------------------------------
+
+/// Grows in from a little smaller, with a small bounce.
+class _PopIn extends StatefulWidget {
+  const _PopIn({required this.child, this.delayMs = 0});
+
+  final Widget child;
+  final int delayMs;
+
+  @override
+  State<_PopIn> createState() => _PopInState();
+}
+
+class _PopInState extends State<_PopIn> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 650),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(Duration(milliseconds: widget.delayMs), () {
+      if (mounted) _c.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: CurvedAnimation(parent: _c, curve: const Interval(0, 0.5)),
+      child: ScaleTransition(
+        scale: Tween<double>(begin: 0.6, end: 1).animate(
+          CurvedAnimation(parent: _c, curve: Curves.easeOutBack),
+        ),
+        child: widget.child,
+      ),
+    );
+  }
+}
+
+/// Fades in while moving up a little.
+class _FadeUp extends StatefulWidget {
+  const _FadeUp({required this.child, this.delayMs = 0});
+
+  final Widget child;
+  final int delayMs;
+
+  @override
+  State<_FadeUp> createState() => _FadeUpState();
+}
+
+class _FadeUpState extends State<_FadeUp> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 500),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(Duration(milliseconds: widget.delayMs), () {
+      if (mounted) _c.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final curve = CurvedAnimation(parent: _c, curve: Curves.easeOutCubic);
+    return FadeTransition(
+      opacity: curve,
+      child: SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(0, 0.3),
+          end: Offset.zero,
+        ).animate(curve),
+        child: widget.child,
+      ),
+    );
+  }
+}
+
+/// Pops in, then floats slowly up and down. [phase] 0..1 so two chips
+/// do not move together.
+class _Floaty extends StatefulWidget {
+  const _Floaty({required this.child, this.phase = 0});
+
+  final Widget child;
+  final double phase;
+
+  @override
+  State<_Floaty> createState() => _FloatyState();
+}
+
+class _FloatyState extends State<_Floaty> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 3200),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    _c.value = widget.phase.clamp(0.0, 1.0);
+    _c.repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _PopIn(
+      delayMs: (450 + widget.phase * 300).round(),
+      child: AnimatedBuilder(
+        animation: _c,
+        builder: (context, child) => Transform.translate(
+          offset: Offset(0, -6 + 12 * Curves.easeInOut.transform(_c.value)),
+          child: child,
+        ),
+        child: widget.child,
+      ),
+    );
+  }
+}
+
+/// A soft blue ring that grows and fades behind the badge, like a pulse.
+class _PulseRing extends StatefulWidget {
+  const _PulseRing({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_PulseRing> createState() => _PulseRingState();
+}
+
+class _PulseRingState extends State<_PulseRing>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 2400),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(const Duration(milliseconds: 700), () {
+      if (mounted) _c.repeat();
+    });
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      alignment: Alignment.center,
+      clipBehavior: Clip.none,
+      children: [
+        AnimatedBuilder(
+          animation: _c,
+          builder: (context, _) {
+            final t = Curves.easeOut.transform(_c.value);
+            return Opacity(
+              opacity: _c.isAnimating ? (1 - t) * 0.45 : 0,
+              child: Transform.scale(
+                scale: 1 + t * 0.9,
+                child: Container(
+                  width: 84,
+                  height: 84,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppColors.blue, width: 2),
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+        widget.child,
+      ],
+    );
+  }
 }
