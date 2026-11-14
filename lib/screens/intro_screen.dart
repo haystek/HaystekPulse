@@ -911,13 +911,14 @@ class _HeroPrivate extends StatelessWidget {
           to: 0.85,
           child: _IPill(
             icon: Icons.shield_outlined,
-            text: 'No name. No ID. Encrypted.',
+              text: 'No name. No employee ID. Encrypted.',
           ),
         ),
       ],
     );
   }
 }
+
 
 /// Slide 4: the entry code fills in letter by letter.
 class _HeroJoin extends StatelessWidget {

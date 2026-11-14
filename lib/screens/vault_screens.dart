@@ -993,7 +993,7 @@ class _BackupCodeScreenState extends State<BackupCodeScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Use to restore access after switching phones or reinstalling.',
+                          'Use to restore access after switching phones.',
                           textAlign: TextAlign.center,
                           style: _t(14, color: AppColors.muted),
                         ),
@@ -1035,7 +1035,7 @@ class _BackupCodeScreenState extends State<BackupCodeScreen> {
                                           const SizedBox(height: 12),
                                           step(
                                             3,
-                                            'Need to find your code?',
+                                            'Forgot? or Need to find your code?',
                                             'Find it anytime in Profile → My recovery code.',
                                           ),
                                         ],

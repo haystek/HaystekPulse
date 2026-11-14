@@ -3181,21 +3181,22 @@ class _WelcomeTour {
       TourStep(
         k,
         'New here?',
-        'Tap Join with entry code and enter the code you find on Zoho.',
+        'Type the 6-letter entry code from Zoho to join.',
       ),
     for (final k in [personal, personal2])
       TourStep(
         k,
-        'Changed your phone?',
-        'Enter the recovery code you saved when you joined. Do not have it? Open Profile on your old phone to see it. Enter it here and your account moves to this phone.',
+        'New phone?',
+        'Enter the recovery code you saved when you joined. Your account moves to this phone.',
       ),
     for (final k in [admin, admin2])
       TourStep(
         k,
-        'Only for admins',
-        'Admins sign in with work email. Employees do not need email.',
+        'Admin?',
+        'Sign in with work email.',
       ),
   ];
+
 }
 
 // ---------------------------------------------------------------------
