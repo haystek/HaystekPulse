@@ -809,7 +809,7 @@ class _LoginScreenState extends State<LoginScreen> {
               key: _WelcomeTour.admin,
               child: _helpLine(
                 'Admin?',
-                'Sign in with email',
+                'Sign in with work email',
                 () => _go(_Entry.admin),
               ),
             ),
@@ -2109,7 +2109,7 @@ class _WelcomeViewState extends State<_WelcomeView> {
                               child: TextButton(
                                 onPressed: widget.onAdmin,
                                 child: Text(
-                                  'Sign in with email',
+                                  'Sign in with work email',
                                   style: _s(13, c: AppColors.blue),
                                 ),
                               ),
@@ -3193,7 +3193,7 @@ class _WelcomeTour {
       TourStep(
         k,
         'Only for admins',
-        'Admins sign in with email. Employees do not need email.',
+        'Admins sign in with work email. Employees do not need email.',
       ),
   ];
 }
