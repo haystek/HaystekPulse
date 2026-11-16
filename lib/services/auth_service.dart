@@ -936,6 +936,7 @@ class AuthService {
       return 'No internet connection. Please check and try again.';
     }
     return 'Something went wrong. Please try again.';
+
   }
 
   /// Change password from Profile. Firebase asks for the current

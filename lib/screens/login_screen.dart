@@ -2273,8 +2273,8 @@ class _JoinViewState extends State<_JoinView> {
                       padding: const EdgeInsets.symmetric(horizontal: 24),
                       child: Text(
                         widget.personal
-                            ? 'Enter your recovery code to get your account back on this phone.\n'
-                                  'Don’t have it? Find it on your old phone in Profile → My recovery code.'
+                            ? 'Enter your recovery code to restore your account.\n'
+                                  'Don’t have it? Check Profile on your old phone.'
                             : 'Pick any code from Pulse Codes in Zoho.\n'
                                   'Each code can be used only once.',
                         textAlign: TextAlign.center,
@@ -2633,6 +2633,14 @@ class _JoinViewState extends State<_JoinView> {
     );
   }
 
+  /// "abcde fghij" -> "ABCDE-FGHIJ". Only letters and numbers; the dash
+  /// is added after 5. At most 10 letters and numbers.
+  static String _formatCode(String text) {
+    var c = text.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
+    if (c.length > 10) c = c.substring(0, 10);
+    return c.length > 5 ? '${c.substring(0, 5)}-${c.substring(5)}' : c;
+  }
+
   /// Personal code: one big rounded field (words are too long for boxes).
   Widget _wordField() {
     final focused = _focus.hasFocus;
@@ -2659,11 +2667,15 @@ class _JoinViewState extends State<_JoinView> {
               keyboardType: TextInputType.visiblePassword,
               textCapitalization: TextCapitalization.characters,
               textInputAction: TextInputAction.done,
-              // Always in capitals, like the code on the screen.
+              // Capitals, and the dash comes by itself: ABCDE-FGHIJ.
               inputFormatters: [
-                TextInputFormatter.withFunction(
-                  (old, now) => now.copyWith(text: now.text.toUpperCase()),
-                ),
+                TextInputFormatter.withFunction((old, now) {
+                  final t = _formatCode(now.text);
+                  return TextEditingValue(
+                    text: t,
+                    selection: TextSelection.collapsed(offset: t.length),
+                  );
+                }),
               ],
               onChanged: (_) => widget.onChanged(),
               onSubmitted: (_) => widget.onJoin(),
@@ -2701,8 +2713,8 @@ class _JoinViewState extends State<_JoinView> {
   /// Paste the personal code from the clipboard.
   Future<void> _paste() async {
     final data = await Clipboard.getData(Clipboard.kTextPlain);
-    final text = data?.text?.trim().toUpperCase();
-    if (text == null || text.isEmpty) return;
+    final text = _formatCode(data?.text ?? '');
+    if (text.isEmpty) return;
     widget.controller.text = text;
     widget.controller.selection = TextSelection.collapsed(offset: text.length);
     widget.onChanged();
