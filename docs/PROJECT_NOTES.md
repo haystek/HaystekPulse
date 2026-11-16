@@ -1,4 +1,4 @@
-# Haystek Pulse – Project Notes (as of 13 Nov 2026)
+# Haystek Pulse – Project Notes (as of 16 Nov 2026)
 
 Give this file to Claude at the start of any new chat: "Read this first."
 
@@ -6,8 +6,14 @@ Give this file to Claude at the start of any new chat: "Read this first."
 - Flutter + Firebase app. Mac path: `/Users/haystek/haystek_pulse`, branch `branch3`, repo `haystek/HaystekPulse` (private).
 - Flavors: `dev` → Firebase `haystek-pulse-dev`, `prod` → `haystek-pulse` (LIVE).
 - One bundle ID for both: `com.haystek.haystekPulse`, Apple Team `T6LJAQ4AL7`, App Store Apple ID `6833529873`.
-- Firebase account: mobileapp@haystek.com (Owner). Billing account `01CFFA-F4B1B1-1B6168` (Haystek org). Blaze plan.
-- Functions `codes`, `pulseHeadsUp`, `topUpCodes` in `asia-south1`.
+- Firebase account: mobileapp@haystek.com (Owner). shivakumar.t@haystek.com is also Owner. Billing account `01CFFA-F4B1B1-1B6168` "My Billing Account" (Haystek org, INR). Blaze plan. Linked projects: haystek-pulse, haystek-pulse-dev, My First Project (empty default).
+- Company (for Google/Apple forms): HAYSTEK TECHNOLOGIES PRIVATE LIMITED, No. 1-53, Plot No. 27, Phase-I, Third Floor, Kavuri Hills, Madhapur, Shaikpet, Hyderabad, Telangana 500081.
+- Functions (same in DEV and LIVE, asia-south1, 256 MB, nodejs24):
+  - `codes` (https): gives join codes to the Zoho Pulse Codes page.
+  - `topUpCodes` (Firestore update trigger): a used join code is replaced by a new one (keeps 20).
+  - `pulseHeadsUp` (scheduled, the only timed job): sends "Weekly Pulse opens in 15 minutes 💙 / Take a minute to rate your week when it opens." to topic `employees`, and "Weekly Pulse opens in 15 minutes / Employees are being reminded now. Responses will show on your dashboard." to topic `management`. Time is fixed in `functions/index.js` (`schedule:`), NOT linked to the app's Weekly Pulse settings: when admin changes the open time, change this line too and deploy. Website edit (Cloud Scheduler → Edit → Frequency) works for quick tests but the next deploy resets it.
+- Weekly Pulse open time: Firestore `settings/pulse` → `openDay` (1 = Monday), `openHour`, `openMinute`, `openDays`. DEV on 16 Nov: Monday 12:22 PM, open 5 days.
+- Read-only check of pulse settings + job time: `checkpulse.js` (LIVE key path not found yet; find with `ls *.json tools/*.json tools/*/*.json`).
 - Hosting folder `hosting/` (privacy.html, join.html, index.html). Privacy contact: mobileapp@haystek.com.
 - Settings: Firestore `settings/app` → `latestAndroid`, `latestIos`, `iosUrl`, `message`.
 
@@ -19,6 +25,14 @@ Give this file to Claude at the start of any new chat: "Read this first."
 - Never unlink billing. Never send a DEV build to the App Store.
 
 ## 3. Done (latest first)
+- 16 Nov: Recovery code screen: dash added by itself after 5 characters, max 10 (`_formatCode` in login_screen.dart, also used by Paste); shorter help text ("Enter your recovery code to restore your account. / Don't have it? Check Profile on your old phone."); new error `personal-code-not-found` → "No account found for this recovery code. Please check it and try again." (wrong format still shows "…It looks like K7M2P-X9F4R…"; delete-account wrong code unchanged).
+- 16 Nov: Welcome tooltips back to the original text with Ma'am's change only: "New here? / Type the 6-letter entry code from Zoho to join.", "New phone? / Enter the recovery code you saved when you joined. Your account moves to this phone.", "Admin? / Sign in with your work email."
+- 14 Nov: "Sign in with work email" (link + tip), Ma'am's comment. All 10 of Ma'am's Google Doc comments checked with `checkall.js` (35 checks pass).
+- 13 Nov: Ma'am's text changes (intro, welcome, join, save code, home). "personal code" → "recovery code" in all on-screen text (same code everywhere). "office email" → "work email". Join button "Join Haystek Pulse". Empty chat: "Admin team reads and responds to every message. You will get a notification when they reply."
+- TestFlight: builds 5 and 6 (DEV, "Haystek Pulse Dev") uploaded; build 7 next (recovery code fixes). Internal Testing group: Ma'am (Jigisha Reddy, App Store Connect role Customer Support, Haystek Pulse only) and Sir (PMO). They test as employees; we reply as admin from another phone (DEV admin code in Profile → Admin code).
+- Android test APK: `flutter build apk --flavor dev --release` → share `build/app/outputs/flutter-apk/app-dev-release.apk` (not the debug one, not .sha1).
+- DEV wiped again on 13 Nov (`devreset.js DELETE`: all logins + employees, sessions, devices; keeps admin code, join codes, settings, feedback).
+- Docs: single sharp step images for the Suggestion Box (5) and Weekly Pulse (9) flows for the Google Doc (`single/` folder). Use full phone screenshots (Power + Volume down, 1080 px) for sharp images; Mac screen captures are ~600 px.
 - Welcome back screen: small animations (badge pop, tick pop, pulse ring, floating chips, text fade-up).
 - iPhone reinstall now works like Android: intro → Welcome back → tips → Home (`fresh_install.dart`, `showAgain`, login skips auto sign-in on fresh install).
 - TestFlight builds 1.0.0 (3) and (4) uploaded; iOS tested OK. Next build number must be higher (5+).
@@ -47,6 +61,21 @@ Give this file to Claude at the start of any new chat: "Read this first."
 - People: Ma'am (Isha / Operations Director) reviews the docs; Sir (Rakesh) approved the new sign-up idea.
 
 ## 4. Open / later
+
+### Pending now (16 Nov)
+- [ ] **pulseHeadsUp time is wrong**: code says Monday 7:45 PM (`"45 19 * * 1"`, comment wrongly says Friday 5:45 PM). DEV Pulse opens Monday 12:22 PM → set `schedule: "7 12 * * 1"`, fix the comment, deploy DEV (`firebase deploy --only functions:pulseHeadsUp --project haystek-pulse-dev`), commit. LIVE: same, after the LIVE open time is decided (and a clear yes).
+- [ ] Upload TestFlight build 7, add to the Internal Testing group.
+- [ ] Share the Android APK with Android testers.
+- [ ] Reply as admin to Sir's / Ma'am's suggestions in the app; change a status once; send one Broadcast.
+- [ ] Collect their comments (Employee + Admin sheets) and make the changes.
+- [ ] Some doc images still blurry (only small copies): Suggestion 3 (sent), Weekly Pulse 2, 3, 7, Profile tips. Need new phone screenshots.
+
+### Google Cloud / Firebase account
+- [ ] Budget alert → ₹1,000 (Billing → Budgets & alerts → edit the existing budget). Email only, nothing stops. Don't use service spend caps (they stop Functions = no join codes / notifications).
+- [ ] Company verification (Billing → Verify): company name + address above + mobile OTP. Deadline **13 Feb 2027** (account can be suspended). Asked Ma'am before doing it.
+- [ ] Company card: waiting for Ma'am. Cardholder adds it (OTP / e-mandate, online + international on), make it Primary, only then remove the current card. RBI: auto-charges without OTP up to the bank's mandate limit. Never leave the account without a card; never unlink billing.
+- [ ] Firestore daily backups for LIVE (currently "Scheduled backups: Disabled").
+- [ ] Keep mobileapp@haystek.com password with Ma'am/IT (safe place), company recovery phone/email, 2-step verification on both owner accounts.
 - Start-up smoothness: splash → loader → Home flickers. Tried a fade (rejected) and a native splash (reverted). Ideas ready: branded native splash with the logo card at the loader's position (splash.png / splash_android12.png made), and/or a simple spinner instead of the full loader inside the app.
 - Ma'am's suggestions on the employee sheet: sort into "before release" and "next update".
 - Admin doc: update the admin code text (first code given to HR, admin resets it in Profile).
@@ -78,7 +107,8 @@ Give this file to Claude at the start of any new chat: "Read this first."
 - [ ] Rules, indexes, functions same as DEV (deploy commands below).
 - [ ] Admin code ready for HR (admins see it in Profile → Admin code).
 - [ ] APNs key uploaded in the LIVE Firebase project (iOS notifications).
-- [ ] `settings/pulse` + scheduler reset for real weeks.
+- [ ] `settings/pulse` set for real weeks, and `pulseHeadsUp` schedule = 15 minutes before that open time (deploy functions to LIVE).
+- [ ] Firestore daily backups on.
 - [ ] `settings/app`: `latestAndroid`, `latestIos`, `iosUrl` (https://apps.apple.com/app/id6833529873), `message`.
 - [ ] Privacy policy live: https://haystek-pulse.web.app/privacy.html (check the link works).
 
@@ -98,7 +128,7 @@ Give this file to Claude at the start of any new chat: "Read this first."
 
 ### F. After release
 - [ ] Update `settings/app.latestAndroid` / `latestIos` when a new version is live.
-- [ ] Billing: company card/UPI + ₹500 budget alert; company verification by 13 Feb 2027; then remove personal card/email; unlink "My First Project".
+- [ ] Billing: company card (Primary) + ₹1,000 budget alert; company verification by 13 Feb 2027; then remove the old card; unlink "My First Project".
 - [ ] Switch the TestFlight tester to mobileapp@haystek.com.
 
 ## 6. Commands
@@ -110,10 +140,22 @@ Give this file to Claude at the start of any new chat: "Read this first."
 - Save work: `git add -A && git commit -m "message" && git push`
 
 ### TestFlight (DEV build, internal testers only)
-1. `sed -i '' 's/^version: 1.0.0+4/version: 1.0.0+5/' pubspec.yaml` (raise the number each time)
-2. `flutter build ipa --flavor dev`
+1. `sed -i '' 's/^version: 1\.0\.0+[0-9]*$/version: 1.0.0+7/' pubspec.yaml` (raise the number each time; 1–6 used)
+2. `flutter build ipa --flavor dev` (no `-t`; takes ~25 min)
 3. `open build/ios/archive/Runner.xcarchive`
-4. Organizer → Distribute App → TestFlight Internal Only → Upload.
+4. Organizer → Distribute App → App Store Connect → Upload.
+5. App Store Connect → TestFlight → Internal Testing group → add the build (and testers). New testers: Users and Access first (they accept), then add to the group. Ignore the App Store version page errors (those are for the real release).
+
+### Android test APK (DEV)
+- `flutter build apk --flavor dev --release` → `open build/app/outputs/flutter-apk/` → share `app-dev-release.apk`.
+
+### Phone not showing new code
+- Hot reload isn't enough after big edits: press **R** or run `flutter run --flavor dev` again (no uninstall needed).
+
+### Check scripts (read only)
+- `checkall.js`: all 10 of Ma'am's comments in the code.
+- `checkpulse.js`: Weekly Pulse settings + notification job time.
+- `devreset.js` (list) / `devreset.js DELETE`: DEV only, wipes logins + employees, sessions, devices.
 
 ### LIVE builds
 - iPhone: `flutter build ipa --flavor prod` → `open build/ios/archive/Runner.xcarchive` → Distribute App → App Store Connect → Upload → submit in App Store Connect.
@@ -123,7 +165,10 @@ Give this file to Claude at the start of any new chat: "Read this first."
 - DEV rules: `firebase deploy --only firestore:rules --project haystek-pulse-dev`
 - LIVE rules (after yes): `firebase deploy --only firestore:rules --project haystek-pulse`
 - Indexes: `firebase deploy --only firestore:indexes --project <project>`
-- Functions: `firebase deploy --only functions --project <project>`
+- Functions: `firebase deploy --only functions --project <project>` (one function: `--only functions:pulseHeadsUp`)
+- List functions: `firebase functions:list --project <project>`
+- Scheduler on the web: console.cloud.google.com/cloudscheduler?project=<project>
+- Billing: console.cloud.google.com/billing → My Billing Account (Payment method, Budgets & alerts, Account management). Don't use "Change billing" on projects.
 - Hosting (privacy page): `firebase deploy --only hosting --project <project>`
 
 ### Clean-up / fixes
