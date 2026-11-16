@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
+import 'widgets/keyboard_done.dart';
 import 'widgets/offline_bar.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -77,7 +78,7 @@ class HaystekApp extends StatelessWidget {
             context,
           ).copyWith(textScaler: TextScaler.noScaling, boldText: false),
           // Red "No internet connection" bar on every screen while offline.
-          child: OfflineBar(child: child!),
+          child: OfflineBar(child: KeyboardDoneBar(child: child!)),
         );
         // DEV build: an orange "DEV" ribbon on every screen, so a test
         // app is never mistaken for the live one.
