@@ -109,9 +109,9 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
         ),
         content: Text(
           _codeAccount
-              ? 'Your account and recovery code will be deleted for good. '
+              ? 'Your account and recovery code will be deleted. '
                     'You can’t get them back.'
-              : 'Your account will be deleted for good. You can’t get it back.',
+              : 'Your account will be deleted. You can’t get it back.',
           textAlign: TextAlign.center,
           style: _t(14.5, color: AppColors.muted, height: 1.45),
         ),

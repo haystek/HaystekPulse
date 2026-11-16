@@ -334,7 +334,7 @@ class AuthService {
         'invalid-email',
       ];
       if (wrong.contains(e.code)) {
-        throw FirebaseAuthException(code: 'personal-code-wrong');
+        throw FirebaseAuthException(code: 'personal-code-not-found');
       }
       rethrow;
     }
@@ -363,7 +363,9 @@ class AuthService {
     } catch (e) {
       debugPrint('[Auth] auto sign-in failed: $e');
       // A wrong saved code (e.g. the account was deleted): forget it.
-      if (e is FirebaseAuthException && e.code == 'personal-code-wrong') {
+      if (e is FirebaseAuthException &&
+          (e.code == 'personal-code-wrong' ||
+              e.code == 'personal-code-not-found')) {
         await _forgetCodeOnPhone();
       }
       return false;
@@ -917,10 +919,14 @@ class AuthService {
           return 'Please enter your recovery code to delete your account.';
         case 'password-needed':
           return 'Please enter your password to delete your account.';
+        case 'personal-code-not-found':
+          return 'No account found for this recovery code. Please check it '
+              'and try again.';
         case 'personal-code-wrong':
           return 'This recovery code is not correct. It looks like '
               'K7M2P-X9F4R. Please check it and try again.';
       }
+
     }
     if (error is FirebaseException && error.code == 'permission-denied') {
       return 'Your account could not be set up. Please check your code, '
