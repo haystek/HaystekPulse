@@ -9,6 +9,7 @@ import '../services/auth_service.dart';
 import '../debug_slow.dart';
 import '../services/startup_splash.dart';
 import '../services/notification_service.dart';
+import '../widgets/double_back.dart';
 import '../widgets/pulse_loading.dart';
 import 'change_password_screen.dart';
 import 'intro_screen.dart';
@@ -116,13 +117,17 @@ class AuthGate extends StatelessWidget {
             if (employee.isManagement) {
               // Ask for permission and join the admin notification group.
               NotificationService.instance.start(employee);
-              return ManagementHomeScreen(employee: employee);
+              return DoubleBackToClose(
+              child: ManagementHomeScreen(employee: employee),
+            );
             }
             // Employees: open the locked history first. It starts the
             // notifications once the history is open.
-            return VaultGate(
-              key: ValueKey('vault-${employee.uid}'),
-              employee: employee,
+            return DoubleBackToClose(
+              child: VaultGate(
+                key: ValueKey('vault-${employee.uid}'),
+                employee: employee,
+              ),
             );
           },
         );

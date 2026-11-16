@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -1139,8 +1140,50 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  /// Which view is on screen now, and whether we are going back
+  /// (for the slide direction).
+  Object? _shownKey;
+  bool _goingBack = false;
+
   @override
   Widget build(BuildContext context) {
+    final Object key = _autoTrying ? 'auto' : _entry;
+    if (_shownKey != key) {
+      _goingBack = _shownKey != null && _entry == _Entry.welcome;
+      _shownKey = key;
+    }
+    final back = _goingBack;
+    final current = ValueKey<Object>(key);
+    // Slide like a real page: forward = in from the right,
+    // back = the screen slides out to the right.
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 300),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      layoutBuilder: (now, before) => Stack(
+        fit: StackFit.expand,
+        children: back
+            ? [if (now != null) now, ...before]
+            : [...before, if (now != null) now],
+      ),
+      transitionBuilder: (child, anim) {
+        final incoming = child.key == current;
+        final Offset start;
+        if (incoming) {
+          start = back ? const Offset(-0.3, 0) : const Offset(1, 0);
+        } else {
+          start = back ? const Offset(1, 0) : const Offset(-0.3, 0);
+        }
+        return SlideTransition(
+          position: Tween<Offset>(begin: start, end: Offset.zero).animate(anim),
+          child: child,
+        );
+      },
+      child: KeyedSubtree(key: current, child: _buildView(context)),
+    );
+  }
+
+  Widget _buildView(BuildContext context) {
     // Checking this phone / signing in by itself: one calm loading screen.
     if (_autoTrying) return const PulseLoadingScreen();
     // First screen for new people: its own clean design.
@@ -1159,7 +1202,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
     // Signed out: the account is on another phone now.
     if (_entry == _Entry.moved) {
-      return PopScope(
+      return _BackScope(
         canPop: false,
         onPopInvokedWithResult: (didPop, _) {
           if (!didPop) _go(_Entry.welcome);
@@ -1189,7 +1232,7 @@ class _LoginScreenState extends State<LoginScreen> {
     // Join with the entry code: its own design too.
     if (_entry == _Entry.join || _entry == _Entry.personal) {
       final personal = _entry == _Entry.personal;
-      return PopScope(
+      return _BackScope(
         canPop: false,
         onPopInvokedWithResult: (didPop, _) {
           if (!didPop && !_busy) _go(_Entry.welcome);
@@ -1239,7 +1282,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     // Admin: white, back button and "Admin" pill on top, a small soft blue
     // card, then the form (sign in, create account or reset password).
-    return PopScope(
+    return _BackScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
         if (!didPop) back();
@@ -3412,6 +3455,54 @@ class _PulseRingState extends State<_PulseRing>
           },
         ),
         widget.child,
+      ],
+    );
+  }
+}
+
+/// Same as PopScope, plus on iPhone: a swipe from the left edge works as
+/// "back" (these screens are views inside one page, so iOS has no page to
+/// swipe back to by itself). Taps near the edge still reach the screen.
+class _BackScope extends StatelessWidget {
+  const _BackScope({
+    required this.canPop,
+    required this.onPopInvokedWithResult,
+    required this.child,
+  });
+
+  final bool canPop;
+  final PopInvokedWithResultCallback<Object?> onPopInvokedWithResult;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final scope = PopScope<Object?>(
+      canPop: canPop,
+      onPopInvokedWithResult: onPopInvokedWithResult,
+      child: child,
+    );
+    if (defaultTargetPlatform != TargetPlatform.iOS) return scope;
+    var dx = 0.0;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        scope,
+        Positioned(
+          left: 0,
+          top: 0,
+          bottom: 0,
+          width: 24,
+          child: GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onHorizontalDragStart: (_) => dx = 0,
+            onHorizontalDragUpdate: (d) => dx += d.delta.dx,
+            onHorizontalDragEnd: (d) {
+              if (dx > 60 || (d.primaryVelocity ?? 0) > 500) {
+                onPopInvokedWithResult(false, null);
+              }
+            },
+          ),
+        ),
       ],
     );
   }
