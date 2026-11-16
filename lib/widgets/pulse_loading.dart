@@ -11,6 +11,10 @@ import '../theme/app_theme.dart';
 class PulseLoadingScreen extends StatelessWidget {
   const PulseLoadingScreen({super.key, this.text = 'Your week, heard.'});
 
+  /// One key for every start-up loader (login check, profile, history),
+  /// so Flutter keeps the same loader and the heartbeat doesn't restart.
+  static final GlobalKey startupKey = GlobalKey();
+
   final String text;
 
   @override
@@ -32,6 +36,9 @@ class PulseLoadingScreen extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                // Same height as everything under the logo, so the logo
+                // card is in the exact middle, like the phone splash.
+                const SizedBox(height: 128),
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 18,

@@ -6,6 +6,8 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../models/employee.dart';
 import '../services/auth_service.dart';
+import '../debug_slow.dart';
+import '../services/startup_splash.dart';
 import '../services/notification_service.dart';
 import '../services/personal_code.dart';
 import '../services/vault_service.dart';
@@ -83,6 +85,7 @@ class _VaultGateState extends State<VaultGate> {
   }
 
   Future<void> _start() async {
+    await slowWait(1500);
     if (_vault.isReady || await _vault.openSaved(_uid)) {
       _afterOpen();
       return;
@@ -291,6 +294,13 @@ class _VaultGateState extends State<VaultGate> {
 
   @override
   Widget build(BuildContext context) {
+    // Home or a question screen is ready: the splash can go.
+    // (Home itself lets the splash go once all its cards have loaded.)
+    if (_step != _Step.checking &&
+        _step != _Step.working &&
+        _step != _Step.ready) {
+      StartupSplash.done();
+    }
     switch (_step) {
       case _Step.ready:
         return EmployeeHomeScreen(employee: widget.employee);
@@ -388,7 +398,10 @@ class _Busy extends StatelessWidget {
   const _Busy();
 
   @override
-  Widget build(BuildContext context) => const PulseLoadingScreen();
+  Widget build(BuildContext context) => PulseLoadingScreen(
+    key: PulseLoadingScreen.startupKey,
+    text: kSlowStart ? 'C  opening history' : 'Your week, heard.',
+  );
 }
 
 /// A simple screen with one field (or none) and one button.

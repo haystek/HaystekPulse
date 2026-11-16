@@ -13,9 +13,11 @@ import 'services/notification_service.dart';
 import 'theme/app_theme.dart';
 import 'services/schedule_service.dart';
 import 'services/fresh_install.dart';
+import 'services/startup_splash.dart';
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  // Keep the phone splash until the first real screen is ready.
+  StartupSplash.hold(WidgetsFlutterBinding.ensureInitialized());
   await FreshInstall.resetSeenMarksIfNew();
   final firebaseOptions = appFlavor == 'dev'
         ? DevFirebaseOptions.currentPlatform

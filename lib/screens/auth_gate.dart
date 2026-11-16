@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 
 import '../models/employee.dart';
 import '../services/auth_service.dart';
+import '../debug_slow.dart';
+import '../services/startup_splash.dart';
 import '../services/notification_service.dart';
 import '../widgets/pulse_loading.dart';
 import 'change_password_screen.dart';
@@ -37,15 +39,17 @@ class AuthGate extends StatelessWidget {
     return StreamBuilder<User?>(
       // userChanges also fires after a reload, so the app moves on by
       // itself once the email is verified.
-      stream: auth.userChanges,
+      stream: slowFirst(auth.userChanges, 1500),
       builder: (context, userSnap) {
-        if (userSnap.connectionState == ConnectionState.waiting) {
-          return const _Loading();
+        if (userSnap.connectionState == ConnectionState.waiting &&
+            !userSnap.hasData) {
+          return const _Loading('A  checking login');
         }
         final user = userSnap.data;
         if (user == null) {
           _checkedUid = null;
           // First time on this phone: the short intro, then sign in.
+          StartupSplash.done();
           return const IntroGate(child: LoginScreen());
         }
         // Once per login: sign out if it was deleted in the console.
@@ -55,12 +59,13 @@ class AuthGate extends StatelessWidget {
         }
         final codeAccount = AuthService.isCodeEmail(user.email);
         if (!codeAccount && !user.emailVerified) {
+          StartupSplash.done();
           return VerifyEmailScreen(email: user.email ?? '');
         }
 
         final gate = StreamBuilder<Employee?>(
           key: ValueKey(user.uid),
-          stream: auth.employeeStream(user.uid),
+          stream: slowFirst(auth.employeeStream(user.uid), 1500),
           builder: (context, empSnap) {
             if (empSnap.hasError) {
               // The login is no longer valid (account deleted, or an old
@@ -75,14 +80,24 @@ class AuthGate extends StatelessWidget {
                 });
                 return const _Loading();
               }
+              StartupSplash.done();
               return const _Problem(
                 message: 'Could not load your profile. Please try again.',
               );
             }
-            if (empSnap.connectionState == ConnectionState.waiting) {
-              return const _Loading();
+            if (empSnap.connectionState == ConnectionState.waiting &&
+            !empSnap.hasData) {
+              return const _Loading('B  loading profile');
             }
             final employee = empSnap.data;
+            // Every screen from here is a real screen, except employees
+            // (VaultGate lets the splash go once Home is ready).
+            if (employee == null ||
+                !employee.active ||
+                employee.mustChangePassword ||
+                employee.isManagement) {
+              StartupSplash.done();
+            }
             if (employee == null) {
               // Just joined with an entry code: save the account record.
               if (codeAccount) return const CodeFinishScreen();
@@ -169,11 +184,16 @@ class _MoveGuardState extends State<_MoveGuard> {
 }
 
 class _Loading extends StatelessWidget {
-  const _Loading();
+  const _Loading([this.label = '']);
+
+  final String label;
 
   @override
   Widget build(BuildContext context) {
-    return const PulseLoadingScreen();
+    return PulseLoadingScreen(
+      key: PulseLoadingScreen.startupKey,
+      text: kSlowStart && label.isNotEmpty ? label : 'Your week, heard.',
+    );
   }
 }
 

@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../config.dart';
+import '../debug_slow.dart';
 import '../demo_data.dart';
 import '../models/employee.dart';
 import '../models/feedback_item.dart';
@@ -17,10 +18,12 @@ import '../services/feedback_service.dart';
 import '../services/notification_service.dart';
 import '../services/pulse_service.dart';
 import '../services/schedule_service.dart';
+import '../services/startup_splash.dart';
 import '../services/vault_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/notification_bell.dart';
 import '../widgets/pulse_line.dart';
+import '../widgets/shimmer.dart';
 import '../widgets/ui.dart' hide PulseLine;
 import 'broadcast_screens.dart';
 import 'feedback_thread_screen.dart';
@@ -284,7 +287,7 @@ class _PulseCardState extends State<_PulseCard> with WidgetsBindingObserver {
 
   void _watch() {
     _weekId = PulseService.currentWeekId();
-    _myRating = FirebaseFirestore.instance
+    _myRating = slowFirst(FirebaseFirestore.instance
         .collection('pulse_responses')
         .doc('${_weekId}_${widget.employee.uid}')
         .snapshots(includeMetadataChanges: true)
@@ -295,7 +298,7 @@ class _PulseCardState extends State<_PulseCard> with WidgetsBindingObserver {
             rating: doc.exists ? '' : null,
             cached: doc.metadata.isFromCache,
           ),
-        );
+        ), 2000);
     _stopWaiting = false;
     _waitTimer?.cancel();
     _waitTimer = Timer(const Duration(seconds: 4), () {
@@ -307,7 +310,10 @@ class _PulseCardState extends State<_PulseCard> with WidgetsBindingObserver {
   /// day means a new week id, so watch again.
   void _onSchedule() {
     if (!mounted) return;
-    setState(_watch);
+    // Same week: just redraw (no new watch, so no loading card flash).
+    setState(() {
+      if (PulseService.currentWeekId() != _weekId) _watch();
+    });
   }
 
   @override
@@ -383,6 +389,7 @@ class _PulseCardState extends State<_PulseCard> with WidgetsBindingObserver {
               // Not open yet: always show the timer first, even if an old
               // answer exists (for example after the open time was changed).
               if (notOpenYet) {
+                _HomeReady.mark('pulse');
                 return _SoonCard(
                   week: week,
                   opensAt: opensAt,
@@ -400,6 +407,7 @@ class _PulseCardState extends State<_PulseCard> with WidgetsBindingObserver {
                   answer == null ||
                   (answer.cached && answer.rating == null && !_stopWaiting);
               if (unsure) return const _LoadingCard();
+              _HomeReady.mark('pulse');
 
               if (rating != null) {
                 return _DoneCard(
@@ -442,18 +450,35 @@ class _LoadingCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 232,
+      height: 300,
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: const Color(0xFFF6F8FB),
         borderRadius: BorderRadius.circular(26),
       ),
-      alignment: Alignment.center,
-      child: const SizedBox(
-        width: 26,
-        height: 26,
-        child: CircularProgressIndicator(
-          strokeWidth: 2.5,
-          color: AppColors.blue,
+      child: Shimmer(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                ShimmerBox(width: 120, height: 12),
+                Spacer(),
+                ShimmerBox(width: 70, height: 22, radius: 11),
+              ],
+            ),
+            const SizedBox(height: 8),
+            const ShimmerBox(width: 90, height: 12),
+            const SizedBox(height: 22),
+            const ShimmerBox(width: 210, height: 24),
+            const SizedBox(height: 22),
+            const ShimmerBox(width: double.infinity, height: 26),
+            const Spacer(),
+            const ShimmerBox(width: double.infinity, height: 48, radius: 24),
+            const SizedBox(height: 16),
+            const ShimmerBox(width: double.infinity, height: 6, radius: 3),
+            if (kSlowStart) Text('D  Weekly Pulse card loading'),
+          ],
         ),
       ),
     );
@@ -1458,8 +1483,10 @@ class _BroadcastCard extends StatefulWidget {
 }
 
 class _BroadcastCardState extends State<_BroadcastCard> {
-  late final Stream<List<Broadcast>> _stream = BroadcastService.instance
-      .watchAll();
+  late final Stream<List<Broadcast>> _stream = slowFirst(
+    BroadcastService.instance.watchAll(),
+    3000,
+  );
   late final Stream<DateTime?> _seen = BroadcastService.instance.watchSeenAt(
     widget.uid,
   );
@@ -1475,6 +1502,10 @@ class _BroadcastCardState extends State<_BroadcastCard> {
           final seenAt = seenSnap.data;
           // Still loading "last seen": show no badge yet, so it doesn't flash.
           final loading = seenSnap.connectionState == ConnectionState.waiting;
+          // Both loaded (or failed): ready. Until then the line stays empty,
+          // so it does not change from "Updates from admin…" to "1 new update".
+          final ready = !loading && (snap.hasData || snap.hasError);
+          if (ready) _HomeReady.mark('broadcast');
           final fresh = loading
               ? 0
               : all
@@ -1485,7 +1516,9 @@ class _BroadcastCardState extends State<_BroadcastCard> {
                     )
                     .length;
           final String sub;
-          if (all.isEmpty) {
+          if (!ready) {
+            sub = '';
+          } else if (all.isEmpty) {
             sub = 'Updates from admin show here.';
           } else if (fresh > 0) {
             sub = fresh == 1 ? '1 new update' : '$fresh new updates';
@@ -1530,6 +1563,17 @@ class _BroadcastCardState extends State<_BroadcastCard> {
                             style: _inter(16, weight: FontWeight.w600),
                           ),
                           const SizedBox(height: 2),
+                          if (!ready && sub.isEmpty)
+                            const SizedBox(
+                              height: 17,
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: Shimmer(
+                                  child: ShimmerBox(width: 150, height: 11),
+                                ),
+                              ),
+                            )
+                          else
                           Text(
                             sub,
                             maxLines: 1,
@@ -1638,7 +1682,10 @@ class _RecentActivityState extends State<_RecentActivity> {
   @override
   void initState() {
     super.initState();
-    _stream = FeedbackService.instance.watchMyFeedback(widget.employee.uid);
+    _stream = slowFirst(
+      FeedbackService.instance.watchMyFeedback(widget.employee.uid),
+      4000,
+    );
     _thisWeek = PulseService.currentWeekId();
   }
 
@@ -1788,7 +1835,8 @@ class _RecentActivityState extends State<_RecentActivity> {
             // Wait until everything has loaded once, so the empty box
             // does not flash before the data arrives.
             final loading = !snap.hasData && !snap.hasError;
-            if (loading) return const SizedBox.shrink();
+            if (loading) return const _FeedbackSkeleton();
+            _HomeReady.mark('recent');
             final rows = _merge(items, answers);
             if (rows.isEmpty) return _empty();
             return Column(
@@ -2380,4 +2428,65 @@ void replayHomeTour() {
     _HomeTour.replay.value++;
 
   });
+}
+
+/// App start: the phone splash stays until the Weekly Pulse card, the
+/// Broadcast card and Your feedback all have their first data, so Home
+/// appears complete in one go. (StartupSplash lets go after 5 s anyway.)
+class _HomeReady {
+  static final Set<String> _done = {};
+
+  static void mark(String part) {
+    if (_done.add(part) && _done.length >= 3) StartupSplash.done();
+  }
+}
+
+/// "Your feedback" while it loads: the heading and 2 rows as soft
+/// shimmering shapes, about the size of the real list.
+class _FeedbackSkeleton extends StatelessWidget {
+  const _FeedbackSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    Widget row() => Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: _line, width: 1.5),
+      ),
+      child: const Row(
+        children: [
+          ShimmerBox(width: 38, height: 38, radius: 12),
+          SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ShimmerBox(width: double.infinity, height: 12),
+                SizedBox(height: 8),
+                ShimmerBox(width: 120, height: 10),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+    return Shimmer(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(bottom: 14, top: 4),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: ShimmerBox(width: 130, height: 16),
+            ),
+          ),
+          row(),
+          row(),
+        ],
+      ),
+    );
+  }
 }
