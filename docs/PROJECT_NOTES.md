@@ -70,6 +70,18 @@ Give this file to Claude at the start of any new chat: "Read this first."
 - [ ] Collect their comments (Employee + Admin sheets) and make the changes.
 - [ ] Some doc images still blurry (only small copies): Suggestion 3 (sent), Weekly Pulse 2, 3, 7, Profile tips. Need new phone screenshots.
 
+### Notifications: move sending to the server (before LIVE, after Sir/Ma'am test)
+Today every build (DEV + LIVE) packs a Google service account key (`assets/fcm_sender_dev.json` / `assets/fcm_sender.json`, listed in pubspec.yaml, read by `lib/services/push_sender_io.dart`). Anyone with the APK/IPA can take it and send notifications to everyone. Keys are not in git (.gitignore lines 48, 62); never `git add -f` them (a pushed key was auto-disabled before = all notifications stop).
+All 8 notifications use it: new suggestion (feedback_service:136), Pulse comment (pulse_service:381), Pulse answer (pulse_service:394), employee reply (feedback_service:361), admin reply / status (feedback_service:257, 379), Pulse open (pulse_service:411), Remind (pulse_service:438), new broadcast (broadcast_service:135). Sent from employee AND admin phones.
+Plan (separate git branch, DEV first, ₹0 cost, ~2–3 h):
+- [ ] Add a `sendPush` Cloud Function (checks who is asking: employees only notify admins about their own items; only admins notify everyone). No key needed on the server (built-in permission, like pulseHeadsUp).
+- [ ] Change `push_sender_io.dart` to call the function (add `cloud_functions` package). Screens don't change.
+- [ ] Test all 8 notifications on Android + iPhone.
+- [ ] Remove the 2 key lines from pubspec.yaml and the files from assets/ (keep a safe copy until the end).
+- [ ] New TestFlight / APK; Sir and Ma'am update (check App Store Connect → Testers "Installed").
+- [ ] Only then delete the old keys: Google Cloud → IAM & Admin → Service accounts → account = `client_email` → Keys → Key ID = `private_key_id` → Delete (DEV, then LIVE).
+Until then: keep one safe copy of the key files outside the project (password manager / private company Drive), never in git/chat/email.
+
 ### Google Cloud / Firebase account
 - [ ] Budget alert → ₹1,000 (Billing → Budgets & alerts → edit the existing budget). Email only, nothing stops. Don't use service spend caps (they stop Functions = no join codes / notifications).
 - [ ] Company verification (Billing → Verify): company name + address above + mobile OTP. Deadline **13 Feb 2027** (account can be suspended). Asked Ma'am before doing it.
