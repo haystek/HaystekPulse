@@ -103,6 +103,28 @@ Give this file to Claude at the start of any new chat: "Read this first."
 - [ ] `flutter analyze` clean, tested on Android + iPhone (prod flavor) with a test join code.
 - [ ] All work committed and pushed.
 
+### B2. Full test on DEV (before release)
+Employee:
+- [ ] Join with entry code → Save recovery code screen.
+- [ ] New phone: sign in with recovery code; old phone shows "Your account moved".
+- [ ] Reinstall on the same phone → Welcome back (Android + iPhone).
+- [ ] Delete account → join again with a new code.
+- [ ] Suggestion: Anonymous and With my name.
+- [ ] Weekly Pulse: starting soon, open, answered, missed; Okay / Difficult ask for a comment.
+- [ ] Chat: employee and admin replies; notifications both ways (app open and closed).
+- [ ] Broadcast: receive + comment.
+- [ ] Profile, Help & Privacy, Update screen.
+- [ ] Recovery code field: dash after 5, max 10; "No account found…" vs "…It looks like K7M2P-X9F4R…".
+Admin:
+- [ ] Sign up with admin code → verify email.
+- [ ] Change statuses → "Moved to …" in the employee chat.
+- [ ] Remind button, All weeks, comments + filters.
+- [ ] Reset admin code: old code stops working, new one works.
+Notifications:
+- [ ] 15-minute "Weekly Pulse opens" arrives at the right time (pulseHeadsUp schedule matches settings/pulse).
+
+LIVE is the same code but a separate database and setup (own settings, APNs key, join codes, admin code; functions and rules deployed separately), so do the short LIVE test in C.
+
 ### C. LIVE Firebase (haystek-pulse) – only after a clear yes
 - [ ] Rules, indexes, functions same as DEV (deploy commands below).
 - [ ] Admin code ready for HR (admins see it in Profile → Admin code).
@@ -111,6 +133,7 @@ Give this file to Claude at the start of any new chat: "Read this first."
 - [ ] Firestore daily backups on.
 - [ ] `settings/app`: `latestAndroid`, `latestIos`, `iosUrl` (https://apps.apple.com/app/id6833529873), `message`.
 - [ ] Privacy policy live: https://haystek-pulse.web.app/privacy.html (check the link works).
+- [ ] Short LIVE test (~20 min, prod build): join with a LIVE entry code, send a suggestion, reply as a LIVE admin, notifications arrive on iPhone + Android. Then delete the LIVE test accounts and data (after a clear yes).
 
 ### D. Google Play
 - [ ] Back up the Android upload keystore + key.properties (safe place, not GitHub).
