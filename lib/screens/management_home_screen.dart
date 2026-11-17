@@ -1419,6 +1419,17 @@ class _TimelineState extends State<_Timeline> {
     return '${days[d.weekday - 1]}, $h:$m ${d.hour < 12 ? 'AM' : 'PM'}';
   }
 
+  /// Ma'am: "Mon, Nov 16 · 12:22 PM".
+  static String _dayDate(DateTime d) {
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug',
+        'Sep', 'Oct', 'Nov', 'Dec'];
+    final h = d.hour % 12 == 0 ? 12 : d.hour % 12;
+    final m = d.minute.toString().padLeft(2, '0');
+    return '${days[d.weekday - 1]}, ${months[d.month - 1]} ${d.day} · '
+        '$h:$m ${d.hour < 12 ? 'AM' : 'PM'}';
+  }
+
   static TextStyle _t(
     double size, {
     FontWeight weight = FontWeight.w400,
@@ -1436,7 +1447,7 @@ class _TimelineState extends State<_Timeline> {
     final gone = DateTime.now().difference(widget.opensAt).inSeconds;
     final progress = closed || all <= 0 ? 1.0 : (gone / all).clamp(0.0, 1.0);
     const lineColor = _glow;
-    final endText = _dayTime(
+    final endText = _dayDate(
       widget.closesAt.subtract(const Duration(minutes: 1)),
     );
 
@@ -1544,6 +1555,8 @@ class _TimelineState extends State<_Timeline> {
               ),
             ),
             const SizedBox(height: 9),
+            // Same place as before; Ma'am's wording: Opens / Closes,
+            // "Mon, Nov 16 · 12:22 PM".
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -1551,25 +1564,39 @@ class _TimelineState extends State<_Timeline> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Started at', style: _t(12, color: _soft)),
+                      Text('Opens', style: _t(12, color: _soft)),
                       const SizedBox(height: 2),
-                      Text(
-                        _dayTime(widget.opensAt),
-                        style: _t(13, weight: FontWeight.w600),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          _dayDate(widget.opensAt),
+                          maxLines: 1,
+                          style: _t(13, weight: FontWeight.w600),
+                        ),
                       ),
                     ],
                   ),
                 ),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
-                        closed ? 'Ended at' : 'Ends at',
+                        closed ? 'Closed' : 'Closes',
                         style: _t(12, color: _soft),
                       ),
                       const SizedBox(height: 2),
-                      Text(endText, style: _t(13, weight: FontWeight.w600)),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerRight,
+                        child: Text(
+                          endText,
+                          maxLines: 1,
+                          style: _t(13, weight: FontWeight.w600),
+                        ),
+                      ),
                     ],
                   ),
                 ),

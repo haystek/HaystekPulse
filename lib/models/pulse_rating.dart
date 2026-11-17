@@ -26,7 +26,7 @@ class PulseRating {
   }
 
   static String question(String rating) => rating == okay
-      ? 'What can we improve?'
+      ? 'Anything you’d like to share about your week?'
       : 'What was difficult, and how can we improve?';
 
   static IconData icon(String rating) {

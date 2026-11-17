@@ -566,6 +566,30 @@ class _Chip extends StatelessWidget {
   }
 }
 
+/// Ma'am: "Nov 16–20, 2026" (or "Nov 30 – Dec 4, 2026"), made from the
+/// short text "Mon 16 – Fri 20 Nov" / "Mon 30 Nov – Fri 4 Dec".
+String _longWeek(String week) {
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug',
+      'Sep', 'Oct', 'Nov', 'Dec'];
+  final m = RegExp(r'^\w{3} (\d{1,2})(?: (\w{3}))?\s*[–-]\s*\w{3} (\d{1,2}) (\w{3})$')
+      .firstMatch(week.trim());
+  if (m == null) return week;
+  final endMonth = months.indexOf(m.group(4)!);
+  final startMonth =
+      m.group(2) == null ? endMonth : months.indexOf(m.group(2)!);
+  if (startMonth < 0 || endMonth < 0) return week;
+  final now = DateTime.now();
+  var endYear = now.year;
+  if (endMonth == 0 && now.month == 12) endYear++;
+  if (endMonth == 11 && now.month == 1) endYear--;
+  final startYear = startMonth > endMonth ? endYear - 1 : endYear;
+  final s = m.group(1), e = m.group(3);
+  final sm = months[startMonth], em = months[endMonth];
+  if (startYear != endYear) return '$sm $s, $startYear – $em $e, $endYear';
+  if (startMonth != endMonth) return '$sm $s – $em $e, $endYear';
+  return '$sm $s–$e, $endYear';
+}
+
 /// The top of each card:
 ///   Feedback for this week              [chip]
 ///   Mon 12 – Fri 16 Oct
@@ -585,7 +609,7 @@ Widget _cardTop(
           Text('Feedback for this week', style: _inter(12.5, color: color)),
           const SizedBox(height: 2),
           Text(
-            week,
+            _longWeek(week),
             style: _inter(
               15,
               weight: FontWeight.w600,
@@ -930,6 +954,17 @@ class _TimelineState extends State<_Timeline> {
     return '${days[d.weekday - 1]}, $h:$m ${d.hour < 12 ? 'AM' : 'PM'}';
   }
 
+  /// Ma'am: "Mon, Nov 16 · 12:22 PM".
+  static String _dayDate(DateTime d) {
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug',
+        'Sep', 'Oct', 'Nov', 'Dec'];
+    final h = d.hour % 12 == 0 ? 12 : d.hour % 12;
+    final m = d.minute.toString().padLeft(2, '0');
+    return '${days[d.weekday - 1]}, ${months[d.month - 1]} ${d.day} · '
+        '$h:$m ${d.hour < 12 ? 'AM' : 'PM'}';
+  }
+
   static TextStyle _t(
     double size, {
     FontWeight weight = FontWeight.w400,
@@ -947,7 +982,7 @@ class _TimelineState extends State<_Timeline> {
     final gone = DateTime.now().difference(widget.opensAt).inSeconds;
     final progress = closed || all <= 0 ? 1.0 : (gone / all).clamp(0.0, 1.0);
     const lineColor = _glow;
-    final endText = _dayTime(
+    final endText = _dayDate(
       widget.closesAt.subtract(const Duration(minutes: 1)),
     );
 
@@ -1055,6 +1090,8 @@ class _TimelineState extends State<_Timeline> {
               ),
             ),
             const SizedBox(height: 9),
+            // Same place as before; Ma'am's wording: Opens / Closes,
+            // "Mon, Nov 16 · 12:22 PM".
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -1062,25 +1099,39 @@ class _TimelineState extends State<_Timeline> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Started at', style: _t(12, color: _soft)),
+                      Text('Opens', style: _t(12, color: _soft)),
                       const SizedBox(height: 2),
-                      Text(
-                        _dayTime(widget.opensAt),
-                        style: _t(13, weight: FontWeight.w600),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          _dayDate(widget.opensAt),
+                          maxLines: 1,
+                          style: _t(13, weight: FontWeight.w600),
+                        ),
                       ),
                     ],
                   ),
                 ),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
-                        closed ? 'Ended at' : 'Ends at',
+                        closed ? 'Closed' : 'Closes',
                         style: _t(12, color: _soft),
                       ),
                       const SizedBox(height: 2),
-                      Text(endText, style: _t(13, weight: FontWeight.w600)),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerRight,
+                        child: Text(
+                          endText,
+                          maxLines: 1,
+                          style: _t(13, weight: FontWeight.w600),
+                        ),
+                      ),
                     ],
                   ),
                 ),

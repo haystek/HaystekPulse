@@ -412,7 +412,7 @@ class _WeeklyPulseScreenState extends State<WeeklyPulseScreen>
                               rating == null
                                   ? 'Pick one to send'
                                   : needsText
-                                  ? 'Send feedback'
+                                  ? 'Submit Feedback'
                                   : 'Send',
                             ),
                     ),
@@ -436,7 +436,7 @@ class _WeeklyPulseScreenState extends State<WeeklyPulseScreen>
 
   /// The week, "How was your week?" and a short line.
   Widget _header() {
-    final week = _weekDates(PulseService.currentWeekId()).toUpperCase();
+    final week = _longWeek(PulseService.currentWeekId()).toUpperCase();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -625,6 +625,24 @@ TextStyle _inter(
 );
 
 /// "Mon 12 – Fri 16 Oct" (or "Mon 28 Sep – Fri 2 Oct").
+/// Like the Home card: "Nov 16–20, 2026" (or "Nov 30 – Dec 4, 2026").
+String _longWeek(String weekId) {
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug',
+      'Sep', 'Oct', 'Nov', 'Dec'];
+  final p = weekId.split('-').map(int.parse).toList();
+  final d = DateTime(p[0], p[1], p[2]);
+  final mon = DateTime(d.year, d.month, d.day - (d.weekday - 1));
+  final fri = DateTime(mon.year, mon.month, mon.day + 4);
+  final sm = months[mon.month - 1], em = months[fri.month - 1];
+  if (mon.year != fri.year) {
+    return '$sm ${mon.day}, ${mon.year} – $em ${fri.day}, ${fri.year}';
+  }
+  if (mon.month != fri.month) {
+    return '$sm ${mon.day} – $em ${fri.day}, ${fri.year}';
+  }
+  return '$sm ${mon.day}–${fri.day}, ${fri.year}';
+}
+
 String _weekDates(String weekId) {
   const months = [
     'Jan',
@@ -683,13 +701,13 @@ Color _tintOf(String rating) {
 String _hintOf(String rating) {
   switch (rating) {
     case PulseRating.great:
-      return 'Productive and happy';
+      return 'Excellent week';
     case PulseRating.good:
-      return 'A normal, fine week';
+      return 'Mostly positive';
     case PulseRating.okay:
-      return 'Some things were hard';
+      return 'Had some ups and downs';
     default:
-      return 'It was a tough week';
+      return 'Mostly challenging';
   }
 }
 

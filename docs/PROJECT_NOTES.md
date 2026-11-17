@@ -210,3 +210,327 @@ LIVE is the same code but a separate database and setup (own settings, APNs key,
 - iPhone build stuck on Keychain: `security unlock-keychain`
 - Mac low on space: delete `~/Library/Developer/Xcode/DerivedData/*` and old emulators in `~/.android/avd`.
 - Undo unsaved changes: `git checkout -- .` (and `git clean -nd` to preview new files before `git clean -fd`).
+
+---
+
+<!-- PULSE-TRACKER START -->
+
+## Haystek Pulse – Pending work (updated 17 Nov 2026)
+
+Send this whole file at the start of every new chat.
+Tick `[x]` when done.
+
+---
+
+### Done on 16 Nov 2026 (TestFlight build 8, version 1.0.0+8)
+
+- [x] Start-up: dark-blue splash held until Home is ready, no loader flash
+- [x] Fix: Home → loader → Home flicker (auth_gate shows loader only when no data yet)
+- [x] Weekly Pulse card no reload when settings arrive again
+- [x] Shimmer instead of loaders on Home (Pulse card, Broadcast line, Your feedback)
+- [x] Test mode (`kSlowStart`) is OFF – must stay `false` for every build
+- [x] Red "No internet connection" bar on every screen (also catches Wi-Fi without internet)
+- [x] iPhone: "Done" bar above the keyboard on every screen
+- [x] iPhone: swipe back on entry code, recovery code, admin and "account moved" screens
+- [x] Welcome-flow screens slide in / out like real pages
+- [x] Recovery code field: dash after 5, max 10, error messages
+- [x] TestFlight build 8 uploaded, build 6 expired, group informed
+- [x] LIVE launch checklist made (section below)
+
+---
+
+### Tomorrow – first: check
+
+- [ ] Send: `docs/PROJECT_NOTES.md`, `firebase.json`, `ls -R public/`, `firestore.rules`
+- [ ] Update `PROJECT_NOTES.md` with 16 Nov work
+- [ ] Check privacy page (data collected, how stored, account deletion, contact email) – already deployed
+- [ ] Check hosting pages and Firestore rules; write them into the notes
+- [ ] Fill placeholders in the LIVE checklist below (device name, scheduler region)
+
+---
+
+### App work (in this order)
+
+1. [ ] **Text styles + responsive** – same for employee AND admin
+   - First run the 3 greps (font sizes, font weights, `lib/theme/app_theme.dart`)
+   - 8 styles (Figtree): Title 24/700, Heading 20/700, Subheading 16/600, Body 15/400, Body bold 15/600, Small 13/400, Label 11/600 caps, Button 15/600 (final numbers after the grep)
+   - Responsive: base width ~390, scale 90%–115%; tablets: content centred, not stretched
+   - Same header (height, back button, title, padding) and same footer button (~52 high) everywhere
+   - Go screen by screen. Employee: Welcome, Home, Weekly Pulse, Suggestion, Your feedback, Broadcast, Profile. Admin: Admin home, feedback list + detail, reply, Broadcast, Settings, Profile
+2. [ ] **Test on simulators** – small (iPhone SE), medium (iPhone 16/17), big (Pro Max), optional iPad
+   ```
+   xcrun simctl list devices available | grep -E "iPhone|iPad"
+   open -a Simulator
+   flutter run --flavor dev -d "<simulator name>"
+   ```
+   Screenshot: Cmd + S (saved to Desktop)
+3. [ ] **"Anonymous" / "With your name" label** on every employee feedback (Home list + See all), so old weeks can be checked (Ma'am)
+4. [ ] **First-time tip on Home** (optional): "Tap a card to open it. Swipe up to leave the app." (from Ma'am's "how do I come out")
+5. [ ] **Android: press back twice to close** on Employee Home + Admin Home – `doubleback.js` ready, not run yet
+6. [ ] **HR / Ops: Employee + Admin in one app** – discuss with Ma'am first
+   - Join as employee and sign in as admin with work email, in either order (Profile)
+   - Switch between Employee and Admin anytime, no logout
+   - Get both employee and admin notifications; tapping opens the right side
+   - Own broadcast/reminder: they also get it as employee (or skip the sender – decide)
+7. [ ] **TestFlight build 9** (version `1.0.0+9`) – check `kSlowStart = false` first
+8. [ ] Optional: Android 12 splash logo card same size as loader card
+9. [ ] Optional later: pull down to refresh on Home and lists
+
+---
+
+### Feedback from testers
+
+- [ ] Reply to Ma'am's test suggestion "Better Wi-Fi in the conference room" from admin, status In progress, check she gets the notification
+- [ ] Collect Sir's feedback on build 8, add here, reply as admin
+- [ ] Blurry doc images – new phone screenshots: Suggestion 3, Weekly Pulse 2/3/7, Profile tips
+
+---
+
+### Before LIVE (details + commands in the LIVE checklist below)
+
+- [ ] sendPush server function → remove fcm_sender files from app → testers update → delete old keys
+- [ ] App Check + restrict API keys
+- [ ] LIVE: rules, indexes, functions, hosting deployed
+- [ ] `pulseHeadsUp` reminder time = LIVE open time (`functions/index.js`, e.g. `"7 12 * * 1"`)
+- [ ] APNs key on LIVE project; Android release SHA keys on LIVE project
+- [ ] LIVE data: admin accounts, entry code, `settings/pulse`, `settings/app`
+- [ ] Daily backup **7 days**, turn on at launch (≈ ₹2/month)
+- [ ] Remove `debug_slow.dart` fully
+- [ ] Prod build test on real phones; store builds (appbundle + ipa, flavor prod)
+- [ ] Android signing key backed up safely
+- [ ] Delete account works on LIVE
+- [ ] Store listings: texts, screenshots, privacy forms, age rating, reviewer demo login, Apple encryption question, Play account type, Ma'am approval
+- [ ] Launch day: short LIVE test, staged release, employee guide, admin guide, support person
+- [ ] After launch: error log daily (week 1), usage check, delete unused DEV scheduler jobs (free 3 jobs per billing account), employee leaves → deactivate same day, rollback plan via `settings/app`
+
+---
+
+### Waiting on Ma'am
+
+- [ ] Company card as primary on billing + e-mandate (bank OTP). Don't remove current card until then.
+- [ ] Company verification – deadline 13 Feb 2027
+- [ ] Discuss HR / Ops Employee + Admin switch
+
+---
+
+### Decisions made
+
+- Daily backup: keep **7 days** (covers weekends; each copy has ALL data)
+- Backups only for LIVE, not DEV; turn on at launch
+- Extra scheduler jobs ≈ ₹8/month each; clean DEV jobs after launch
+- Expected Firebase cost: ₹0–50/month; Apple + Play accounts already paid (Apple $99 renews yearly)
+- FCM key stays in the app until the sendPush server change
+- Only Ma'am's suggested text changes; no new wording unless asked
+
+---
+
+### Rules (always)
+
+- DEV first. LIVE only after a clear yes. Never delete LIVE data without confirming.
+- Never push key files; never `git add -f` them. Repo stays private.
+- No passwords, admin codes or card numbers in docs or chat.
+- Never submit a DEV build to the App Store.
+- Before every build: `grep "kSlowStart =" lib/debug_slow.dart` must say `false`.
+
+---
+
+## Haystek Pulse – LIVE launch checklist
+
+DEV project: `haystek-pulse-dev`  ·  LIVE project: `haystek-pulse`
+Rule: do everything on DEV first. Touch LIVE only after a clear yes.
+Never put passwords, admin codes, card numbers or key files in this file or in git.
+
+Tick each box `[x]` when done, with the date.
+
+---
+
+### 0. Before anything (every time)
+
+- [ ] On the right branch and everything committed
+  ```
+  cd /Users/haystek/haystek_pulse
+  git status --short
+  git branch --show-current
+  ```
+- [ ] Test mode is OFF (must say `false`)
+  ```
+  grep "kSlowStart =" lib/debug_slow.dart
+  ```
+- [ ] No errors
+  ```
+  flutter analyze lib | grep "error •" ; echo "--- no lines above = no errors"
+  ```
+- [ ] Key files are NOT in git (each line must print the file name = ignored)
+  ```
+  git check-ignore serviceAccount.json assets/fcm_sender.json assets/fcm_sender_dev.json tools/dev-serviceAccount.json tools/create_users/serviceAccount.json reset_test_data.js AuthKey_B348XC2G9K.p8
+  ```
+  Never `git add -f` these files.
+
+---
+
+### 1. Security (before LIVE)
+
+- [ ] **sendPush server function** – notifications sent from the server, not the app (plan in PROJECT_NOTES.md → Notification server plan)
+- [ ] Remove the `fcm_sender` files from `pubspec.yaml` assets and from the app
+- [ ] Testers updated to the new build
+- [ ] Delete the old FCM sender keys (only after the 3 steps above)
+  https://console.cloud.google.com/iam-admin/serviceaccounts?project=haystek-pulse
+  https://console.cloud.google.com/iam-admin/serviceaccounts?project=haystek-pulse-dev
+- [ ] **App Check** turned on (needs a small app change – ask Claude for the script)
+  Console: Firebase → App Check → register Android (Play Integrity) and iOS (App Attest / DeviceCheck)
+- [ ] **Restrict API keys** to the app only
+  https://console.cloud.google.com/apis/credentials?project=haystek-pulse
+  Android key → Android apps → package `com.haystek.haystek_pulse` + release SHA-1
+  iOS key → iOS apps → bundle ID
+
+---
+
+### 2. LIVE Firebase setup (same as DEV)
+
+- [ ] Check which project the commands use
+  ```
+  firebase projects:list
+  ```
+- [ ] **Firestore rules** on LIVE
+  ```
+  firebase deploy --only firestore:rules --project haystek-pulse
+  ```
+- [ ] **Firestore indexes** on LIVE
+  ```
+  firebase deploy --only firestore:indexes --project haystek-pulse
+  ```
+- [ ] **Cloud Functions** on LIVE
+  ```
+  firebase deploy --only functions --project haystek-pulse
+  firebase functions:list --project haystek-pulse
+  ```
+- [ ] **Reminder time** (`pulseHeadsUp`) matches the LIVE open time
+  Edit the schedule in `functions/index.js` (example: `"7 12 * * 1"` = Monday 12:07), then deploy functions again.
+- [ ] **Hosting** (join page, privacy page) on LIVE
+  ```
+  firebase deploy --only hosting --project haystek-pulse
+  ```
+  Open the privacy page and the join page in a browser and check they load.
+- [ ] **iPhone notifications**: APNs key uploaded to the LIVE project
+  Firebase → Project settings → Cloud Messaging → Apple app configuration → APNs Authentication Key
+- [ ] **Android release SHA keys** added to the LIVE project
+  ```
+  cd android && ./gradlew signingReport && cd ..
+  ```
+  Also copy the SHA-1 / SHA-256 from Play Console → App integrity → App signing.
+  Add both in Firebase → Project settings → Android app → Add fingerprint.
+- [ ] **Billing**: Blaze plan on, budget alert on
+  https://console.cloud.google.com/billing
+- [ ] **Daily backup – keep 7 days** (turn on at launch, before real data)
+  ```
+  gcloud firestore backups schedules create --database='(default)' --recurrence=daily --retention=7d --project=haystek-pulse
+  gcloud firestore backups schedules list --database='(default)' --project=haystek-pulse
+  ```
+
+---
+
+### 3. LIVE data to create
+
+- [ ] **Admin accounts** on LIVE (work email)
+- [ ] **Entry code** for LIVE (the real code for employees – share only inside the company)
+- [ ] **`settings/pulse`** on LIVE: openDay, openHour, openMinute, openDays
+- [ ] **`settings/app`** on LIVE: minimum version for the "Please update" screen
+- [ ] **No test data** on LIVE
+
+---
+
+### 4. The app
+
+- [ ] Remove `lib/debug_slow.dart` and its uses fully (ask Claude for the script)
+- [ ] Version number set in `pubspec.yaml` (e.g. `1.0.0+10`)
+  ```
+  grep "^version:" pubspec.yaml
+  ```
+- [ ] **Prod build test** on real phones (talks to LIVE)
+  ```
+  flutter run --release --flavor prod -d <device>
+  ```
+  Test: join with entry code, Weekly Pulse, suggestion, admin reply, notification, broadcast, delete account.
+- [ ] **Android store build**
+  ```
+  flutter build appbundle --flavor prod --release
+  open build/app/outputs/bundle/
+  ```
+- [ ] **iPhone store build**
+  ```
+  flutter build ipa --flavor prod
+  open build/ios/archive/Runner.xcarchive
+  ```
+  Xcode → Distribute App → App Store Connect → Upload
+- [ ] **Android signing key** (keystore + password) backed up safely (password manager / company drive). If lost, the app can never be updated.
+- [ ] **Delete account** works on LIVE (Profile → Delete account)
+
+---
+
+### 5. Store listings
+
+- [ ] App name, short description, full description, keywords (App Store)
+- [ ] Screenshots: iPhone 6.9" and 6.5"; Android phone (2+); Play feature graphic 1024×500; icon 512×512
+- [ ] **Privacy policy link** (already deployed – check it covers: data collected, how stored, account deletion, contact email)
+- [ ] Support email / link
+- [ ] Apple **App Privacy** form + Google **Data safety** form (honest answers: feedback, device ID, no ads, anonymous unless "With my name")
+- [ ] Age rating questionnaire (both stores)
+- [ ] **Reviewer demo login** on LIVE (entry code / test account for Apple and Google)
+- [ ] Apple **encryption question** (standard encryption → exempt; confirm)
+- [ ] Play Console account type checked (organization = no 14-day closed test needed)
+- [ ] **Ma'am approves** privacy text and store descriptions before submitting
+- [ ] Never submit a DEV build to the App Store
+
+---
+
+### 6. Launch day
+
+- [ ] **Short LIVE test** (PROJECT_NOTES.md → test checklist)
+- [ ] Daily backup ON (section 2)
+- [ ] **Staged release**: 10–20 employees first, then everyone
+  Play Console → Production → staged rollout %
+  App Store → Phased release
+- [ ] **Employee guide** sent: store link + entry code + how to join + save recovery code
+- [ ] **Admin guide**: how to reply, broadcast, change open time, reset a phone
+- [ ] **Support person** decided (who employees contact)
+
+---
+
+### 7. After launch
+
+- [ ] Week 1: check the error log every day
+- [ ] Week 1: check Firebase usage is inside the free amounts
+  https://console.firebase.google.com/project/haystek-pulse/usage
+- [ ] Delete DEV scheduler jobs not needed any more (free 3 jobs are per billing account, shared by DEV + LIVE)
+  ```
+  firebase functions:list --project haystek-pulse-dev
+  gcloud billing projects describe haystek-pulse-dev
+  gcloud billing projects describe haystek-pulse
+  ```
+- [ ] Employee leaves → deactivate the same day
+- [ ] If a release breaks: keep the last good build ready; raise the minimum version in `settings/app` to force the fixed build
+
+---
+
+### 8. Waiting on Ma'am
+
+- [ ] Company card added as **primary** on billing + **e-mandate** (bank OTP) – don't remove the current card until this is done
+- [ ] Company verification (deadline **13 Feb 2027**)
+
+---
+
+### Costs (for reference)
+
+| Item | Free | Expected |
+|---|---|---|
+| Firestore | 50K reads/day, 20K writes/day, 1 GB | ₹0 |
+| Auth | 50K users/month | ₹0 |
+| Notifications (FCM) | unlimited | ₹0 |
+| Cloud Functions | 2M calls/month | ₹0 |
+| Cloud Scheduler | 3 jobs per billing account | ₹0 (≈ ₹8 per extra job/month) |
+| Hosting | 10 GB, 360 MB/day | ₹0 |
+| Daily backup (7 days) | – | ≈ ₹2/month |
+| Apple Developer | – | paid, $99 renews yearly |
+| Google Play | – | paid (one time) |
+
+<!-- PULSE-TRACKER END -->
