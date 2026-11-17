@@ -380,7 +380,8 @@ class _ShareDialog extends StatefulWidget {
 class _ShareDialogState extends State<_ShareDialog> {
   static const _line = Color(0xFFE3E8F1);
   static const _soft = Color(0xCC0E1A3A);
-  static const _muted = Color(0xFF5F6A84);
+  // sharedlg: darker grey.
+  static const _muted = Color(0xCC0E1A3A);
   static const _green = Color(0xFF16A34A);
   static const _titleMax = 120;
 
@@ -505,29 +506,47 @@ class _ShareDialogState extends State<_ShareDialog> {
 
   Widget _label(String s) => Padding(
     padding: const EdgeInsets.only(left: 4, bottom: 6),
-    child: Text(s, style: _s(13, c: _muted)),
+    child: Text(s, style: _s(13.5, w: FontWeight.w500, c: _muted)),
   );
 
   /// Only the employee | Employee + everyone, with a sliding highlight.
   Widget _switch() {
-    Widget label(String text, bool on, bool everyone) => Expanded(
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => _choose(everyone),
-        child: Center(
-          child: AnimatedDefaultTextStyle(
-            duration: const Duration(milliseconds: 220),
-            curve: Curves.easeOutCubic,
-            style: _s(
-              13.5,
-              w: on ? FontWeight.w600 : FontWeight.w400,
-              c: on ? AppColors.blue : _muted,
+    Widget label(IconData icon, String text, bool on, bool everyone) =>
+        Expanded(
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => _choose(everyone),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6),
+              child: Center(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        icon,
+                        size: 17,
+                        color: on ? AppColors.blue : _muted,
+                      ),
+                      const SizedBox(width: 6),
+                      AnimatedDefaultTextStyle(
+                        duration: const Duration(milliseconds: 220),
+                        curve: Curves.easeOutCubic,
+                        style: _s(
+                          13.5,
+                          w: on ? FontWeight.w600 : FontWeight.w500,
+                          c: on ? AppColors.blue : _muted,
+                        ),
+                        child: Text(text, maxLines: 1),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
-            child: Text(text, maxLines: 1),
           ),
-        ),
-      ),
-    );
+        );
     return Container(
       height: 46,
       padding: const EdgeInsets.all(4),
@@ -562,8 +581,18 @@ class _ShareDialogState extends State<_ShareDialog> {
           ),
           Row(
             children: [
-              label('👤 Only the employee', !_everyone, false),
-              label('📣 Employee + everyone', _everyone, true),
+              label(
+                Icons.person_outline_rounded,
+                'Only the employee',
+                !_everyone,
+                false,
+              ),
+              label(
+                Icons.campaign_outlined,
+                'Employee + everyone',
+                _everyone,
+                true,
+              ),
             ],
           ),
         ],
@@ -676,7 +705,7 @@ class _ShareDialogState extends State<_ShareDialog> {
               Text(
                 'Who should get your message?',
                 textAlign: TextAlign.center,
-                style: _s(14, c: _muted),
+                style: _s(14.5, w: FontWeight.w500, c: _muted),
               ),
               const SizedBox(height: 16),
               _switch(),

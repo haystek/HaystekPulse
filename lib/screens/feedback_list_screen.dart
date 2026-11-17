@@ -276,7 +276,7 @@ class _FeedbackListScreenState extends State<FeedbackListScreen> {
                         onChanged: (v) => setState(() => _query = v),
                         textInputAction: TextInputAction.search,
                         decoration: InputDecoration(
-                          hintText: 'Words, name or employee ID',
+                          hintText: 'Words or name',
                           hintStyle: const TextStyle(
                             color: Color(0xFF6B7489),
                             fontSize: 16,
@@ -761,138 +761,191 @@ class _ResultCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const ink = Color(0xFF111827);
+    const body = Color(0xFF1F2937);
     const soft = Color(0xCC0E1A3A);
+    const grey = Color(0xFF5B6478);
+    const green = Color(0xFF15803D);
     final status = item.status;
     final color = FeedbackStatus.color(status);
     final isNew = status == FeedbackStatus.newItem;
     final name = (item.authorName ?? '').trim();
-    final id = (item.authorEmployeeId ?? '').trim();
     final hidden = item.anonymous || name.isEmpty;
     final rating = !item.isFromBox && item.rating != null ? item.rating : null;
-    final who = [
-      hidden ? 'Anonymous' : name,
-      if (!hidden && id.isNotEmpty) id,
-      if (rating != null) PulseRating.label(rating),
-    ].join(' · ');
+    final moodColor = rating != null ? PulseRating.color(rating) : null;
     final waitingDays = item.createdAt == null
         ? 0
         : DateTime.now().difference(item.createdAt!).inDays;
     final late = isNew && waitingDays >= 7;
-    const bodyStyle = TextStyle(
-      fontSize: 16,
-      height: 1.42,
-      fontWeight: FontWeight.w500,
-      letterSpacing: 0,
-      color: ink,
-    );
-    const nameStyle = TextStyle(
-      fontSize: 13,
-      fontWeight: FontWeight.w600,
-      letterSpacing: 0,
-      color: ink,
-    );
 
-    Widget tag(IconData icon, String text, Color c) => Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 13, color: c),
-        const SizedBox(width: 4),
-        Text(
-          text,
-          style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: c),
-        ),
-      ],
+    const bodyStyle = TextStyle(
+      fontSize: 15,
+      height: 1.42,
+      letterSpacing: 0,
+      color: body,
+    );
+    final nameStyle = TextStyle(
+      fontSize: 15,
+      fontWeight: FontWeight.w700,
+      letterSpacing: 0,
+      color: hidden ? grey : ink,
     );
 
     return Material(
       color: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
-        side: const BorderSide(color: Color(0xFFEEF0F4)),
-      ),
       clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: const BorderSide(color: Color(0xFFDDE2EB), width: 1.2),
+      ),
       child: InkWell(
         onTap: onTap,
-        child: IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Container(width: 4, color: color),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 13, 14, 13),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Text(
-                            FeedbackStatus.label(status).toUpperCase(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Top strip: who sent it, time, arrow.
+            Container(
+              padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
+              decoration: const BoxDecoration(
+                color: Color(0xFFF6F7FB),
+                border: Border(bottom: BorderSide(color: Color(0xFFEEF1F6))),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    hidden ? Icons.lock_outline_rounded : Icons.person_rounded,
+                    size: 17,
+                    color: hidden ? grey : ink,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text.rich(
+                      _highlight(
+                        hidden ? 'Anonymous' : name,
+                        hidden ? '' : query,
+                        nameStyle,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    _when(item.createdAt),
+                    style: const TextStyle(
+                      fontSize: 13,
+                      letterSpacing: 0,
+                      color: soft,
+                    ),
+                  ),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    size: 22,
+                    color: soft,
+                  ),
+                ],
+              ),
+            ),
+            // The message, search word highlighted.
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 11, 14, 0),
+              child: Text.rich(
+                _highlight(item.text, query, bodyStyle),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            // Status (+ Replied / Waiting) left, mood chip right.
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      runSpacing: 4,
+                      children: [
+                        Container(
+                          width: 7,
+                          height: 7,
+                          decoration: BoxDecoration(
+                            color: color,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          FeedbackStatus.label(status),
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0,
+                            color: color,
+                          ),
+                        ),
+                        if (item.hasReply) ...[
+                          const Text(
+                            '  ·  ',
+                            style: TextStyle(fontSize: 13, color: soft),
+                          ),
+                          const Icon(Icons.check_rounded, size: 14, color: green),
+                          const SizedBox(width: 3),
+                          const Text(
+                            'Replied',
                             style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0.6,
-                              color: color,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0,
+                              color: green,
                             ),
                           ),
-                          const Spacer(),
+                        ] else if (late) ...[
+                          const Text(
+                            '  ·  ',
+                            style: TextStyle(fontSize: 13, color: soft),
+                          ),
+                          const Icon(
+                            Icons.schedule_rounded,
+                            size: 14,
+                            color: Color(0xFFC2410C),
+                          ),
+                          const SizedBox(width: 3),
                           Text(
-                            _when(item.createdAt),
+                            'Waiting $waitingDays days',
                             style: const TextStyle(
                               fontSize: 13,
+                              fontWeight: FontWeight.w600,
                               letterSpacing: 0,
-                              color: soft,
+                              color: Color(0xFFC2410C),
                             ),
                           ),
                         ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text.rich(
-                        _highlight(item.text, query, bodyStyle),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          if (hidden) ...[
-                            const Icon(
-                              Icons.lock_outline_rounded,
-                              size: 12,
-                              color: ink,
-                            ),
-                            const SizedBox(width: 4),
-                          ],
-                          Expanded(
-                            child: Text.rich(
-                              _highlight(who, hidden ? '' : query, nameStyle),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          if (item.hasReply) ...[
-                            const SizedBox(width: 8),
-                            tag(
-                              Icons.chat_bubble_outline_rounded,
-                              'Replied',
-                              const Color(0xFF15803D),
-                            ),
-                          ] else if (late) ...[
-                            const SizedBox(width: 8),
-                            tag(
-                              Icons.schedule_rounded,
-                              'Waiting $waitingDays days',
-                              const Color(0xFFC2410C),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
+                  if (rating != null && moodColor != null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 9,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: moodColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        PulseRating.label(rating).toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.3,
+                          color: moodColor,
+                        ),
+                      ),
+                    ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

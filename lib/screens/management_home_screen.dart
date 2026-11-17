@@ -2925,7 +2925,7 @@ class _WeekCommentsScreenState extends State<WeekCommentsScreen> {
                           onChanged: (v) => setState(() => _query = v),
                           textInputAction: TextInputAction.search,
                           decoration: InputDecoration(
-                            hintText: 'Search words, name or ID',
+                            hintText: 'Search words or name',
                             prefixIcon: const Icon(Icons.search),
                             suffixIcon: _query.isEmpty
                                 ? null

@@ -24,7 +24,9 @@ Widget _withInter(BuildContext context, Widget child) {
 }
 
 const Color _pageBg = Color(0xFFF5F7FB);
-const Color _muted = Color(0xFF5B6578);
+// weeksdark: darker grey, same as the other screens.
+const Color _muted = Color(0xCC0E1A3A);
+const Color _dark = Color(0xFF111827);
 const Color _softBlue = Color(0xFFEEF3FF);
 const Color _lightLine = Color(0xFFEEF1F6);
 const Color _lowText = Color(0xFFB4430C);
@@ -127,8 +129,9 @@ class _AllWeeksScreenState extends State<AllWeeksScreen> {
             'All weeks',
             style: TextStyle(
               fontSize: 20,
-              fontWeight: FontWeight.w500,
-              color: AppColors.ink,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0,
+              color: _dark,
             ),
           ),
         ),
@@ -250,9 +253,9 @@ class _AllWeeksScreenState extends State<AllWeeksScreen> {
           child: Text(
             month,
             style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: _muted,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF374151),
             ),
           ),
         ),
@@ -370,19 +373,20 @@ class _ThisWeekCard extends StatelessWidget {
             children: [
               Text(
                 'This week, ${_shortWeek(weekId)}',
-                style: const TextStyle(fontSize: 13, color: onBlue),
+                style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w500, color: onBlue),
               ),
               const SizedBox(height: 4),
               Text(
                 title,
                 style: const TextStyle(
                   fontSize: 20,
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0,
                   color: Colors.white,
                 ),
               ),
               const SizedBox(height: 4),
-              Text(timing, style: const TextStyle(fontSize: 13, color: onBlue)),
+              Text(timing, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w500, color: onBlue)),
               if (!notOpenYet && total == 0) ...[
                 const SizedBox(height: 10),
                 const Text(
@@ -399,12 +403,12 @@ class _ThisWeekCard extends StatelessWidget {
                     Expanded(
                       child: Text(
                         '$submitted of $total answered',
-                        style: const TextStyle(fontSize: 13, color: onBlue),
+                        style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: Colors.white),
                       ),
                     ),
                     Text(
                       left == 0 ? 'Everyone answered' : '$left still to answer',
-                      style: const TextStyle(fontSize: 13, color: onBlue),
+                      style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: Colors.white),
                     ),
                   ],
                 ),
@@ -529,7 +533,7 @@ class _RemindButton extends StatelessWidget {
                     : 'Remind $left ${left == 1 ? 'person' : 'people'}',
                 style: const TextStyle(
                   fontSize: 16,
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.w600,
                   color: AppColors.blue,
                 ),
               ),
@@ -647,13 +651,14 @@ class _QuickNumber extends StatelessWidget {
         Text(
           value,
           style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
+            fontSize: 17,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0,
             color: color,
           ),
         ),
         const SizedBox(height: 2),
-        Text(label, style: const TextStyle(fontSize: 13, color: _muted)),
+        Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: _muted)),
       ],
     );
   }
@@ -714,6 +719,7 @@ class _MoodChart extends StatelessWidget {
                     style: const TextStyle(
                       fontSize: 12,
                       height: 16 / 12,
+                      fontWeight: FontWeight.w500,
                       color: _muted,
                     ),
                   ),
@@ -817,8 +823,8 @@ class _ChartColumn extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: selected
-                            ? FontWeight.w500
-                            : FontWeight.w400,
+                            ? FontWeight.w700
+                            : FontWeight.w500,
                         color: selected ? _betterText : _muted,
                       ),
                     ),
@@ -953,7 +959,7 @@ class _WeekRow extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 16,
                           height: 1.2,
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w700,
                           color: _tileTextColor(level),
                         ),
                       ),
@@ -961,6 +967,7 @@ class _WeekRow extends StatelessWidget {
                         _monthNames[monday.month - 1].toUpperCase(),
                         style: TextStyle(
                           fontSize: 12,
+                          fontWeight: FontWeight.w600,
                           color: _tileTextColor(level),
                         ),
                       ),
@@ -979,7 +986,9 @@ class _WeekRow extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           fontSize: 16,
-                          color: AppColors.ink,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0,
+                          color: _dark,
                         ),
                       ),
                       const SizedBox(height: 2),
@@ -987,7 +996,7 @@ class _WeekRow extends StatelessWidget {
                         _shortWeek(weekId),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 13, color: _muted),
+                        style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w500, color: _muted),
                       ),
                     ],
                   ),
@@ -1002,7 +1011,7 @@ class _WeekRow extends StatelessWidget {
                       Text(
                         '$submitted/$total',
                         maxLines: 1,
-                        style: const TextStyle(fontSize: 13, color: _muted),
+                        style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: _dark),
                       ),
                       const SizedBox(height: 5),
                       ClipRRect(

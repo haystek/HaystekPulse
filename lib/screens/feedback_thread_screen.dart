@@ -831,7 +831,7 @@ class _DayLabel extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(top: 6, bottom: 14),
       child: Center(
-        child: Text(text, style: threadText(12, color: threadSoft)),
+        child: Text(text, style: threadText(12.5, weight: FontWeight.w600, color: threadSoft)),
       ),
     );
   }
@@ -848,7 +848,7 @@ Widget _timelineLine() => Expanded(
   ),
 );
 
-/// "Moved to Under review · 10:20 PM" with a coloured dot.
+/// Design C "Reply cards": "Moved to Under review · 10:20 PM" as a thin line.
 class _StatusStep extends StatelessWidget {
   const _StatusStep({required this.row, required this.line});
 
@@ -857,56 +857,42 @@ class _StatusStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Design C "Reply cards": a thin line with the change in the middle.
     final color = FeedbackStatus.color(row.status!);
     final time = _time(row);
-    return IntrinsicHeight(
+    return Padding(
+      padding: EdgeInsets.only(top: 2, bottom: line ? 14 : 4),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SizedBox(
-            width: 32,
-            child: Column(
-              children: [
-                const SizedBox(height: 2),
-                Container(
-                  width: 14,
-                  height: 14,
-                  decoration: BoxDecoration(
-                    color: color,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: color.withValues(alpha: 0.25),
-                      width: 3,
+          const Expanded(child: Divider(height: 1, color: Color(0xFFE6E9F0))),
+          const SizedBox(width: 10),
+          Flexible(
+            flex: 8,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text.rich(
+              TextSpan(
+                text: 'Moved to ',
+                children: [
+                  TextSpan(
+                    text: FeedbackStatus.label(row.status!),
+                    style: threadText(
+                      13,
+                      weight: FontWeight.w700,
+                      color: color,
                     ),
                   ),
-                ),
-                if (line) _timelineLine(),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Padding(
-              padding: EdgeInsets.only(bottom: line ? 18 : 4),
-              child: Text.rich(
-                TextSpan(
-                  text: 'Moved to ',
-                  children: [
-                    TextSpan(
-                      text: FeedbackStatus.label(row.status!),
-                      style: threadText(
-                        13,
-                        weight: FontWeight.w600,
-                        color: color,
-                      ),
-                    ),
-                    if (time.isNotEmpty) TextSpan(text: ' · $time'),
-                  ],
-                ),
-                style: threadText(13, color: const Color(0xFF475467)),
+                  if (time.isNotEmpty) TextSpan(text: ' · $time'),
+                ],
               ),
+              maxLines: 1,
+              textAlign: TextAlign.center,
+              style: threadText(13, weight: FontWeight.w500, color: threadSoft),
+            ),
             ),
           ),
+          const SizedBox(width: 10),
+          const Expanded(child: Divider(height: 1, color: Color(0xFFE6E9F0))),
         ],
       ),
     );
@@ -929,91 +915,86 @@ class _MessageGroup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Design C "Reply cards": one white card per reply group.
     final first = rows.first;
     final headTime = first.pending ? '' : _time(first);
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+    return Container(
+      margin: EdgeInsets.only(bottom: line ? 12 : 4),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE3E7EF), width: 1.2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: 32,
-            child: Column(
-              children: [
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: fromAdmin ? AppColors.blue : const Color(0xFFF2F4F7),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    fromAdmin
-                        ? Icons.shield_outlined
-                        : Icons.person_outline_rounded,
-                    size: 16,
-                    color: fromAdmin ? Colors.white : const Color(0xFF475467),
-                  ),
+          Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: fromAdmin ? AppColors.blue : const Color(0xFFF2F4F7),
+                  shape: BoxShape.circle,
                 ),
-                if (line) _timelineLine(),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Padding(
-              padding: EdgeInsets.only(top: 5, bottom: line ? 18 : 4),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        name,
-                        style: threadText(
-                          14,
-                          weight: FontWeight.w600,
-                          color: fromAdmin ? AppColors.blue : AppColors.ink,
-                        ),
-                      ),
-                      if (headTime.isNotEmpty) ...[
-                        const SizedBox(width: 8),
-                        Text(
-                          headTime,
-                          style: threadText(12, color: threadSoft),
-                        ),
-                      ],
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  for (final r in rows) ...[
-                    if (r.movedTo != null) _MovedTag(status: r.movedTo!),
-                    Padding(
-                      padding: const EdgeInsets.only(top: 2),
-                      child: Text.rich(
-                        TextSpan(
-                          text: r.text.trim(),
-                          children: [
-                            if (r.pending)
-                              TextSpan(
-                                text: '  Sending…',
-                                style: threadText(11, color: threadSoft),
-                              ),
-                          ],
-                        ),
-                        style: threadText(
-                          15,
-                          height: 1.5,
-                          color: r.pending
-                              ? threadSoft
-                              : const Color(0xFF344054),
-                        ),
+                child: Icon(
+                  fromAdmin
+                      ? Icons.shield_outlined
+                      : Icons.person_outline_rounded,
+                  size: 17,
+                  color: fromAdmin ? Colors.white : const Color(0xFF475467),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: threadText(
+                        14.5,
+                        weight: FontWeight.w700,
+                        color: fromAdmin ? AppColors.blue : const Color(0xFF111827),
                       ),
                     ),
+                    if (headTime.isNotEmpty)
+                      Text(
+                        headTime,
+                        style: threadText(12.5, color: threadSoft),
+                      ),
                   ],
-                ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          for (final r in rows) ...[
+            if (r.movedTo != null) _MovedTag(status: r.movedTo!),
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text.rich(
+                TextSpan(
+                  text: r.text.trim(),
+                  children: [
+                    if (r.pending)
+                      TextSpan(
+                        text: '  Sending…',
+                        style: threadText(11.5, color: threadSoft),
+                      ),
+                  ],
+                ),
+                style: threadText(
+                  15,
+                  height: 1.45,
+                  color: r.pending ? threadSoft : const Color(0xFF1F2937),
+                ),
               ),
             ),
-          ),
+          ],
         ],
       ),
     );
@@ -1327,205 +1308,103 @@ class ThreadQuoteHeader extends StatelessWidget {
         ],
       ),
     );
-    // Design B: ticket card (employee's own message).
-    final accent = item.isFromBox
-        ? const Color(0xFFE3A23B)
-        : (item.rating != null
-              ? PulseRating.color(item.rating!)
-              : AppColors.blue);
-    final typeFg = item.isFromBox ? const Color(0xFFB7791F) : AppColors.blue;
-    final typeBg = item.isFromBox
-        ? const Color(0xFFFEF3C7)
-        : const Color(0xFFEAF0FF);
+    // Top card: Ticket (same as the lists).
     final myName = (item.authorName ?? '').trim();
     final named = !item.anonymous && myName.isNotEmpty;
-    Widget chip(Widget child, Color bg) => Container(
-      height: 26,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(13),
-      ),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [child]),
-    );
-    final ticket = Container(
+    const grey = Color(0xFF5B6478);
+    final who = management
+        ? (named ? myName : 'Anonymous')
+        : (named ? 'Sent as $myName' : 'Sent anonymously');
+    final card = Container(
       margin: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF7F8FB),
-        borderRadius: BorderRadius.circular(20),
-      ),
       clipBehavior: Clip.antiAlias,
-      child: Stack(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFDDE2EB), width: 1.2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 14, 16, 14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
+          // Grey strip: who sent it and when.
+          Container(
+            padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+            decoration: const BoxDecoration(
+              color: Color(0xFFF6F7FB),
+              border: Border(bottom: BorderSide(color: Color(0xFFEEF1F6))),
+            ),
+            child: Row(
               children: [
-                Row(
-                  children: [
-                    chip(
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            item.isFromBox
-                                ? Icons.lightbulb_outline
-                                : Icons.monitor_heart_outlined,
-                            size: 14,
-                            color: typeFg,
-                          ),
-                          const SizedBox(width: 5),
-                          Text(
-                            type,
-                            style: threadText(
-                              12,
-                              weight: FontWeight.w600,
-                              color: typeFg,
-                            ),
-                          ),
-                        ],
-                      ),
-                      typeBg,
-                    ),
-                    const Spacer(),
-                    chip(
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 6,
-                            height: 6,
-                            decoration: BoxDecoration(
-                              color: color,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            FeedbackStatus.label(item.status),
-                            style: threadText(
-                              12,
-                              weight: FontWeight.w600,
-                              color: color,
-                            ),
-                          ),
-                        ],
-                      ),
-                      color.withValues(alpha: 0.12),
-                    ),
-                  ],
+                Icon(
+                  named ? Icons.person_rounded : Icons.lock_outline_rounded,
+                  size: 17,
+                  color: named ? _v1Ink : grey,
                 ),
-                const SizedBox(height: 12),
-                _V1Text(text: item.text),
-                if (!item.isFromBox && item.rating != null) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    'You said ${PulseRating.label(item.rating!)}',
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    who,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: threadText(
-                      13,
-                      weight: FontWeight.w600,
-                      color: PulseRating.color(item.rating!),
+                      15,
+                      weight: FontWeight.w700,
+                      color: named ? _v1Ink : grey,
                     ),
+                  ),
+                ),
+                if (item.createdAt != null) ...[
+                  const SizedBox(width: 8),
+                  Text(
+                    threadDate(item.createdAt!),
+                    style: threadText(13, color: _v1Soft),
                   ),
                 ],
-                const SizedBox(height: 14),
-                // Dashed line.
-                LayoutBuilder(
-                  builder: (context, c) => Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: List.generate(
-                      (c.maxWidth / 8).floor(),
-                      (_) => const SizedBox(
-                        width: 4,
-                        height: 1.5,
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(color: Color(0xFFDCE1EB)),
-                        ),
-                      ),
-                    ),
+              ],
+            ),
+          ),
+          // The message.
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
+            child: _V1Text(text: item.text),
+          ),
+          if (!item.isFromBox && item.rating != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 6, 14, 0),
+              child: Text(
+                '${management ? 'Said' : 'You said'} ${PulseRating.label(item.rating!)}',
+                style: threadText(
+                  13,
+                  weight: FontWeight.w600,
+                  color: PulseRating.color(item.rating!),
+                ),
+              ),
+            ),
+          // Status.
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+            child: Row(
+              children: [
+                Container(
+                  width: 7,
+                  height: 7,
+                  decoration: BoxDecoration(
+                    color: color,
+                    shape: BoxShape.circle,
                   ),
                 ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Container(
-                      width: 26,
-                      height: 26,
-                      alignment: Alignment.center,
-                      decoration: const BoxDecoration(
-                        color: AppColors.blueTint,
-                        shape: BoxShape.circle,
-                      ),
-                      child: named
-                          ? Text(
-                              myName.substring(0, 1).toUpperCase(),
-                              style: threadText(
-                                12,
-                                weight: FontWeight.w700,
-                                color: AppColors.blue,
-                              ),
-                            )
-                          : const Icon(
-                              Icons.lock_outline_rounded,
-                              size: 14,
-                              color: AppColors.blue,
-                            ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text.rich(
-                        TextSpan(
-                          style: threadText(13, color: AppColors.muted),
-                          children: [
-                            TextSpan(
-                              text: named
-                                  ? (management ? 'Sent by ' : 'Sent as ')
-                                  : 'Sent ',
-                            ),
-                            TextSpan(
-                              text: named
-                                  ? (management &&
-                                            (item.authorEmployeeId ?? '').trim().isNotEmpty
-                                        ? '$myName · ${item.authorEmployeeId!.trim()}'
-                                        : myName)
-                                  : 'anonymously',
-                              style: threadText(
-                                13,
-                                weight: FontWeight.w600,
-                                color: AppColors.ink,
-                              ),
-                            ),
-                          ],
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    if (item.createdAt != null) ...[
-                      const SizedBox(width: 8),
-                      Text(
-                        threadDate(item.createdAt!),
-                        style: threadText(12, color: AppColors.muted),
-                      ),
-                    ],
-                  ],
+                const SizedBox(width: 6),
+                Text(
+                  FeedbackStatus.label(item.status),
+                  style: threadText(13.5, weight: FontWeight.w600, color: color),
                 ),
               ],
             ),
           ),
-          // Colour bar on the left.
-          Positioned(
-            left: 0,
-            top: 0,
-            bottom: 0,
-            child: Container(width: 5, color: accent),
-          ),
         ],
       ),
     );
-    final card = ticket;
     final slim = Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
       child: Row(

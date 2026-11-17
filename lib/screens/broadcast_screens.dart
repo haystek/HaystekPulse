@@ -1054,7 +1054,10 @@ class _NewBroadcastScreenState extends State<NewBroadcastScreen> {
   void initState() {
     super.initState();
     _quote = widget.quote;
-    _title.text = widget.title ?? '';
+    // From a suggestion: its text goes into Title (one line, max 120).
+    final fromQuote = (widget.quote ?? '').trim().replaceAll(RegExp(r'\s+'), ' ');
+    _title.text = widget.title ??
+        (fromQuote.length > 120 ? fromQuote.substring(0, 120) : fromQuote);
     _body.text = widget.body ?? '';
   }
 
@@ -1078,7 +1081,8 @@ class _NewBroadcastScreenState extends State<NewBroadcastScreen> {
       await BroadcastService.instance.send(
         title: _title.text,
         body: _body.text,
-        quote: _quote,
+        // The suggestion only shows here while writing; not sent.
+        quote: null,
       );
       messenger.showSnackBar(
         const SnackBar(content: Text('Sent to everyone.')),
