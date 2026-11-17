@@ -49,18 +49,28 @@ class FeedbackListCard extends StatelessWidget {
 
     final Widget? who;
     if (employeeView) {
-      who = ratingText == null
-          ? null
-          : Row(
-              children: [
-                const Icon(Icons.monitor_heart_outlined, size: 13, color: soft),
-                const SizedBox(width: 4),
-                Text(
-                  ratingText,
-                  style: t.bodySmall?.copyWith(fontSize: 12, color: soft),
-                ),
-              ],
-            );
+      // Ma'am: how it was sent, so old ones can be checked.
+      final sent = item.anonymous ? 'Anonymous' : 'With your name';
+      who = Row(
+        children: [
+          Icon(
+            item.anonymous
+                ? Icons.lock_outline_rounded
+                : Icons.person_outline_rounded,
+            size: 13,
+            color: soft,
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: Text(
+              ratingText == null ? sent : '$sent · $ratingText',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: t.bodySmall?.copyWith(fontSize: 12, color: soft),
+            ),
+          ),
+        ],
+      );
     } else {
       final name = (item.authorName ?? '').trim();
       final id = (item.authorEmployeeId ?? '').trim();

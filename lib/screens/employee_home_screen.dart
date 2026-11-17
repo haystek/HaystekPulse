@@ -2022,6 +2022,11 @@ class _RecentActivityState extends State<_RecentActivity> {
                           const SizedBox(width: 6),
                           _statusChip(r.status!),
                         ],
+                        // Ma'am: how it was sent, so old ones can be checked.
+                        if (r.item != null) ...[
+                          const SizedBox(width: 8),
+                          Flexible(child: _sentAs(r.item!.anonymous)),
+                        ],
                       ],
                     ),
                     const SizedBox(height: 3),
@@ -2541,3 +2546,24 @@ class _FeedbackSkeleton extends StatelessWidget {
     );
   }
 }
+
+/// Ma'am: "Anonymous" or "With your name" on each sent message.
+Widget _sentAs(bool anonymous) => Row(
+  mainAxisSize: MainAxisSize.min,
+  children: [
+    Icon(
+      anonymous ? Icons.lock_outline_rounded : Icons.person_outline_rounded,
+      size: 13,
+      color: _soft,
+    ),
+    const SizedBox(width: 3),
+    Flexible(
+      child: Text(
+        anonymous ? 'Anonymous' : 'With your name',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: _inter(12, color: _soft),
+      ),
+    ),
+  ],
+);

@@ -823,6 +823,7 @@ class _Card extends StatelessWidget {
     this.replied = false,
     this.onTap,
     this.label,
+    this.anonymous,
   });
 
   final IconData icon;
@@ -837,6 +838,9 @@ class _Card extends StatelessWidget {
 
   /// Top label in capitals, e.g. GREAT. Defaults to [kind].
   final String? label;
+
+  /// Ma'am: sent anonymously or with name (null: nothing was written).
+  final bool? anonymous;
 
   /// Opens the conversation. Null: nothing more to show (Great / Good),
   /// so the card can't be tapped and has no arrow.
@@ -882,6 +886,10 @@ class _Card extends StatelessWidget {
                                 ).copyWith(letterSpacing: 1.1),
                               ),
                             ),
+                            if (anonymous != null) ...[
+                              _sentAs(anonymous!),
+                              const SizedBox(width: 8),
+                            ],
                             if (status != null) _StatusChip(status: status!),
                           ],
                         ),
@@ -987,6 +995,7 @@ class _WeekRow extends StatelessWidget {
         week,
       ].where((x) => x.isNotEmpty).join(' · '),
       replied: comment?.hasReply ?? false,
+      anonymous: comment?.anonymous,
       onTap: comment == null
           ? null
           : () => _showFeedbackSheet(context, comment),
@@ -1235,3 +1244,20 @@ class _FeedbackEmpty extends StatelessWidget {
     );
   }
 }
+
+/// Ma'am: "Anonymous" or "With your name" on each sent message.
+Widget _sentAs(bool anonymous) => Row(
+  mainAxisSize: MainAxisSize.min,
+  children: [
+    Icon(
+      anonymous ? Icons.lock_outline_rounded : Icons.person_outline_rounded,
+      size: 13,
+      color: _soft,
+    ),
+    const SizedBox(width: 3),
+    Text(
+      anonymous ? 'Anonymous' : 'With your name',
+      style: _t(12, color: _soft),
+    ),
+  ],
+);
