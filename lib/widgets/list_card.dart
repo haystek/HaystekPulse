@@ -41,7 +41,7 @@ class FeedbackListCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
     final color = FeedbackStatus.color(item.status);
-    const soft = Color(0xFF9CA3AF);
+    const soft = Color(0xCC0E1A3A);
     const green = Color(0xFF15803D);
     final rating = item.rating;
     final ratingText =
@@ -50,7 +50,7 @@ class FeedbackListCard extends StatelessWidget {
     final Widget? who;
     if (employeeView) {
       // Ma'am: how it was sent, so old ones can be checked.
-      final sent = item.anonymous ? 'Anonymous' : 'With your name';
+      final sent = item.anonymous ? 'Anonymous' : ((item.authorName ?? '').trim().isEmpty ? 'With your name' : (item.authorName ?? '').trim());
       who = Row(
         children: [
           Icon(
@@ -86,7 +86,7 @@ class FeedbackListCard extends StatelessWidget {
               TextSpan(
                 children: [
                   if (hidden)
-                    const TextSpan(text: 'Name hidden')
+                    const TextSpan(text: 'Anonymous')
                   else ...[
                     TextSpan(
                       text: name,

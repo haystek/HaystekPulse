@@ -129,7 +129,7 @@ class _FeedbackThreadScreenState extends State<FeedbackThreadScreen> {
     final t = Theme.of(context);
     return Theme(
       data: t.copyWith(
-        textTheme: GoogleFonts.figtreeTextTheme(t.textTheme),
+        textTheme: GoogleFonts.interTextTheme(t.textTheme),
       ),
       child: StreamBuilder<FeedbackItem?>(
         stream: _itemStream,
@@ -221,7 +221,7 @@ class _FeedbackThreadScreenState extends State<FeedbackThreadScreen> {
 // Shared with the management screen (feedback_detail_screen.dart)
 // ---------------------------------------------------------------------
 
-const Color threadSoft = Color(0xFF8E97AB);
+const Color threadSoft = Color(0xCC0E1A3A);
 const Color threadLine = Color(0xFFE9EDF4);
 
 TextStyle threadText(
@@ -229,7 +229,7 @@ TextStyle threadText(
   FontWeight weight = FontWeight.w400,
   Color color = AppColors.ink,
   double? height,
-}) => GoogleFonts.figtree(
+}) => GoogleFonts.inter(
   fontSize: size,
   fontWeight: weight,
   color: color,
@@ -1212,8 +1212,8 @@ class ThreadTitlePill extends StatelessWidget {
 // ---------------------------------------------------------------------
 
 const Color _v1Ink = Color(0xFF111827);
-const Color _v1Soft = Color(0xFF6B7280);
-const Color _v1Faint = Color(0xFF9CA3AF);
+const Color _v1Soft = Color(0xCC0E1A3A);
+const Color _v1Faint = Color(0xCC0E1A3A);
 
 /// Step 1–5 of a status (Noted and Implemented are the last step).
 int threadStep(String s) {
@@ -1257,15 +1257,20 @@ class ThreadQuoteHeader extends StatelessWidget {
       final name = (item.authorName ?? '').trim();
       final id = (item.authorEmployeeId ?? '').trim();
       who = item.anonymous || name.isEmpty
-          ? 'Name hidden'
+          ? 'Anonymous'
           : [name, if (id.isNotEmpty) id].join(' · ');
     } else {
-      who = item.anonymous ? 'You · name hidden' : 'You';
+      final myName = (item.authorName ?? '').trim();
+      who = item.anonymous
+          ? 'You · Anonymous'
+          : myName.isEmpty
+          ? 'You · With your name'
+          : 'You · $myName';
     }
     return [
       who,
       if (item.createdAt != null) threadDate(item.createdAt!),
-    ].join(' · ');
+    ].join('\n');
   }
 
   @override
@@ -1322,86 +1327,205 @@ class ThreadQuoteHeader extends StatelessWidget {
         ],
       ),
     );
-    final card = Container(
+    // Design B: ticket card (employee's own message).
+    final accent = item.isFromBox
+        ? const Color(0xFFE3A23B)
+        : (item.rating != null
+              ? PulseRating.color(item.rating!)
+              : AppColors.blue);
+    final typeFg = item.isFromBox ? const Color(0xFFB7791F) : AppColors.blue;
+    final typeBg = item.isFromBox
+        ? const Color(0xFFFEF3C7)
+        : const Color(0xFFEAF0FF);
+    final myName = (item.authorName ?? '').trim();
+    final named = !item.anonymous && myName.isNotEmpty;
+    Widget chip(Widget child, Color bg) => Container(
+      height: 26,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(13),
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [child]),
+    );
+    final ticket = Container(
       margin: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-      padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
       decoration: BoxDecoration(
         color: const Color(0xFFF7F8FB),
         borderRadius: BorderRadius.circular(20),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
         children: [
-          Row(
-            children: [
-              Icon(
-                item.anonymous
-                    ? Icons.lock_outline_rounded
-                    : Icons.person_outline_rounded,
-                size: 13,
-                color: _v1Faint,
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  _meta,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: threadText(
-                    12.5,
-                    weight: FontWeight.w500,
-                    color: _v1Soft,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                height: 26,
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(13),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 14, 16, 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
                   children: [
-                    Container(
-                      width: 6,
-                      height: 6,
-                      decoration: BoxDecoration(
-                        color: color,
-                        shape: BoxShape.circle,
+                    chip(
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            item.isFromBox
+                                ? Icons.lightbulb_outline
+                                : Icons.monitor_heart_outlined,
+                            size: 14,
+                            color: typeFg,
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            type,
+                            style: threadText(
+                              12,
+                              weight: FontWeight.w600,
+                              color: typeFg,
+                            ),
+                          ),
+                        ],
                       ),
+                      typeBg,
                     ),
-                    const SizedBox(width: 6),
-                    Text(
-                      FeedbackStatus.label(item.status),
-                      style: threadText(
-                        12,
-                        weight: FontWeight.w600,
-                        color: color,
+                    const Spacer(),
+                    chip(
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: BoxDecoration(
+                              color: color,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            FeedbackStatus.label(item.status),
+                            style: threadText(
+                              12,
+                              weight: FontWeight.w600,
+                              color: color,
+                            ),
+                          ),
+                        ],
                       ),
+                      color.withValues(alpha: 0.12),
                     ),
                   ],
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          _V1Text(text: item.text),
-          if (!item.isFromBox && item.rating != null) ...[
-            const SizedBox(height: 6),
-            Text(
-              management
-                  ? 'Said ${PulseRating.label(item.rating!)}'
-                  : 'You said ${PulseRating.label(item.rating!)}',
-              style: threadText(13, weight: FontWeight.w600, color: PulseRating.color(item.rating!)),
+                const SizedBox(height: 12),
+                _V1Text(text: item.text),
+                if (!item.isFromBox && item.rating != null) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    'You said ${PulseRating.label(item.rating!)}',
+                    style: threadText(
+                      13,
+                      weight: FontWeight.w600,
+                      color: PulseRating.color(item.rating!),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 14),
+                // Dashed line.
+                LayoutBuilder(
+                  builder: (context, c) => Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: List.generate(
+                      (c.maxWidth / 8).floor(),
+                      (_) => const SizedBox(
+                        width: 4,
+                        height: 1.5,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(color: Color(0xFFDCE1EB)),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Container(
+                      width: 26,
+                      height: 26,
+                      alignment: Alignment.center,
+                      decoration: const BoxDecoration(
+                        color: AppColors.blueTint,
+                        shape: BoxShape.circle,
+                      ),
+                      child: named
+                          ? Text(
+                              myName.substring(0, 1).toUpperCase(),
+                              style: threadText(
+                                12,
+                                weight: FontWeight.w700,
+                                color: AppColors.blue,
+                              ),
+                            )
+                          : const Icon(
+                              Icons.lock_outline_rounded,
+                              size: 14,
+                              color: AppColors.blue,
+                            ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text.rich(
+                        TextSpan(
+                          style: threadText(13, color: AppColors.muted),
+                          children: [
+                            TextSpan(
+                              text: named
+                                  ? (management ? 'Sent by ' : 'Sent as ')
+                                  : 'Sent ',
+                            ),
+                            TextSpan(
+                              text: named
+                                  ? (management &&
+                                            (item.authorEmployeeId ?? '').trim().isNotEmpty
+                                        ? '$myName · ${item.authorEmployeeId!.trim()}'
+                                        : myName)
+                                  : 'anonymously',
+                              style: threadText(
+                                13,
+                                weight: FontWeight.w600,
+                                color: AppColors.ink,
+                              ),
+                            ),
+                          ],
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (item.createdAt != null) ...[
+                      const SizedBox(width: 8),
+                      Text(
+                        threadDate(item.createdAt!),
+                        style: threadText(12, color: AppColors.muted),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
             ),
-          ],
+          ),
+          // Colour bar on the left.
+          Positioned(
+            left: 0,
+            top: 0,
+            bottom: 0,
+            child: Container(width: 5, color: accent),
+          ),
         ],
       ),
     );
+    final card = ticket;
     final slim = Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
       child: Row(

@@ -65,8 +65,10 @@ class _IntroGateState extends State<IntroGate> {
 
 const Color _iNavy = Color(0xFF1B3590);
 const Color _iInk = Color(0xFF111827);
-const Color _iSoft = Color(0xFF6B7280);
-const Color _iFaint = Color(0xFF9CA3AF);
+const Color _iSoft = Color(0xCC111827);
+/// Darker grey for descriptions that must be easy to read (Ma'am).
+const Color _iBody = Color(0xCC111827);
+const Color _iFaint = Color(0xCC0E1A3A);
 const Color _iPale = Color(0xFFC9D6FF);
 const LinearGradient _iGrad = LinearGradient(
   begin: Alignment.topLeft,
@@ -148,6 +150,7 @@ class _IntroScreenState extends State<IntroScreen>
         return _IPage(
           a: a,
           hero: _HeroWelcome(a: a, float: _float, beat: _beat),
+          tall: true,
           title: 'Your voice matters at Haystek.',
           sub:
               'Share ideas, raise concerns and tell us how your week went. Admin team reads and responds to every message.',
@@ -194,6 +197,7 @@ class _IntroScreenState extends State<IntroScreen>
               title: 'Your identity stays hidden',
               text: 'Your name isn’t shown to the admin team.',
               size: 36,
+              large: true,
             ),
             _IItem(
               icon: Icons.shield_outlined,
@@ -202,6 +206,7 @@ class _IntroScreenState extends State<IntroScreen>
               title: 'Stored encrypted',
               text: 'Messages are encrypted when stored.',
               size: 36,
+              large: true,
             ),
             _IItem(
               icon: Icons.vpn_key_outlined,
@@ -210,6 +215,7 @@ class _IntroScreenState extends State<IntroScreen>
               title: 'Share your name when you choose',
               text: 'Select “With my name” to identify yourself on an individual message.',
               size: 36,
+              large: true,
             ),
           ],
         );
@@ -217,6 +223,7 @@ class _IntroScreenState extends State<IntroScreen>
         return _IPage(
           a: a,
           hero: _HeroJoin(a: a),
+          short: true,
           title: 'Get started in seconds',
           body: const [
             _IStep(
@@ -302,6 +309,8 @@ class _IPage extends StatelessWidget {
     required this.title,
     this.sub,
     this.body = const [],
+    this.tall = false,
+    this.short = false,
   });
 
   final Animation<double> a;
@@ -309,6 +318,12 @@ class _IPage extends StatelessWidget {
   final String title;
   final String? sub;
   final List<Widget> body;
+
+  /// Taller blue part (slide 1: little text below, big picture above).
+  final bool tall;
+
+  /// Shorter blue part (slide 4: small picture, long text).
+  final bool short;
 
   @override
   Widget build(BuildContext context) {
@@ -318,7 +333,11 @@ class _IPage extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Container(
-          height: (h * 0.46).clamp(300.0, 420.0),
+          height: tall
+              ? (h * 0.55).clamp(320.0, 480.0)
+              : short
+              ? (h * 0.32).clamp(220.0, 300.0)
+              : (h * 0.40).clamp(250.0, 380.0),
           clipBehavior: Clip.antiAlias,
           decoration: const BoxDecoration(
             gradient: _iGrad,
@@ -332,8 +351,12 @@ class _IPage extends StatelessWidget {
                 child: SafeArea(
                   bottom: false,
                   child: Padding(
-                    padding: const EdgeInsets.only(top: 24),
-                    child: Center(child: hero),
+                    // Gap above the rounded bottom edge, so nothing is cut.
+                    padding: const EdgeInsets.only(top: 24, bottom: 30),
+                    // Shrinks a little when the bigger text needs more room.
+                    child: Center(
+                      child: FittedBox(fit: BoxFit.scaleDown, child: hero),
+                    ),
                   ),
                 ),
               ),
@@ -841,7 +864,7 @@ class _HeroPrivate extends StatelessWidget {
               const Icon(Icons.lock_outline_rounded, size: 14, color: _iFaint),
               const SizedBox(width: 6),
               Text(
-                'Name hidden',
+                'Anonymous',
                 style: t.labelLarge?.copyWith(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w600,
@@ -1030,7 +1053,11 @@ class _IItem extends StatelessWidget {
     required this.title,
     required this.text,
     this.size = 44,
+    this.large = false,
   });
+
+  /// Bigger, darker text (slide 3, Ma'am: easier to read).
+  final bool large;
 
   final IconData icon;
   final Color color;
@@ -1043,7 +1070,7 @@ class _IItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 9),
+      padding: const EdgeInsets.symmetric(vertical: 7),
       child: Row(
         children: [
           Container(
@@ -1072,9 +1099,9 @@ class _IItem extends StatelessWidget {
                 Text(
                   text,
                   style: t.bodyMedium?.copyWith(
-                    fontSize: 13,
+                    fontSize: 14,
                     height: 1.45,
-                    color: _iSoft,
+                    color: large ? _iBody : _iSoft,
                   ),
                 ),
               ],
@@ -1145,7 +1172,7 @@ class _IStep extends StatelessWidget {
           const SizedBox(width: 14),
           Expanded(
             child: Padding(
-              padding: EdgeInsets.only(top: 4, bottom: last ? 0 : 16),
+              padding: EdgeInsets.only(top: 4, bottom: last ? 0 : 12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -1161,7 +1188,7 @@ class _IStep extends StatelessWidget {
                   Text(
                     text,
                     style: t.bodyMedium?.copyWith(
-                      fontSize: 13,
+                      fontSize: 14,
                       height: 1.45,
                       color: _iSoft,
                     ),

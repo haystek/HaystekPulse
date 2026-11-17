@@ -63,7 +63,7 @@ class PulseLoadingScreen extends StatelessWidget {
                 Text(
                   text,
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.figtree(
+                  style: GoogleFonts.inter(
                     fontSize: 16,
                     color: const Color(0xFFC9D6FF),
                   ),

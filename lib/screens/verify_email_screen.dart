@@ -14,7 +14,7 @@ TextStyle _t(
   FontWeight weight = FontWeight.w400,
   Color color = AppColors.ink,
   double? height,
-}) => GoogleFonts.figtree(
+}) => GoogleFonts.inter(
   fontSize: size,
   fontWeight: weight,
   color: color,
@@ -303,7 +303,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen>
                           const Spacer(),
                           Text(
                             'Wrong email?',
-                            style: _t(13.5, color: const Color(0xFF8E97AB)),
+                            style: _t(13.5, color: const Color(0xCC0E1A3A)),
                           ),
                           TextButton(
                             onPressed: AuthService.instance.startOver,
@@ -451,7 +451,7 @@ class _Step extends StatelessWidget {
                         '$n',
                         style: _t(
                           13,
-                          color: now ? Colors.white : const Color(0xFF8E97AB),
+                          color: now ? Colors.white : const Color(0xCC0E1A3A),
                         ),
                       ),
               ),
@@ -478,14 +478,14 @@ class _Step extends StatelessWidget {
                       15,
                       weight: now ? FontWeight.w500 : FontWeight.w400,
                       color: state == _StepState.later
-                          ? const Color(0xFF8E97AB)
+                          ? const Color(0xCC0E1A3A)
                           : AppColors.ink,
                     ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     sub,
-                    style: _t(13, color: const Color(0xFF8E97AB), height: 1.4),
+                    style: _t(13, color: const Color(0xCC0E1A3A), height: 1.4),
                   ),
                 ],
               ),
@@ -761,7 +761,7 @@ class RoleChoice extends StatelessWidget {
                   Icon(
                     icon,
                     size: 18,
-                    color: selected ? AppColors.blue : const Color(0xFF8E97AB),
+                    color: selected ? AppColors.blue : const Color(0xCC0E1A3A),
                   ),
                   const SizedBox(width: 8),
                   Text(

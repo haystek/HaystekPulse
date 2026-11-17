@@ -17,7 +17,7 @@ Widget _withInter(BuildContext context, Widget child) {
   final t = Theme.of(context);
   return Theme(
     data: t.copyWith(
-      textTheme: GoogleFonts.figtreeTextTheme(t.textTheme),
+      textTheme: GoogleFonts.interTextTheme(t.textTheme),
     ),
     child: child,
   );
@@ -28,7 +28,7 @@ TextStyle _t(
   FontWeight weight = FontWeight.w500,
   Color color = AppColors.ink,
   double? height,
-}) => GoogleFonts.figtree(
+}) => GoogleFonts.inter(
   fontSize: size,
   fontWeight: weight,
   color: color,
@@ -379,7 +379,7 @@ class _ShareDialog extends StatefulWidget {
 
 class _ShareDialogState extends State<_ShareDialog> {
   static const _line = Color(0xFFE3E8F1);
-  static const _soft = Color(0xFF8E97AB);
+  static const _soft = Color(0xCC0E1A3A);
   static const _muted = Color(0xFF5F6A84);
   static const _green = Color(0xFF16A34A);
   static const _titleMax = 120;
@@ -416,7 +416,7 @@ class _ShareDialogState extends State<_ShareDialog> {
     FontWeight w = FontWeight.w400,
     Color c = AppColors.ink,
     double? h,
-  }) => GoogleFonts.figtree(
+  }) => GoogleFonts.inter(
     fontSize: size,
     fontWeight: w,
     color: c,
@@ -948,7 +948,7 @@ class _StatusSheetState extends State<_StatusSheet> {
                     style: _t(
                       12.5,
                       weight: FontWeight.w400,
-                      color: const Color(0xFF8E97AB),
+                      color: const Color(0xCC0E1A3A),
                     ),
                   ),
                   _Pill(status: widget.item.status),
@@ -1008,7 +1008,7 @@ class _StatusSheetState extends State<_StatusSheet> {
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.blue,
                   disabledBackgroundColor: const Color(0xFFE3E8F1),
-                  disabledForegroundColor: const Color(0xFF8E97AB),
+                  disabledForegroundColor: const Color(0xCC0E1A3A),
                   minimumSize: const Size.fromHeight(52),
                   shape: const StadiumBorder(),
                   textStyle: _t(15.5),
@@ -1160,7 +1160,7 @@ class _StatusRow extends StatelessWidget {
                         style: _t(
                           12,
                           weight: FontWeight.w400,
-                          color: const Color(0xFF8E97AB),
+                          color: const Color(0xCC0E1A3A),
                         ),
                       ),
                     ],

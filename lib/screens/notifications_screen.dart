@@ -16,14 +16,14 @@ TextStyle _inter(
   FontWeight weight = FontWeight.w400,
   Color color = AppColors.ink,
   double? height,
-}) => GoogleFonts.figtree(
+}) => GoogleFonts.inter(
   fontSize: size,
   fontWeight: weight,
   color: color,
   height: height,
 );
 
-const Color _soft = Color(0xFF8E97AB);
+const Color _soft = Color(0xCC0E1A3A);
 
 /// The in-app list of notifications.
 /// - Tap a row, or swipe it to the right: opens what it is about.

@@ -14,6 +14,7 @@ import 'screens/update_gate.dart';
 import 'services/error_log.dart';
 import 'services/notification_service.dart';
 import 'theme/app_theme.dart';
+import 'theme/text_scale.dart';
 import 'services/schedule_service.dart';
 import 'services/fresh_install.dart';
 import 'services/startup_splash.dart';
@@ -65,18 +66,19 @@ class HaystekApp extends StatelessWidget {
 
       // Inter on every screen, whatever font style the phone uses.
       theme: base.copyWith(
-        textTheme: GoogleFonts.figtreeTextTheme(base.textTheme),
-        primaryTextTheme: GoogleFonts.figtreeTextTheme(
+        textTheme: GoogleFonts.interTextTheme(base.textTheme),
+        primaryTextTheme: GoogleFonts.interTextTheme(
           base.primaryTextTheme,
         ),
       ),
 
-      // Same text size on every phone, whatever its font size setting.
+      // Ma'am: bigger, easier text, sized for each phone (text_scale.dart).
+      // The phone's own font size setting is still ignored.
       builder: (context, child) {
         final page = MediaQuery(
           data: MediaQuery.of(
             context,
-          ).copyWith(textScaler: TextScaler.noScaling, boldText: false),
+          ).copyWith(textScaler: PulseTextScaler.forWidth(MediaQuery.sizeOf(context).width), boldText: false),
           // Red "No internet connection" bar on every screen while offline.
           child: OfflineBar(child: KeyboardDoneBar(child: child!)),
         );

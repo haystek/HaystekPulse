@@ -60,3 +60,4 @@ functions/node_modules/
 tools/create_users/reset_test_data.js
 tools/dev-serviceAccount.json
 assets/fcm_sender_dev.json
+*.bak*

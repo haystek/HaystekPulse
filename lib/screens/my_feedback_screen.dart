@@ -46,12 +46,12 @@ class MyFeedbackScreen extends StatefulWidget {
 ThemeData _interTheme(BuildContext context) {
   final t = Theme.of(context);
   return t.copyWith(
-    textTheme: GoogleFonts.figtreeTextTheme(t.textTheme),
+    textTheme: GoogleFonts.interTextTheme(t.textTheme),
   );
 }
 
 /// Inter for the few titles that set their own style.
-TextStyle _title(double size) => GoogleFonts.figtree(
+TextStyle _title(double size) => GoogleFonts.inter(
   fontSize: size,
   fontWeight: FontWeight.w600,
   color: AppColors.ink,
@@ -560,7 +560,7 @@ class _MyFeedbackScreenState extends State<MyFeedbackScreen> {
 // ---------------------------------------------------------------------
 
 /// Soft grey for small, less important text.
-const Color _soft = Color(0xFF8E97AB);
+const Color _soft = Color(0xCC0E1A3A);
 
 /// Grey for the employee's own words in a Weekly Pulse comment.
 const Color _words = Color(0xFF5B6680);
@@ -581,7 +581,7 @@ TextStyle _t(
   Color color = AppColors.ink,
   double? height,
   double? letterSpacing,
-}) => GoogleFonts.figtree(
+}) => GoogleFonts.inter(
   fontSize: size,
   fontWeight: weight,
   color: color,
@@ -823,7 +823,7 @@ class _Card extends StatelessWidget {
     this.replied = false,
     this.onTap,
     this.label,
-    this.anonymous,
+    this.anonymous, this.sentName,
   });
 
   final IconData icon;
@@ -841,6 +841,7 @@ class _Card extends StatelessWidget {
 
   /// Ma'am: sent anonymously or with name (null: nothing was written).
   final bool? anonymous;
+  final String? sentName;
 
   /// Opens the conversation. Null: nothing more to show (Great / Good),
   /// so the card can't be tapped and has no arrow.
@@ -887,7 +888,7 @@ class _Card extends StatelessWidget {
                               ),
                             ),
                             if (anonymous != null) ...[
-                              _sentAs(anonymous!),
+                              _sentAs(anonymous!, sentName),
                               const SizedBox(width: 8),
                             ],
                             if (status != null) _StatusChip(status: status!),
@@ -996,6 +997,7 @@ class _WeekRow extends StatelessWidget {
       ].where((x) => x.isNotEmpty).join(' · '),
       replied: comment?.hasReply ?? false,
       anonymous: comment?.anonymous,
+                sentName: comment?.authorName,
       onTap: comment == null
           ? null
           : () => _showFeedbackSheet(context, comment),
@@ -1074,7 +1076,7 @@ class _TitlePill extends StatelessWidget {
             const SizedBox(width: 9),
             Text(
               text,
-              style: GoogleFonts.figtree(
+              style: GoogleFonts.inter(
                 fontSize: 16,
                 fontWeight: FontWeight.normal,
                 color: AppColors.ink,
@@ -1236,7 +1238,7 @@ class _FeedbackEmpty extends StatelessWidget {
             style: t.bodyMedium?.copyWith(
               fontSize: 14,
               height: 1.5,
-              color: const Color(0xFF6B7280),
+              color: const Color(0xCC0E1A3A),
             ),
           ),
         ],
@@ -1246,7 +1248,7 @@ class _FeedbackEmpty extends StatelessWidget {
 }
 
 /// Ma'am: "Anonymous" or "With your name" on each sent message.
-Widget _sentAs(bool anonymous) => Row(
+Widget _sentAs(bool anonymous, [String? name]) => Row(
   mainAxisSize: MainAxisSize.min,
   children: [
     Icon(
@@ -1256,7 +1258,7 @@ Widget _sentAs(bool anonymous) => Row(
     ),
     const SizedBox(width: 3),
     Text(
-      anonymous ? 'Anonymous' : 'With your name',
+      anonymous ? 'Anonymous' : ((name ?? '').trim().isEmpty ? 'With your name' : (name ?? '').trim()),
       style: _t(12, color: _soft),
     ),
   ],

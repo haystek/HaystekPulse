@@ -17,7 +17,7 @@ Widget _withInter(BuildContext context, Widget child) {
   final t = Theme.of(context);
   return Theme(
     data: t.copyWith(
-      textTheme: GoogleFonts.figtreeTextTheme(t.textTheme),
+      textTheme: GoogleFonts.interTextTheme(t.textTheme),
     ),
     child: child,
   );
@@ -1021,7 +1021,7 @@ class _WeekRow extends StatelessWidget {
                 const Icon(
                   Icons.chevron_right,
                   size: 18,
-                  color: Color(0xFF8E97AB),
+                  color: Color(0xCC0E1A3A),
                 ),
               ],
             ),

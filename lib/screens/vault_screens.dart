@@ -21,7 +21,7 @@ TextStyle _t(
   Color color = AppColors.ink,
   double? height,
   double? letterSpacing,
-}) => GoogleFonts.figtree(
+}) => GoogleFonts.inter(
   fontSize: size,
   fontWeight: weight,
   color: color,
@@ -29,7 +29,7 @@ TextStyle _t(
   letterSpacing: letterSpacing,
 );
 
-const Color _soft = Color(0xFF8E97AB);
+const Color _soft = Color(0xCC0E1A3A);
 const Color _line = Color(0xFFE3E8F1);
 
 enum _Step {
@@ -860,22 +860,23 @@ class _BackupCodeScreenState extends State<BackupCodeScreen> {
       behavior: HitTestBehavior.opaque,
       onTap: _copy,
       child: Container(
-        padding: const EdgeInsets.fromLTRB(12, 16, 12, 12),
+        padding: const EdgeInsets.fromLTRB(10, 10, 8, 10),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(18),
           border: Border.all(color: _line, width: 1.5),
         ),
-        child: Column(
+        // The code and Copy on one line: a smaller card, more room on screen.
+        child: Row(
           children: [
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [block(groups.join('-'))],
+            Expanded(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: block(groups.join('-')),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(width: 8),
             Material(
               color: Colors.white,
               shape: const StadiumBorder(
@@ -886,7 +887,7 @@ class _BackupCodeScreenState extends State<BackupCodeScreen> {
                 onTap: _copy,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
+                    horizontal: 12,
                     vertical: 8,
                   ),
                   child: Row(
@@ -897,7 +898,7 @@ class _BackupCodeScreenState extends State<BackupCodeScreen> {
                         size: 16,
                         color: AppColors.blue,
                       ),
-                      const SizedBox(width: 6),
+                      const SizedBox(width: 5),
                       Text(
                         _copied ? 'Copied' : 'Copy code',
                         style: _t(
@@ -959,8 +960,11 @@ class _BackupCodeScreenState extends State<BackupCodeScreen> {
               child: Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 480),
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+                  child: Column(
+                    children: [
+                      Expanded(
+                        child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
@@ -1105,8 +1109,8 @@ class _BackupCodeScreenState extends State<BackupCodeScreen> {
                                   decoration: InputDecoration(
                                     hintText: 'Enter your code to confirm',
                                     hintStyle: _t(
-                                      15,
-                                      color: const Color(0xFFC3C9D6),
+                                      13,
+                                      color: const Color(0xFF8A93A6),
                                     ),
                                     border: InputBorder.none,
                                     enabledBorder: InputBorder.none,
@@ -1150,9 +1154,16 @@ class _BackupCodeScreenState extends State<BackupCodeScreen> {
                             style: _t(13.5, color: const Color(0xFFC0392B)),
                           ),
                         ],
-                        const SizedBox(height: 18),
-                        SizedBox(
+                        ],
+                    ),
+                  ),
+                      ),
+                      // Continue always visible: fixed at the bottom, above the keyboard.
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+                        child: SizedBox(
                           height: 56,
+                          width: double.infinity,
                           child: FilledButton(
                             onPressed: _done,
                             style: FilledButton.styleFrom(
@@ -1163,8 +1174,8 @@ class _BackupCodeScreenState extends State<BackupCodeScreen> {
                             child: const Text('Continue'),
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -1337,7 +1348,8 @@ class _MovePhonesState extends State<_MovePhones>
     final avatarBg = Color.lerp(AppColors.blueTint, AppColors.blue, lit)!;
     final avatarIcon = Color.lerp(AppColors.blue, Colors.white, lit)!;
     return Container(
-      width: 62,
+      // Wide enough for "Old phone" / "New phone" on one line.
+      width: 86,
       height: 96,
       decoration: BoxDecoration(
         color: Colors.white,

@@ -20,7 +20,7 @@ enum _Stage { loading, loadError, closed, alreadyDone, pick, done }
 /// Soft greys used on this screen.
 const _panel = Color(0xFFF6F8FB);
 const _line = Color(0xFFE3E8F1);
-const _soft = Color(0xFF8E97AB);
+const _soft = Color(0xCC0E1A3A);
 
 /// Weekly Pulse: one rating, one extra question for Okay or Difficult,
 /// and a confirmation. One answer per employee per week.
@@ -233,7 +233,7 @@ class _WeeklyPulseScreenState extends State<WeeklyPulseScreen>
     return Theme(
       // Inter for every text on this screen.
       data: theme.copyWith(
-        textTheme: GoogleFonts.figtreeTextTheme(theme.textTheme),
+        textTheme: GoogleFonts.interTextTheme(theme.textTheme),
       ),
       child: AnnotatedRegion<SystemUiOverlayStyle>(
         value: SystemUiOverlayStyle.dark,
@@ -602,7 +602,7 @@ class _WeeklyPulseScreenState extends State<WeeklyPulseScreen>
         style: TextButton.styleFrom(
           foregroundColor: AppColors.blue,
           padding: const EdgeInsets.symmetric(horizontal: 4),
-          textStyle: GoogleFonts.figtree(fontSize: 13.5),
+          textStyle: GoogleFonts.inter(fontSize: 13.5),
         ),
       ),
     );
@@ -616,7 +616,7 @@ TextStyle _inter(
   Color color = AppColors.ink,
   double? height,
   double? letterSpacing,
-}) => GoogleFonts.figtree(
+}) => GoogleFonts.inter(
   fontSize: size,
   fontWeight: weight,
   color: color,
@@ -755,73 +755,74 @@ class _RatingTile extends StatelessWidget {
           child: InkWell(
             onTap: onTap,
             child: SizedBox(
-              height: 112,
-              child: Padding(
-                padding: const EdgeInsets.all(14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        AnimatedContainer(
-                          duration: const Duration(milliseconds: 180),
-                          width: 42,
-                          height: 42,
-                          decoration: BoxDecoration(
-                            color: selected ? Colors.white : tint,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            PulseRating.icon(rating),
-                            size: 28,
-                            color: color,
-                          ),
-                        ),
-                        const Spacer(),
-                        // Small tick on the chosen tile.
-                        AnimatedOpacity(
-                          duration: const Duration(milliseconds: 150),
-                          opacity: selected ? 1 : 0,
-                          child: Container(
-                            width: 22,
-                            height: 22,
+              height: 150,
+              child: Stack(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(10, 12, 10, 12),
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 180),
+                            width: 48,
+                            height: 48,
                             decoration: BoxDecoration(
-                              color: color,
+                              color: selected ? Colors.white : tint,
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(
-                              Icons.check,
-                              size: 14,
-                              color: Colors.white,
+                            child: Icon(
+                              PulseRating.icon(rating),
+                              size: 30,
+                              color: color,
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          PulseRating.label(rating),
-                          style: _inter(
-                            16,
-                            weight: FontWeight.w800,
-                            color: selected ? color : AppColors.ink,
+                          const SizedBox(height: 10),
+                          Text(
+                            PulseRating.label(rating),
+                            textAlign: TextAlign.center,
+                            style: _inter(
+                              16,
+                              weight: FontWeight.w800,
+                              color: selected ? color : AppColors.ink,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 1),
-                        Text(
-                          _hintOf(rating),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: _inter(12, color: AppColors.muted),
-                        ),
-                      ],
+                          const SizedBox(height: 2),
+                          Text(
+                            _hintOf(rating),
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: _inter(12, color: AppColors.muted),
+                          ),
+                        ],
+                      ),
                     ),
-                  ],
-                ),
+                  ),
+                  // Small tick on the chosen tile.
+                  Positioned(
+                    top: 10,
+                    right: 10,
+                    child: AnimatedOpacity(
+                      duration: const Duration(milliseconds: 150),
+                      opacity: selected ? 1 : 0,
+                      child: Container(
+                        width: 22,
+                        height: 22,
+                        decoration: BoxDecoration(
+                          color: color,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.check,
+                          size: 14,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -920,7 +921,7 @@ class _TitlePill extends StatelessWidget {
             const SizedBox(width: 9),
             Text(
               text,
-              style: GoogleFonts.figtree(
+              style: GoogleFonts.inter(
                 fontSize: 16,
                 fontWeight: FontWeight.normal,
                 color: AppColors.ink,

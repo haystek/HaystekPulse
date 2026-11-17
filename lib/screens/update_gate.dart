@@ -120,7 +120,7 @@ class _UpdateScreen extends StatelessWidget {
     FontWeight w = FontWeight.w400,
     Color c = AppColors.ink,
     double? h,
-  }) => GoogleFonts.figtree(
+  }) => GoogleFonts.inter(
     fontSize: size,
     fontWeight: w,
     color: c,
@@ -234,7 +234,7 @@ class _UpdateScreen extends StatelessWidget {
                   Text(
                     'Installed: $version  ·  Latest: $latest',
                     textAlign: TextAlign.center,
-                    style: _s(12, c: const Color(0xFF8E97AB)),
+                    style: _s(12, c: const Color(0xCC0E1A3A)),
                   ),
                 ],
               ),

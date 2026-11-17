@@ -32,7 +32,7 @@ Widget _withInter(BuildContext context, Widget child) {
   final t = Theme.of(context);
   return Theme(
     data: t.copyWith(
-      textTheme: GoogleFonts.figtreeTextTheme(t.textTheme),
+      textTheme: GoogleFonts.interTextTheme(t.textTheme),
     ),
     child: child,
   );
@@ -44,7 +44,7 @@ TextStyle _h(
   FontWeight weight = FontWeight.w800,
   Color color = AppColors.ink,
   double? height,
-}) => GoogleFonts.figtree(
+}) => GoogleFonts.inter(
   fontSize: size,
   fontWeight: weight,
   color: color,
@@ -915,7 +915,7 @@ class _WeekHeroState extends State<_WeekHero> {
     Color color = Colors.white,
     double? letterSpacing,
     double? height,
-  }) => GoogleFonts.figtree(
+  }) => GoogleFonts.inter(
     fontSize: size,
     fontWeight: weight,
     color: color,
@@ -1434,7 +1434,7 @@ class _TimelineState extends State<_Timeline> {
     double size, {
     FontWeight weight = FontWeight.w400,
     Color color = Colors.white,
-  }) => GoogleFonts.figtree(
+  }) => GoogleFonts.inter(
     fontSize: size,
     fontWeight: weight,
     color: color,
@@ -1655,7 +1655,7 @@ class _HeroChip extends StatelessWidget {
           ],
           Text(
             text,
-            style: GoogleFonts.figtree(
+            style: GoogleFonts.inter(
               fontSize: 12.5,
               fontWeight: outline ? FontWeight.w400 : FontWeight.w600,
               color: fg,
@@ -1710,7 +1710,7 @@ class _SoonNote extends StatelessWidget {
                       : total == 1
                       ? '1 person can answer'
                       : '$total people can answer',
-                  style: GoogleFonts.figtree(
+                  style: GoogleFonts.inter(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
                     color: AppColors.ink,
@@ -1719,7 +1719,7 @@ class _SoonNote extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   'Answers and the summary show here once it opens.',
-                  style: GoogleFonts.figtree(
+                  style: GoogleFonts.inter(
                     fontSize: 13,
                     height: 1.4,
                     color: const Color(0xFF69728A),
@@ -1846,7 +1846,7 @@ class _RemindButton extends StatelessWidget {
             action: const _RemindPill(
               label: 'Sending…',
               bg: _grey,
-              fg: Color(0xFF8E97AB),
+              fg: Color(0xCC0E1A3A),
             ),
           );
         }
@@ -1926,7 +1926,7 @@ class _RemindRow extends StatelessWidget {
             children: [
               Text(
                 title,
-                style: GoogleFonts.figtree(
+                style: GoogleFonts.inter(
                   fontSize: 14.5,
                   fontWeight: FontWeight.w600,
                   color: AppColors.ink,
@@ -1936,9 +1936,9 @@ class _RemindRow extends StatelessWidget {
               Text(
                 sub,
                 maxLines: 2,
-                style: GoogleFonts.figtree(
+                style: GoogleFonts.inter(
                   fontSize: 12.5,
-                  color: const Color(0xFF8E97AB),
+                  color: const Color(0xCC0E1A3A),
                 ),
               ),
             ],
@@ -1985,7 +1985,7 @@ class _RemindPill extends StatelessWidget {
               ],
               Text(
                 label,
-                style: GoogleFonts.figtree(
+                style: GoogleFonts.inter(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                   color: fg,
@@ -2209,7 +2209,7 @@ class _WeekCardsState extends State<_WeekCards> {
                             ? FontWeight.w500
                             : FontWeight.w600,
                         color: isUpcoming
-                            ? const Color(0xFF8E97AB)
+                            ? const Color(0xCC0E1A3A)
                             : AppColors.ink,
                       ),
                     ),
@@ -3655,7 +3655,7 @@ class _GroupHeader extends StatelessWidget {
       child: Text(
         '${label.toUpperCase()}  ·  $count',
         style: const TextStyle(
-          color: Color(0xFF8E97AB),
+          color: Color(0xCC0E1A3A),
           fontSize: 11,
           fontWeight: FontWeight.w500,
           letterSpacing: 1.1,
@@ -3920,7 +3920,7 @@ class _FeedbackCard extends StatelessWidget {
     final name = (item.authorName ?? '').trim();
     final id = (item.authorEmployeeId ?? '').trim();
     final hidden = item.anonymous || name.isEmpty;
-    const soft = Color(0xFF9CA3AF);
+    const soft = Color(0xCC0E1A3A);
     const green = Color(0xFF15803D);
     return Material(
       color: Colors.white,
@@ -3990,7 +3990,7 @@ class _FeedbackCard extends StatelessWidget {
                           Expanded(
                             child: Text.rich(
                               hidden
-                                  ? const TextSpan(text: 'Name hidden')
+                                  ? const TextSpan(text: 'Anonymous')
                                   : TextSpan(
                                       children: [
                                         TextSpan(
@@ -4163,7 +4163,7 @@ class _BottomTabs extends StatelessWidget {
     int badge = 0,
   }) {
     final selected = i == index;
-    final color = selected ? AppColors.blue : const Color(0xFF8E97AB);
+    final color = selected ? AppColors.blue : const Color(0xCC0E1A3A);
 
     return Expanded(
       child: Semantics(
@@ -4221,7 +4221,7 @@ class _BottomTabs extends StatelessWidget {
                               ),
                               child: Text(
                                 badge > 99 ? '99+' : '$badge',
-                                style: GoogleFonts.figtree(
+                                style: GoogleFonts.inter(
                                   fontSize: 10.5,
                                   fontWeight: FontWeight.w600,
                                   color: Colors.white,
@@ -4235,7 +4235,7 @@ class _BottomTabs extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       label,
-                      style: GoogleFonts.figtree(
+                      style: GoogleFonts.inter(
                         fontSize: 12.5,
                         fontWeight: selected
                             ? FontWeight.w600

@@ -39,7 +39,7 @@ Widget _withInter(BuildContext context, Widget child) {
   final t = Theme.of(context);
   return Theme(
     data: t.copyWith(
-      textTheme: GoogleFonts.figtreeTextTheme(t.textTheme),
+      textTheme: GoogleFonts.interTextTheme(t.textTheme),
     ),
     child: child,
   );
@@ -263,53 +263,82 @@ class _Card extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(14, 13, 14, 13),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text.rich(
-                TextSpan(
-                  children: [
-                    TextSpan(
-                      text: 'Admin',
-                      style: threadText(12, color: AppColors.blue),
+        child: Stack(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 13, 14, 13),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    b.title,
+                    style: threadText(
+                      15.5,
+                      weight: FontWeight.w600,
+                      color: AppColors.ink,
                     ),
-                    TextSpan(text: '  ·  ${_when(b.createdAt)}'),
-                  ],
-                ),
-                style: threadText(12, color: threadSoft),
-              ),
-              const SizedBox(height: 6),
-              Text(b.title, style: threadText(15.5, weight: FontWeight.w500)),
-              if (b.quote != null) ...[
-                const SizedBox(height: 6),
-                _Quote(text: b.quote!, maxLines: 2),
-              ],
-              if (b.body.isNotEmpty) ...[
-                const SizedBox(height: 6),
-                Text(
-                  b.body,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: threadText(
-                    14,
-                    color: const Color(0xFF344054),
-                    height: 1.4,
                   ),
-                ),
-              ],
-              const SizedBox(height: 8),
-              Text(
-                count == 0
-                    ? 'Be the first to comment'
-                    : count == 1
-                    ? '💬 1 comment'
-                    : '💬 $count comments',
-                style: threadText(12.5, color: threadSoft),
+                  if (b.quote != null) ...[
+                    const SizedBox(height: 6),
+                    _Quote(text: b.quote!, maxLines: 2),
+                  ],
+                  if (b.body.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      b.body,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: threadText(
+                        14,
+                        color: AppColors.muted,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.chat_bubble_outline_rounded,
+                        size: 15,
+                        color: AppColors.blue,
+                      ),
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          count == 0
+                              ? 'Be the first to comment'
+                              : count == 1
+                              ? '1 comment'
+                              : '$count comments',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: threadText(
+                            12.5,
+                            weight: FontWeight.w500,
+                            color: AppColors.blue,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      const Spacer(),
+                      Text(
+                        _when(b.createdAt),
+                        style: threadText(12, color: AppColors.muted),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+            // Blue bar on the left (same as the detail card).
+            Positioned(
+              left: 0,
+              top: 0,
+              bottom: 0,
+              child: Container(width: 4, color: AppColors.blue),
+            ),
+          ],
         ),
       ),
     );
@@ -379,6 +408,13 @@ class _BroadcastDetailScreenState extends State<BroadcastDetailScreen> {
   int _lastCount = -1;
   double _lastInset = 0;
 
+  /// Collapsing header: slim when reading older comments (or typing).
+  bool _scrolledUp = false;
+
+  /// Slim header tapped: stay open until the next scroll.
+  bool _pinOpen = false;
+  double _pinAt = 0;
+
   bool get _admin => widget.employee.isManagement;
 
   @override
@@ -392,6 +428,7 @@ class _BroadcastDetailScreenState extends State<BroadcastDetailScreen> {
     }
     // Opened (for example from a notification): counts as read.
     BroadcastService.instance.markSeen(widget.employee.uid);
+    _scroll.addListener(_onScroll);
   }
 
   @override
@@ -400,6 +437,31 @@ class _BroadcastDetailScreenState extends State<BroadcastDetailScreen> {
     _name.dispose();
     _scroll.dispose();
     super.dispose();
+  }
+
+  /// Newest comment is at the bottom: distance from the bottom = reading older.
+  void _onScroll() {
+    if (!_scroll.hasClients) return;
+    final o = _scroll.position.maxScrollExtent - _scroll.offset;
+    final up = _scrolledUp ? o > 8 : o > 40;
+    final pin = _pinOpen && (o - _pinAt).abs() <= 80;
+    if (up != _scrolledUp || pin != _pinOpen) {
+      setState(() {
+        _scrolledUp = up;
+        _pinOpen = pin;
+      });
+    }
+  }
+
+  /// Tap on the slim bar: open the big card.
+  void _expand() {
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _pinOpen = true;
+      _pinAt = _scroll.hasClients
+          ? _scroll.position.maxScrollExtent - _scroll.offset
+          : 0;
+    });
   }
 
   void _scrollDownIfNew(int count) {
@@ -494,6 +556,8 @@ class _BroadcastDetailScreenState extends State<BroadcastDetailScreen> {
   @override
   Widget build(BuildContext context) {
     _lastInset = keepLastInView(context, _scroll, _lastInset);
+    // Read here, before the Scaffold removes the keyboard height.
+    final typingNow = MediaQuery.viewInsetsOf(context).bottom > 0;
     return _withInter(
       context,
       Scaffold(
@@ -535,7 +599,20 @@ class _BroadcastDetailScreenState extends State<BroadcastDetailScreen> {
             }
             return Column(
               children: [
-                _Header(b: b),
+                Builder(
+                  builder: (context) {
+                    final collapsed = typingNow || (!_pinOpen && _scrolledUp);
+                    return AnimatedCrossFade(
+                      duration: const Duration(milliseconds: 220),
+                      sizeCurve: Curves.easeOutCubic,
+                      crossFadeState: collapsed
+                          ? CrossFadeState.showSecond
+                          : CrossFadeState.showFirst,
+                      firstChild: _Header(b: b),
+                      secondChild: _SlimHeader(b: b, onTap: _expand),
+                    );
+                  },
+                ),
                 Expanded(
                   child: StreamBuilder<List<BroadcastComment>>(
                     stream: _comments,
@@ -600,6 +677,74 @@ class _BroadcastDetailScreenState extends State<BroadcastDetailScreen> {
 }
 
 /// The broadcast itself, fixed on top.
+/// The small version of the top card: blue bar, title in one line.
+class _SlimHeader extends StatelessWidget {
+  const _SlimHeader({required this.b, required this.onTap});
+
+  final Broadcast b;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          border: Border(bottom: BorderSide(color: Color(0xFFEEF1F6))),
+        ),
+        padding: const EdgeInsets.fromLTRB(20, 6, 20, 10),
+        child: Row(
+          children: [
+            Container(
+              width: 4,
+              height: 36,
+              decoration: BoxDecoration(
+                color: AppColors.blue,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    b.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: threadText(
+                      15,
+                      weight: FontWeight.w600,
+                      color: AppColors.ink,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Broadcast · tap to read',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: threadText(12, color: AppColors.muted),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(
+              Icons.keyboard_arrow_down_rounded,
+              size: 22,
+              color: AppColors.muted,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _Header extends StatelessWidget {
   const _Header({required this.b});
 
@@ -617,47 +762,154 @@ class _Header extends StatelessWidget {
         constraints: BoxConstraints(
           maxHeight: MediaQuery.sizeOf(context).height * 0.38,
         ),
+        // Design B: ticket card (same as Suggestion / Weekly Pulse).
         child: Container(
-          padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
           decoration: BoxDecoration(
-            color: const Color(0xFFF6F8FB),
-            borderRadius: BorderRadius.circular(16),
+            color: const Color(0xFFF7F8FB),
+            borderRadius: BorderRadius.circular(20),
           ),
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text.rich(
-                  TextSpan(
+          clipBehavior: Clip.antiAlias,
+          child: Stack(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 14, 16, 14),
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      TextSpan(
-                        text: 'Admin',
-                        style: threadText(12, color: AppColors.blue),
+                      Row(
+                        children: [
+                          Container(
+                            height: 26,
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEAF0FF),
+                              borderRadius: BorderRadius.circular(13),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.campaign_outlined,
+                                  size: 15,
+                                  color: AppColors.blue,
+                                ),
+                                const SizedBox(width: 5),
+                                Text(
+                                  'Broadcast',
+                                  style: threadText(
+                                    12,
+                                    weight: FontWeight.w600,
+                                    color: AppColors.blue,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Spacer(),
+                        ],
                       ),
-                      TextSpan(text: '  ·  ${_when(b.createdAt)}'),
+                      const SizedBox(height: 12),
+                      Text(
+                        b.title,
+                        style: threadText(
+                          16.5,
+                          weight: FontWeight.w600,
+                          color: AppColors.ink,
+                        ),
+                      ),
+                      if (b.quote != null) ...[
+                        const SizedBox(height: 8),
+                        _Quote(text: b.quote!),
+                      ],
+                      if (b.body.isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        SelectableText(
+                          b.body,
+                          style: threadText(
+                            15,
+                            color: AppColors.ink,
+                            height: 1.45,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 14),
+                      // Dashed line.
+                      LayoutBuilder(
+                        builder: (context, c) => Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: List.generate(
+                            (c.maxWidth / 8).floor(),
+                            (_) => const SizedBox(
+                              width: 4,
+                              height: 1.5,
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  color: Color(0xFFDCE1EB),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Container(
+                            width: 26,
+                            height: 26,
+                            alignment: Alignment.center,
+                            decoration: const BoxDecoration(
+                              color: AppColors.blueTint,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.shield_outlined,
+                              size: 14,
+                              color: AppColors.blue,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text.rich(
+                              TextSpan(
+                                style: threadText(13, color: AppColors.muted),
+                                children: [
+                                  const TextSpan(text: 'From '),
+                                  TextSpan(
+                                    text: 'Admin',
+                                    style: threadText(
+                                      13,
+                                      weight: FontWeight.w600,
+                                      color: AppColors.ink,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            _when(b.createdAt),
+                            style: threadText(12, color: AppColors.muted),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
-                  style: threadText(12, color: threadSoft),
                 ),
-                const SizedBox(height: 6),
-                Text(b.title, style: threadText(16, weight: FontWeight.w500)),
-                if (b.quote != null) ...[
-                  const SizedBox(height: 8),
-                  _Quote(text: b.quote!),
-                ],
-                if (b.body.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  SelectableText(
-                    b.body,
-                    style: threadText(
-                      14.5,
-                      color: const Color(0xFF344054),
-                      height: 1.45,
-                    ),
-                  ),
-                ],
-              ],
-            ),
+              ),
+              // Blue bar on the left.
+              Positioned(
+                left: 0,
+                top: 0,
+                bottom: 0,
+                child: Container(width: 5, color: AppColors.blue),
+              ),
+            ],
           ),
         ),
       ),
@@ -673,7 +925,8 @@ class _CommentBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final who = c.admin ? 'Admin' : (c.name ?? '🔒 Name hidden');
+    final anon = !c.admin && c.name == null;
+    final who = c.admin ? 'Admin' : (c.name ?? 'Anonymous');
     final time = c.pending
         ? 'Sending…'
         : (c.createdAt == null
@@ -701,27 +954,44 @@ class _CommentBubble extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  who,
-                  style: threadText(
-                    12,
-                    weight: FontWeight.w500,
-                    color: c.admin ? AppColors.blue : const Color(0xFF475467),
-                  ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (anon) ...[
+                      const Icon(
+                        Icons.lock_outline_rounded,
+                        size: 13,
+                        color: AppColors.blue,
+                      ),
+                      const SizedBox(width: 4),
+                    ],
+                    Flexible(
+                      child: Text(
+                        who,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: threadText(
+                          13,
+                          weight: FontWeight.w600,
+                          color: c.admin ? AppColors.blue : AppColors.muted,
+                        ),
+                      ),
+                    ),
+                    if (time.isNotEmpty) ...[
+                      const SizedBox(width: 12),
+                      Text(time, style: threadText(11.5, color: AppColors.muted)),
+                    ],
+                  ],
                 ),
                 const SizedBox(height: 2),
                 Text(
                   c.text,
                   style: threadText(
-                    14.5,
+                    15,
                     height: 1.4,
                     color: c.pending ? AppColors.muted : AppColors.ink,
                   ),
                 ),
-                if (time.isNotEmpty) ...[
-                  const SizedBox(height: 3),
-                  Text(time, style: threadText(10.5, color: threadSoft)),
-                ],
               ],
             ),
           ),
@@ -1055,7 +1325,7 @@ class _BroadcastEmpty extends StatelessWidget {
             style: text.bodyMedium?.copyWith(
               fontSize: 14,
               height: 1.5,
-              color: const Color(0xFF6B7280),
+              color: const Color(0xCC0E1A3A),
             ),
           ),
         ],

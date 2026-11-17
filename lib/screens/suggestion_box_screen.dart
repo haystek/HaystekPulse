@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../widgets/fade_in.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../models/employee.dart';
@@ -14,7 +15,7 @@ import 'typed_name_field.dart';
 /// Soft greys used on this screen.
 const _panel = Color(0xFFF6F8FB);
 const _line = Color(0xFFE3E8F1);
-const _soft = Color(0xFF8E97AB);
+const _soft = Color(0xCC0E1A3A);
 
 /// Inter with a chosen size, weight and colour.
 TextStyle _t(
@@ -23,7 +24,7 @@ TextStyle _t(
   Color color = AppColors.ink,
   double? height,
   double? letterSpacing,
-}) => GoogleFonts.figtree(
+}) => GoogleFonts.inter(
   fontSize: size,
   fontWeight: weight,
   color: color,
@@ -33,7 +34,7 @@ TextStyle _t(
 
 /// Inter for titles on this screen (same as the home screen).
 TextStyle _title(double size, {Color color = AppColors.ink}) =>
-    GoogleFonts.figtree(
+    GoogleFonts.inter(
       fontSize: size,
       fontWeight: FontWeight.w800,
       color: color,
@@ -173,7 +174,7 @@ class _SuggestionBoxScreenState extends State<SuggestionBoxScreen>
     // Inter for every text on this screen, buttons and the text box too.
     return Theme(
       data: theme.copyWith(
-        textTheme: GoogleFonts.figtreeTextTheme(theme.textTheme),
+        textTheme: GoogleFonts.interTextTheme(theme.textTheme),
       ),
       child: Scaffold(
         backgroundColor: Colors.white,
@@ -197,7 +198,7 @@ class _SuggestionBoxScreenState extends State<SuggestionBoxScreen>
     // SB2 design: intro + tappable examples on top, chat-style box at the
     // bottom. The box sits above the keyboard, so it moves up with it.
     TextStyle t(double size, {FontWeight weight = FontWeight.w400, Color? color, double? height}) =>
-        GoogleFonts.figtree(fontSize: size, fontWeight: weight, color: color ?? AppColors.ink, height: height);
+        GoogleFonts.inter(fontSize: size, fontWeight: weight, color: color ?? AppColors.ink, height: height);
     const line = Color(0xFFE3E8F1);
     const soft = Color(0xFFF5F7FB);
     final keyboard = MediaQuery.viewInsetsOf(context).bottom > 0;
@@ -253,7 +254,10 @@ class _SuggestionBoxScreenState extends State<SuggestionBoxScreen>
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(28, 28, 28, 16),
                 children: [
-                  Container(
+                  if (!keyboard) ...[
+                    FadeSlideIn(
+                      index: 0,
+                      child:                   Container(
                     width: 56,
                     height: 56,
                     alignment: Alignment.centerLeft,
@@ -267,20 +271,33 @@ class _SuggestionBoxScreenState extends State<SuggestionBoxScreen>
                       child: const Icon(Icons.lightbulb_outline, color: AppColors.blue, size: 26),
                     ),
                   ),
-                  const SizedBox(height: 18),
-                  Text('Share an idea or a concern',
-                      style: t(24, weight: FontWeight.w700, height: 1.2)),
+                    ),
+                    const SizedBox(height: 18),
+                  ],
+                  FadeSlideIn(
+                    index: 1,
+                    child: Text('Share an idea or a concern',
+                        style: t(24, weight: FontWeight.w700, height: 1.2)),
+                  ),
                   const SizedBox(height: 6),
-                  Text('Write below and send. You can follow the reply in My Feedback.',
-                      style: t(15, color: AppColors.muted, height: 1.5)),
+                  FadeSlideIn(
+                    index: 2,
+                    child: Text('Write below and send. You can follow the reply in My Feedback.',
+                        style: t(15, color: AppColors.muted, height: 1.5)),
+                  ),
                   if (!keyboard) ...[
                     const SizedBox(height: 26),
-                    Text('FOR EXAMPLE',
-                        style: t(12, weight: FontWeight.w600, color: AppColors.muted)
-                            .copyWith(letterSpacing: 1)),
+                    FadeSlideIn(
+                      index: 3,
+                      child: Text('FOR EXAMPLE',
+                          style: t(12, weight: FontWeight.w600, color: AppColors.muted)
+                              .copyWith(letterSpacing: 1)),
+                    ),
                     const SizedBox(height: 10),
-                    for (final e in examples)
-                      Padding(
+                    for (final (i, e) in examples.indexed)
+                      FadeSlideIn(
+                        index: 4 + i,
+                        child: Padding(
                         padding: const EdgeInsets.only(bottom: 8),
                         child: Material(
                           color: soft,
@@ -299,6 +316,7 @@ class _SuggestionBoxScreenState extends State<SuggestionBoxScreen>
                             ),
                           ),
                         ),
+                      ),
                       ),
                   ],
                 ],
@@ -344,11 +362,19 @@ class _SuggestionBoxScreenState extends State<SuggestionBoxScreen>
                       prefixIcon: const Icon(Icons.person_outline, size: 20, color: AppColors.muted),
                       isDense: true,
                       filled: true,
-                      fillColor: soft,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                      fillColor: Colors.white,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide.none,
+                        borderRadius: BorderRadius.circular(24),
+                        borderSide: const BorderSide(color: line, width: 1.5),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(24),
+                        borderSide: const BorderSide(color: line, width: 1.5),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(24),
+                        borderSide: const BorderSide(color: AppColors.blue, width: 1.5),
                       ),
                     ),
                     validator: (v) => !_anonymous && _needsName && (v == null || v.trim().isEmpty)
@@ -533,7 +559,7 @@ class _SuggestionBoxScreenState extends State<SuggestionBoxScreen>
         style: TextButton.styleFrom(
           foregroundColor: AppColors.blue,
           padding: const EdgeInsets.symmetric(horizontal: 4),
-          textStyle: GoogleFonts.figtree(fontSize: 13.5),
+          textStyle: GoogleFonts.inter(fontSize: 13.5),
         ),
       ),
     );
@@ -625,7 +651,7 @@ class _TitlePill extends StatelessWidget {
             const SizedBox(width: 9),
             Text(
               text,
-              style: GoogleFonts.figtree(
+              style: GoogleFonts.inter(
                 fontSize: 16,
                 fontWeight: FontWeight.normal,
                 color: AppColors.ink,

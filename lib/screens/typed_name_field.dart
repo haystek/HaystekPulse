@@ -33,7 +33,7 @@ class TypedNameField extends StatelessWidget {
       textCapitalization: TextCapitalization.words,
       autocorrect: false,
       onChanged: onChanged,
-      style: GoogleFonts.figtree(
+      style: GoogleFonts.inter(
         fontSize: compact ? 14 : 15,
         color: AppColors.ink,
       ),
@@ -41,21 +41,21 @@ class TypedNameField extends StatelessWidget {
         isDense: true,
         counterText: '',
         labelText: 'Your name',
-        labelStyle: GoogleFonts.figtree(color: const Color(0xFF8E97AB)),
+        labelStyle: GoogleFonts.inter(color: const Color(0xCC0E1A3A)),
         helperText: compact
             ? null
             : 'Sent only with this message. Admin sees it as “name typed by '
                   'sender”.',
         helperMaxLines: 2,
-        helperStyle: GoogleFonts.figtree(
+        helperStyle: GoogleFonts.inter(
           fontSize: 12,
-          color: const Color(0xFF8E97AB),
+          color: const Color(0xCC0E1A3A),
         ),
         errorText: error,
         prefixIcon: const Icon(
           Icons.person_outline,
           size: 20,
-          color: Color(0xFF8E97AB),
+          color: Color(0xCC0E1A3A),
         ),
         contentPadding: EdgeInsets.symmetric(
           horizontal: 14,
@@ -103,59 +103,66 @@ class SendAsChoice extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const line = Color(0xFFE3E8F1);
-    Widget chip(String label, bool value) {
+    Widget pill(String label, IconData icon, bool value) {
       final selected = named == value;
-      return Expanded(
-        child: Material(
-          color: selected ? AppColors.blueTint : Colors.white,
-          shape: StadiumBorder(
-            side: BorderSide(
-              color: selected ? AppColors.blue : line,
-              width: 1.5,
-            ),
+      return Material(
+        color: selected ? AppColors.blueTint : Colors.white,
+        shape: StadiumBorder(
+          side: BorderSide(
+            color: selected ? AppColors.blue : line,
+            width: 1.5,
           ),
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: enabled ? () => onChanged(value) : null,
-            child: SizedBox(
-              height: compact ? 36 : 44,
-              child: Center(
-                child: Text(
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: enabled ? () => onChanged(value) : null,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  selected ? Icons.check_rounded : icon,
+                  size: 16,
+                  color: selected ? AppColors.blue : AppColors.muted,
+                ),
+                const SizedBox(width: 6),
+                Text(
                   label,
-                  style: GoogleFonts.figtree(
-                    fontSize: compact ? 13 : 14,
-                    color: selected ? AppColors.blue : const Color(0xFF5F6A84),
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                    color: selected ? AppColors.blue : AppColors.ink,
                   ),
                 ),
-              ),
+              ],
             ),
           ),
         ),
       );
     }
 
-    final chips = Row(
-      children: [
-        chip('🔒 Anonymous', false),
-        const SizedBox(width: 10),
-        chip('👤 With my name', true),
-      ],
-    );
-    if (compact) return chips;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'SEND AS',
-          style: GoogleFonts.figtree(
-            fontSize: 12,
-            letterSpacing: 0.7,
-            color: const Color(0xFF8E97AB),
-          ),
+    // Same as the Suggestion Box: "Send as" + two pills on one line.
+    // Gets a little smaller on very narrow phones, never cut.
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.centerLeft,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Send as',
+              style: GoogleFonts.inter(fontSize: 13, color: AppColors.muted),
+            ),
+            const SizedBox(width: 8),
+            pill('Anonymous', Icons.lock_outline, false),
+            const SizedBox(width: 8),
+            pill('With my name', Icons.person_outline, true),
+          ],
         ),
-        const SizedBox(height: 8),
-        chips,
-      ],
+      ),
     );
   }
 }
@@ -179,9 +186,9 @@ class SentAsLine extends StatelessWidget {
       textAlign: TextAlign.center,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
-      style: GoogleFonts.figtree(
+      style: GoogleFonts.inter(
         fontSize: 12.5,
-        color: const Color(0xFF8E97AB),
+        color: const Color(0xCC0E1A3A),
       ),
     );
   }

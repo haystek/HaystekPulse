@@ -10,14 +10,14 @@ TextStyle _t(
   FontWeight weight = FontWeight.w400,
   Color color = AppColors.ink,
   double? height,
-}) => GoogleFonts.figtree(
+}) => GoogleFonts.inter(
   fontSize: size,
   fontWeight: weight,
   color: color,
   height: height,
 );
 
-const Color _soft = Color(0xFF8E97AB);
+const Color _soft = Color(0xCC0E1A3A);
 const Color _line = Color(0xFFE3E8F1);
 
 /// Full privacy policy (also given to the App Store and Play Store).
@@ -116,7 +116,7 @@ class HelpScreen extends StatelessWidget {
     final t = Theme.of(context);
     return Theme(
       data: t.copyWith(
-        textTheme: GoogleFonts.figtreeTextTheme(t.textTheme),
+        textTheme: GoogleFonts.interTextTheme(t.textTheme),
         dividerColor: Colors.transparent,
       ),
       child: Scaffold(

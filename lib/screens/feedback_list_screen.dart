@@ -761,7 +761,7 @@ class _ResultCard extends StatelessWidget {
     final name = item.authorName ?? '';
     final id = item.authorEmployeeId ?? '';
     final who = item.anonymous
-        ? 'Name hidden'
+        ? 'Anonymous'
         : (id.isEmpty ? name : '$name ($id)');
     final rating = !item.isFromBox && item.rating != null ? item.rating : null;
     final meta = [
@@ -773,7 +773,7 @@ class _ResultCard extends StatelessWidget {
         ? 0
         : DateTime.now().difference(item.createdAt!).inDays;
     final late = isNew && waitingDays >= 7;
-    const metaStyle = TextStyle(fontSize: 12, color: Color(0xFF8E97AB));
+    const metaStyle = TextStyle(fontSize: 12, color: Color(0xCC0E1A3A));
     final bodyStyle = TextStyle(
       fontSize: 14.5,
       height: 1.45,
@@ -854,7 +854,7 @@ class _ResultCard extends StatelessWidget {
               const SizedBox(width: 10),
               const Icon(
                 Icons.chevron_right_rounded,
-                color: Color(0xFF8E97AB),
+                color: Color(0xCC0E1A3A),
                 size: 22,
               ),
             ],

@@ -12,14 +12,14 @@ TextStyle _t(
   FontWeight weight = FontWeight.w400,
   Color color = AppColors.ink,
   double? height,
-}) => GoogleFonts.figtree(
+}) => GoogleFonts.inter(
   fontSize: size,
   fontWeight: weight,
   color: color,
   height: height,
 );
 
-const Color _soft = Color(0xFF8E97AB);
+const Color _soft = Color(0xCC0E1A3A);
 const Color _line = Color(0xFFE3E8F1);
 const Color _red = Color(0xFFC0392B);
 

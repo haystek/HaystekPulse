@@ -168,7 +168,7 @@ class _EyeButton extends StatelessWidget {
       icon: Icon(
         hidden ? Icons.visibility_outlined : Icons.visibility_off_outlined,
         size: 20,
-        color: const Color(0xFF8E97AB),
+        color: const Color(0xCC0E1A3A),
       ),
     );
   }

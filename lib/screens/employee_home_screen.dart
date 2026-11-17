@@ -37,7 +37,7 @@ import '../services/fresh_install.dart';
 const Color _line = Color(0xFFE3E8F1);
 
 /// Soft grey for small, less important text.
-const Color _soft = Color(0xFF8E97AB);
+const Color _soft = Color(0xCC0E1A3A);
 
 /// One font for this whole screen: Inter.
 TextStyle _inter(
@@ -46,7 +46,7 @@ TextStyle _inter(
   Color color = AppColors.ink,
   double? height,
   double? letterSpacing,
-}) => GoogleFonts.figtree(
+}) => GoogleFonts.inter(
   fontSize: size,
   fontWeight: weight,
   color: color,
@@ -969,7 +969,7 @@ class _TimelineState extends State<_Timeline> {
     double size, {
     FontWeight weight = FontWeight.w400,
     Color color = Colors.white,
-  }) => GoogleFonts.figtree(
+  }) => GoogleFonts.inter(
     fontSize: size,
     fontWeight: weight,
     color: color,
@@ -2025,7 +2025,7 @@ class _RecentActivityState extends State<_RecentActivity> {
                         // Ma'am: how it was sent, so old ones can be checked.
                         if (r.item != null) ...[
                           const SizedBox(width: 8),
-                          Flexible(child: _sentAs(r.item!.anonymous)),
+                          Flexible(child: _sentAs(r.item!.anonymous, r.item!.authorName)),
                         ],
                       ],
                     ),
@@ -2548,7 +2548,7 @@ class _FeedbackSkeleton extends StatelessWidget {
 }
 
 /// Ma'am: "Anonymous" or "With your name" on each sent message.
-Widget _sentAs(bool anonymous) => Row(
+Widget _sentAs(bool anonymous, [String? name]) => Row(
   mainAxisSize: MainAxisSize.min,
   children: [
     Icon(
@@ -2559,7 +2559,7 @@ Widget _sentAs(bool anonymous) => Row(
     const SizedBox(width: 3),
     Flexible(
       child: Text(
-        anonymous ? 'Anonymous' : 'With your name',
+        anonymous ? 'Anonymous' : ((name ?? '').trim().isEmpty ? 'With your name' : (name ?? '').trim()),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: _inter(12, color: _soft),

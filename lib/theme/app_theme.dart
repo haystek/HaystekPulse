@@ -10,7 +10,7 @@ class AppColors {
   static const Color blueSoft = Color(0xFFDCE6FF);
   static const Color replyTint = Color(0xFFEEF3FF);
   static const Color ink = Color(0xFF0E1A3A);
-  static const Color muted = Color(0xFF55607A);
+  static const Color muted = Color(0xCC0E1A3A); // ink at 80%
   static const Color background = Color(0xFFFFFFFF);
   static const Color border = Color(0xFFE3E8F2);
   static const Color inputBorder = Color(0xFFC9CFD9);
@@ -31,7 +31,7 @@ TextStyle heading(
   FontWeight weight = FontWeight.w600,
   double height = 1.15,
 }) {
-  return GoogleFonts.bricolageGrotesque(
+  return GoogleFonts.inter(
     fontSize: size,
     fontWeight: weight,
     color: color,
@@ -62,7 +62,7 @@ ThemeData buildAppTheme() {
       },
     ),
   );
-  final textTheme = GoogleFonts.figtreeTextTheme(
+  final textTheme = GoogleFonts.interTextTheme(
     base.textTheme,
   ).apply(bodyColor: AppColors.ink, displayColor: AppColors.ink);
 
@@ -73,7 +73,7 @@ ThemeData buildAppTheme() {
     );
   }
 
-  final buttonText = GoogleFonts.figtree(
+  final buttonText = GoogleFonts.inter(
     fontSize: 16,
     fontWeight: FontWeight.w700,
   );
@@ -88,7 +88,7 @@ ThemeData buildAppTheme() {
       elevation: 0,
       scrolledUnderElevation: 0,
       centerTitle: false,
-      titleTextStyle: GoogleFonts.figtree(
+      titleTextStyle: GoogleFonts.inter(
         color: AppColors.ink,
         fontSize: 16,
         fontWeight: FontWeight.w700,
@@ -142,7 +142,7 @@ ThemeData buildAppTheme() {
       behavior: SnackBarBehavior.floating,
       backgroundColor: AppColors.ink,
       actionTextColor: AppColors.blueSoft,
-      contentTextStyle: GoogleFonts.figtree(color: Colors.white, fontSize: 15),
+      contentTextStyle: GoogleFonts.inter(color: Colors.white, fontSize: 15),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
     ),
     dialogTheme: DialogThemeData(
