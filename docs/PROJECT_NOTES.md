@@ -1,9 +1,10 @@
-# Haystek Pulse – Project Notes (as of 16 Nov 2026)
+# Haystek Pulse – Project Notes (as of 17 Nov 2026)
 
 Give this file to Claude at the start of any new chat: "Read this first."
 
 ## 1. Basics
-- Flutter + Firebase app. Mac path: `/Users/haystek/haystek_pulse`, branch `branch3`, repo `haystek/HaystekPulse` (private).
+- Flutter + Firebase app. Mac path: `/Users/haystek/haystek_pulse`, current branch `branch5`, repo `haystek/HaystekPulse` (private).
+- Branches: branch3 pushed (c4da0b7); branch4 = UI polish, pushed (926b064); branch5 = HR/Ops switch, pushed (dc1387b).
 - Flavors: `dev` → Firebase `haystek-pulse-dev`, `prod` → `haystek-pulse` (LIVE).
 - One bundle ID for both: `com.haystek.haystekPulse`, Apple Team `T6LJAQ4AL7`, App Store Apple ID `6833529873`.
 - Firebase account: mobileapp@haystek.com (Owner). shivakumar.t@haystek.com is also Owner. Billing account `01CFFA-F4B1B1-1B6168` "My Billing Account" (Haystek org, INR). Blaze plan. Linked projects: haystek-pulse, haystek-pulse-dev, My First Project (empty default).
@@ -25,6 +26,24 @@ Give this file to Claude at the start of any new chat: "Read this first."
 - Never unlink billing. Never send a DEV build to the App Store.
 
 ## 3. Done (latest first)
+- 17 Nov – **HR/Ops: Admin + Employee on one phone** (admin first, Ma'am approved). branch5.
+  - Admin Profile → "Also join as Employee": screen with only the recovery code / entry code (no admin password), then works like a normal employee sign-in.
+  - Employee Profile → "Switch to Admin" (only on that phone): first time asks the admin password once, then one tap. Admin Profile → "Switch to Employee". Admin Sign out → straight to the employee side. Short loading screen while switching (no "Welcome back" screen).
+  - Admin email + password + uid kept ONLY on the phone (Keychain / Keystore, `lib/services/dual_role.dart`). Nothing in Firebase, no rules change, so the anonymous employee account can't be linked to the admin.
+  - Employee Delete account → also removes the saved admin sign-in. Employees have no Sign out button (only Delete account).
+  - Notifications: the HR phone stays in both sides' groups; when switching, the token is kept (`NotificationService.pause()`). Broadcast is sent to `'employees' in topics && !('me_<adminUid>' in topics)`, so the sender's own phone doesn't get it; if that send fails, it goes to `employees` as before.
+  - Files: `dual_role.dart`, `dual_role_screens.dart` (new); `auth_service.dart` (switchSignOut, joinAsEmployee, switchToAdmin, switchToEmployee, switchingSides), `auth_gate.dart`, `notification_service.dart`, `push_sender*.dart`, `broadcast_service.dart`, `profile_screen.dart`.
+  - New wording (needs Ma'am's OK): "Also join as Employee" / "Use this phone as an employee too", "Switch to Employee" / "Open your employee side on this phone", "Switch to Admin" / "Open your admin side on this phone", join screen "Use this phone as an employee too. Enter your recovery code or entry code, like any employee.", password box "Enter it once. It's kept only on this phone, so next time you can switch without typing.", sign-out box (admin, HR phone) "You'll go to your employee side on this phone."
+- 17 Nov – **UI polish** on the iPhone 17 Pro Max simulator (branch4).
+  - Font is now **Inter** everywhere. Text: titles #111827, small text dark grey 80% (0xCC0E1A3A), letterSpacing 0. `PulseTextScaler` sizes text by phone width (0.96–1.10). Tall phones (> 880) get a bigger intro.
+  - Status colours (`FeedbackStatus.color`): New amber, Under Review purple, Planned teal, In Progress blue, Implemented green, Noted pink.
+  - Employee lists (Home "Your feedback" + My Feedback Suggestions / Weekly Pulse): design A "Inbox" in one white panel – type + coloured status, message, "Anonymous / With your name · date", "Admin replied" on its own line (`lib/widgets/employee_inbox.dart`, employee only).
+  - Admin lists (Home "What people said", Suggestion Box, All, Search): design 3a "Ticket" – grey strip (👤 name or 🔒 Anonymous, time, arrow), message, status + mood chip (`lib/widgets/list_card.dart`, admin only). No employee ID anywhere; search hints "Words or name" / "Search words or name" (search by ID still works).
+  - Conversation (admin + employee): top card = Ticket; replies as cards ("You" / name / "Admin", time); status change as a thin line "Moved to X · time".
+  - Broadcast: ticket header, collapses like the suggestion chat (also while typing); New broadcast from a suggestion fills Title with the suggestion text; the "From a suggestion" box shows while writing but is not sent.
+  - Mark as Implemented box: two equal options with icons (no emoji), darker text. All weeks: darker, bolder text. Admin dates "Nov 16–20, 2026".
+  - Employee Profile: version line fixed at the bottom (13). Admin Profile: picture card + chips, icons instead of emoji.
+  - Rate tiles centred; Send-as on one row; list items fade in.
 - 16 Nov: Recovery code screen: dash added by itself after 5 characters, max 10 (`_formatCode` in login_screen.dart, also used by Paste); shorter help text ("Enter your recovery code to restore your account. / Don't have it? Check Profile on your old phone."); new error `personal-code-not-found` → "No account found for this recovery code. Please check it and try again." (wrong format still shows "…It looks like K7M2P-X9F4R…"; delete-account wrong code unchanged).
 - 16 Nov: Welcome tooltips back to the original text with Ma'am's change only: "New here? / Type the 6-letter entry code from Zoho to join.", "New phone? / Enter the recovery code you saved when you joined. Your account moves to this phone.", "Admin? / Sign in with your work email."
 - 14 Nov: "Sign in with work email" (link + tip), Ma'am's comment. All 10 of Ma'am's Google Doc comments checked with `checkall.js` (35 checks pass).
@@ -53,7 +72,7 @@ Give this file to Claude at the start of any new chat: "Read this first."
 - Weekly Pulse (Great / Good / Okay / Difficult; only Okay and Difficult have comments), Suggestion Box, Broadcast (everyone can see and discuss; push to topic), status flow Under Review → Planned → In Progress → Implemented / Noted; "Employee + everyone" on Implemented also posts a broadcast.
 - Admin: Weekly Pulse home (open/closed, donut, What people said), All weeks + trend chart, Comments with search/filters, Remind people, quick replies, Suggestion list/search/chat, Broadcast, Profile.
 - Delete my account, Help & Privacy (incl. "Does the app store anything about my phone?"), Update screen (Android + iOS), intro slides, first-time tips (welcome, home, profile).
-- UI: Figtree font; sticky home top bar; same colour inside/outside status chips; My Feedback cards (colour bar, label, chip, 2-line message, "Admin replied"); Suggestion Box "SB2" design (intro, 4 tappable examples, composer at bottom, Anonymous / With my name pills); slide (Cupertino) transitions on both phones; app ignores phone font size, bold text and dark mode.
+- UI: Figtree font (Inter since 17 Nov); sticky home top bar; same colour inside/outside status chips; My Feedback cards (colour bar, label, chip, 2-line message, "Admin replied"); Suggestion Box "SB2" design (intro, 4 tappable examples, composer at bottom, Anonymous / With my name pills); slide (Cupertino) transitions on both phones; app ignores phone font size, bold text and dark mode.
 - LIVE: test data deleted, settings added, rules/indexes/functions same as DEV. Privacy policy updated (phone ID line, contact mobileapp@haystek.com) and deployed to both projects. Artifact cleanup policy 1 day (asia-south1).
 - Store answers prepared: Apple – Device ID + User ID, App Functionality, linked to user, no tracking. Google Play – Device or other IDs, App functionality, not shared.
 - Firebase moved to mobileapp@haystek.com (Owner + billing admin + CLI login).
@@ -175,7 +194,7 @@ LIVE is the same code but a separate database and setup (own settings, APNs key,
 - Save work: `git add -A && git commit -m "message" && git push`
 
 ### TestFlight (DEV build, internal testers only)
-1. `sed -i '' 's/^version: 1\.0\.0+[0-9]*$/version: 1.0.0+7/' pubspec.yaml` (raise the number each time; 1–6 used)
+1. `sed -i '' 's/^version: 1\.0\.0+[0-9]*$/version: 1.0.0+9/' pubspec.yaml` (raise the number each time; 1–8 used; next DEV = 9, PROD later = 10+)
 2. `flutter build ipa --flavor dev` (no `-t`; takes ~25 min)
 3. `open build/ios/archive/Runner.xcarchive`
 4. Organizer → Distribute App → App Store Connect → Upload.
@@ -215,10 +234,29 @@ LIVE is the same code but a separate database and setup (own settings, APNs key,
 
 <!-- PULSE-TRACKER START -->
 
-## Haystek Pulse – Pending work (updated 17 Nov 2026)
+## Haystek Pulse – Pending work (updated 17 Nov 2026, night)
 
 Send this whole file at the start of every new chat.
 Tick `[x]` when done.
+
+---
+
+### Done on 17 Nov 2026 (branch4 + branch5, not built yet)
+
+- [x] UI polish on the 17 Pro Max: Inter font, darker text, status colours, employee Inbox cards, admin Ticket cards, reply cards, no employee ID (details in section 3)
+- [x] HR/Ops: Admin + Employee on one phone, switch from Profile, own broadcast skipped (details in section 3)
+- [x] branch4 pushed (926b064), branch5 pushed (dc1387b)
+
+---
+
+### Tomorrow (18 Nov)
+
+1. [ ] Test the HR switch on DEV (iPhone `--release --flavor dev`): Also join as Employee → Switch to Admin (password once) → Switch to Admin again (no typing) → Switch to Employee → Admin Sign out (goes to employee). Broadcast: other phone gets it, this phone doesn't.
+2. [ ] TestFlight **DEV build 9**: `version: 1.0.0+9`, `kSlowStart = false`, `flutter build ipa --release --flavor dev`, upload, What to Test "DEV build (test data) – HR/Ops switch. Do not release.", Internal Testing only.
+3. [ ] Check the APNs key is uploaded in the **DEV** Firebase project (Cloud Messaging), so notifications work on TestFlight.
+4. [ ] Send Ma'am the update (HR switch) + ask her OK on the new wording.
+5. [ ] `doubleback.js` (Android: press back twice to close).
+6. [ ] Commit + push.
 
 ---
 
@@ -251,28 +289,28 @@ Tick `[x]` when done.
 
 ### App work (in this order)
 
-1. [ ] **Text styles + responsive** – same for employee AND admin
+1. [x] **Text styles + responsive** – same for employee AND admin (17 Nov: Inter, PulseTextScaler, darker text; tablets not checked)
    - First run the 3 greps (font sizes, font weights, `lib/theme/app_theme.dart`)
    - 8 styles (Figtree): Title 24/700, Heading 20/700, Subheading 16/600, Body 15/400, Body bold 15/600, Small 13/400, Label 11/600 caps, Button 15/600 (final numbers after the grep)
    - Responsive: base width ~390, scale 90%–115%; tablets: content centred, not stretched
    - Same header (height, back button, title, padding) and same footer button (~52 high) everywhere
    - Go screen by screen. Employee: Welcome, Home, Weekly Pulse, Suggestion, Your feedback, Broadcast, Profile. Admin: Admin home, feedback list + detail, reply, Broadcast, Settings, Profile
-2. [ ] **Test on simulators** – small (iPhone SE), medium (iPhone 16/17), big (Pro Max), optional iPad
+2. [ ] **Test on simulators** – small (iPhone SE), medium (iPhone 16/17), big (Pro Max, done 17 Nov), optional iPad
    ```
    xcrun simctl list devices available | grep -E "iPhone|iPad"
    open -a Simulator
    flutter run --flavor dev -d "<simulator name>"
    ```
    Screenshot: Cmd + S (saved to Desktop)
-3. [ ] **"Anonymous" / "With your name" label** on every employee feedback (Home list + See all), so old weeks can be checked (Ma'am)
+3. [x] **"Anonymous" / "With your name" label** on every employee feedback (Home list + See all), so old weeks can be checked (Ma'am)
 4. [ ] **First-time tip on Home** (optional): "Tap a card to open it. Swipe up to leave the app." (from Ma'am's "how do I come out")
 5. [ ] **Android: press back twice to close** on Employee Home + Admin Home – `doubleback.js` ready, not run yet
-6. [ ] **HR / Ops: Employee + Admin in one app** – discuss with Ma'am first
+6. [x] **HR / Ops: Employee + Admin in one app** – built 17 Nov (admin first, as Ma'am approved); testing on DEV next. Old ideas below were the first draft:
    - Join as employee and sign in as admin with work email, in either order (Profile)
    - Switch between Employee and Admin anytime, no logout
    - Get both employee and admin notifications; tapping opens the right side
    - Own broadcast/reminder: they also get it as employee (or skip the sender – decide)
-7. [ ] **TestFlight build 9** (version `1.0.0+9`) – check `kSlowStart = false` first
+7. [ ] **TestFlight build 9** (version `1.0.0+9`, DEV) – check `kSlowStart = false` first. PROD build later = 10+.
 8. [ ] Optional: Android 12 splash logo card same size as loader card
 9. [ ] Optional later: pull down to refresh on Home and lists
 
@@ -309,7 +347,9 @@ Tick `[x]` when done.
 
 - [ ] Company card as primary on billing + e-mandate (bank OTP). Don't remove current card until then.
 - [ ] Company verification – deadline 13 Feb 2027
-- [ ] Discuss HR / Ops Employee + Admin switch
+- [x] HR / Ops switch: Ma'am approved admin-first (built 17 Nov)
+- [ ] OK on the new wording for the HR switch (list in section 3)
+- [ ] OK on the new look (employee Inbox cards, admin Ticket cards)
 
 ---
 
@@ -321,6 +361,9 @@ Tick `[x]` when done.
 - Expected Firebase cost: ₹0–50/month; Apple + Play accounts already paid (Apple $99 renews yearly)
 - FCM key stays in the app until the sendPush server change
 - Only Ma'am's suggested text changes; no new wording unless asked
+- HR/Ops switch: admin first; admin sign-in kept only on the phone (not Firebase); Delete account removes it; own broadcast skipped
+- Employee and admin cards are separate code: `employee_inbox.dart` (employee) vs `list_card.dart` (admin) – never share them
+- DEV builds may go to TestFlight Internal Testing only (same bundle ID as PROD) – never pick a DEV build for App Store review
 
 ---
 
