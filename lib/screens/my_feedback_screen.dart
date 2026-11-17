@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/employee_inbox.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../demo_data.dart';
@@ -11,7 +12,6 @@ import '../services/vault_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/ui.dart';
 import 'feedback_thread_screen.dart';
-import '../widgets/list_card.dart';
 
 /// Everything this employee has sent, in two tabs that never mix.
 /// Look: a blue switch for the two tabs, blue filter chips, and each
@@ -439,6 +439,29 @@ class _MyFeedbackScreenState extends State<MyFeedbackScreen> {
                     nothingAtAll = entries.isEmpty;
                     allDates = [for (final e in entries) e.date];
                   }
+                  // Rows under each month go in one white panel.
+                  final grouped = <Widget>[];
+                  var group = <Widget>[];
+                  void flush() {
+                    if (group.isEmpty) return;
+                    grouped.add(EmployeeInboxPanel(
+                      margin: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                      children: group,
+                    ));
+                    group = <Widget>[];
+                  }
+                  for (final w in list) {
+                    if (w is _MonthHeader) {
+                      flush();
+                      grouped.add(w);
+                    } else {
+                      group.add(w);
+                    }
+                  }
+                  flush();
+                  list
+                    ..clear()
+                    ..addAll(grouped);
                   final loadingWeeks = _tab == 1 && _answers == null;
 
                   return ListView(
@@ -810,8 +833,8 @@ class _MonthHeader extends StatelessWidget {
 ///   the text, one line
 ///   date / week, and "Admin replied" in green
 /// and the arrow on the right, in the middle.
-class _Card extends StatelessWidget {
-  const _Card({
+class EmployeeFeedbackCard extends StatelessWidget {
+  const EmployeeFeedbackCard({
     required this.icon,
     required this.iconColor,
     required this.iconBg,
@@ -824,7 +847,11 @@ class _Card extends StatelessWidget {
     this.onTap,
     this.label,
     this.anonymous, this.sentName,
+    this.margin = const EdgeInsets.fromLTRB(20, 0, 20, 12),
   });
+
+  /// Space around the card (Home uses none, it has its own).
+  final EdgeInsets margin;
 
   final IconData icon;
   final Color iconColor;
@@ -852,7 +879,7 @@ class _Card extends StatelessWidget {
     // S2 pulse card: same look as the Suggestion cards.
     final top = (label ?? kind).toUpperCase();
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+      padding: margin,
       child: Material(
         color: Colors.white,
         shape: RoundedRectangleBorder(
@@ -891,7 +918,6 @@ class _Card extends StatelessWidget {
                               _sentAs(anonymous!, sentName),
                               const SizedBox(width: 8),
                             ],
-                            if (status != null) _StatusChip(status: status!),
                           ],
                         ),
                         const SizedBox(height: 10),
@@ -930,6 +956,10 @@ class _Card extends StatelessWidget {
                                 ),
                               ),
                             ],
+                            if (status != null) ...[
+                              const SizedBox(width: 8),
+                              _StatusChip(status: status!),
+                            ],
                           ],
                         ),
                       ],
@@ -952,12 +982,15 @@ class _SuggestionRow extends StatelessWidget {
   final FeedbackItem item;
 
   @override
-  Widget build(BuildContext context) => FeedbackListCard(
-    item: item,
-    onTap: () => Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => FeedbackThreadScreen(item: item)),
-    ),
-    employeeView: true,
+  Widget build(BuildContext context) => EmployeeInboxRow(
+    isBox: true,
+    status: item.status,
+    title: item.text.trim(),
+    sub: EmployeeInboxRow.shortDate(item.createdAt),
+    hasReply: item.hasReply,
+    anonymous: item.anonymous,
+    sentName: item.authorName,
+    onTap: () => _showFeedbackSheet(context, item),
   );
 }
 
@@ -973,34 +1006,31 @@ class _WeekRow extends StatelessWidget {
     final rating = entry.rating;
     final comment = entry.comment;
     final weekId = entry.weekId;
-    final name = weekId == null ? '' : PulseService.weekName(weekId);
-    final week = weekId == null
-        ? ''
-        : (name.isNotEmpty
-              ? name : PulseService.weekLabel(weekId));
-    final color = rating == null ? AppColors.blue : PulseRating.color(rating);
     final said = rating == null ? '' : 'You said ${PulseRating.label(rating)}';
+    final mood = rating == null ? null : PulseRating.color(rating);
 
-    return _Card(
-      icon: rating == null ? Icons.favorite_border : PulseRating.icon(rating),
-      iconColor: color,
-      iconBg: color.withValues(alpha: 0.12),
-      kind: 'Weekly Pulse',
-      label: rating == null ? 'Weekly Pulse' : PulseRating.label(rating),
-      status: comment?.status,
-      title: comment?.text ?? (said.isEmpty ? 'Weekly Pulse' : said),
-      titleColor: comment == null && rating != null
-          ? _moodText(rating)
-          : AppColors.ink,
-      sub: [
-        week,
-      ].where((x) => x.isNotEmpty).join(' · '),
-      replied: comment?.hasReply ?? false,
-      anonymous: comment?.anonymous,
-                sentName: comment?.authorName,
-      onTap: comment == null
-          ? null
-          : () => _showFeedbackSheet(context, comment),
+    // With a comment: the comment, "You said Good · 11 Nov".
+    if (comment != null) {
+      return EmployeeInboxRow(
+        isBox: false,
+        status: comment.status,
+        title: comment.text.trim(),
+        sub: [said, EmployeeInboxRow.shortDate(comment.createdAt ?? entry.date)]
+            .where((x) => x.isNotEmpty)
+            .join(' · '),
+        hasReply: comment.hasReply,
+        anonymous: comment.anonymous,
+        sentName: comment.authorName,
+        onTap: () => _showFeedbackSheet(context, comment),
+      );
+    }
+    // No comment: "You said Good" and the week (can't be tapped).
+    return EmployeeInboxRow(
+      isBox: false,
+      title: said.isEmpty ? 'Weekly Pulse' : said,
+      titleColor: mood,
+      barColor: mood,
+      sub: weekId == null ? '' : 'Week of ${PulseService.weekLabel(weekId)}',
     );
   }
 }
@@ -1263,3 +1293,12 @@ Widget _sentAs(bool anonymous, [String? name]) => Row(
     ),
   ],
 );
+
+/// "16 Nov" (this year) or "16 Nov 2025".
+String _empShortDate(DateTime? d) {
+  if (d == null) return '';
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug',
+      'Sep', 'Oct', 'Nov', 'Dec'];
+  final s = '${d.day} ${months[d.month - 1]}';
+  return d.year == DateTime.now().year ? s : '$s ${d.year}';
+}

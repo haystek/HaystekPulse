@@ -363,7 +363,7 @@ class _Quote extends StatelessWidget {
         '“${text.trim()}”',
         maxLines: maxLines,
         overflow: maxLines == null ? null : TextOverflow.ellipsis,
-        style: threadText(13, color: const Color(0xFF5F6A84), height: 1.4),
+        style: threadText(13.5, color: AppColors.muted, height: 1.4),
       ),
     );
   }
@@ -1101,17 +1101,21 @@ class _NewBroadcastScreenState extends State<NewBroadcastScreen> {
     );
     InputDecoration deco(String hint) => InputDecoration(
       hintText: hint,
-      hintStyle: threadText(15, color: const Color(0xFF9AA3B8)),
+      hintStyle: threadText(15, color: const Color(0xFF6B7489)),
+      counterStyle: threadText(12.5, color: AppColors.muted),
       contentPadding: const EdgeInsets.all(14),
-      border: border(_line),
-      enabledBorder: border(_line),
+      border: border(const Color(0xFFCBD3E1)),
+      enabledBorder: border(const Color(0xFFCBD3E1)),
       focusedBorder: border(AppColors.blue),
       errorBorder: border(Theme.of(context).colorScheme.error),
       focusedErrorBorder: border(Theme.of(context).colorScheme.error),
     );
     Widget label(String s) => Padding(
       padding: const EdgeInsets.only(left: 4, bottom: 6),
-      child: Text(s, style: threadText(13, color: const Color(0xFF5F6A84))),
+      child: Text(
+        s,
+        style: threadText(14, weight: FontWeight.w600, color: AppColors.ink),
+      ),
     );
 
     return _withInter(
@@ -1168,7 +1172,7 @@ class _NewBroadcastScreenState extends State<NewBroadcastScreen> {
                                 overflow: TextOverflow.ellipsis,
                                 style: threadText(
                                   13.5,
-                                  color: const Color(0xFF5F6A84),
+                                  color: AppColors.muted,
                                   height: 1.4,
                                 ),
                               ),
@@ -1248,7 +1252,7 @@ class _NewBroadcastScreenState extends State<NewBroadcastScreen> {
                         const SizedBox(height: 6),
                         Text(
                           'Everyone gets a notification',
-                          style: threadText(12, color: threadSoft),
+                          style: threadText(13, color: AppColors.muted),
                         ),
                       ],
                     ),

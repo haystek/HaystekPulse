@@ -277,6 +277,10 @@ class _FeedbackListScreenState extends State<FeedbackListScreen> {
                         textInputAction: TextInputAction.search,
                         decoration: InputDecoration(
                           hintText: 'Words, name or employee ID',
+                          hintStyle: const TextStyle(
+                            color: Color(0xFF6B7489),
+                            fontSize: 16,
+                          ),
                           prefixIcon: const Icon(Icons.search),
                           suffixIcon: _query.isEmpty
                               ? null
@@ -756,170 +760,141 @@ class _ResultCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const ink = Color(0xFF111827);
+    const soft = Color(0xCC0E1A3A);
     final status = item.status;
+    final color = FeedbackStatus.color(status);
     final isNew = status == FeedbackStatus.newItem;
-    final name = item.authorName ?? '';
-    final id = item.authorEmployeeId ?? '';
-    final who = item.anonymous
-        ? 'Anonymous'
-        : (id.isEmpty ? name : '$name ($id)');
+    final name = (item.authorName ?? '').trim();
+    final id = (item.authorEmployeeId ?? '').trim();
+    final hidden = item.anonymous || name.isEmpty;
     final rating = !item.isFromBox && item.rating != null ? item.rating : null;
-    final meta = [
-      _when(item.createdAt),
+    final who = [
+      hidden ? 'Anonymous' : name,
+      if (!hidden && id.isNotEmpty) id,
       if (rating != null) PulseRating.label(rating),
-      if (who.isNotEmpty) who,
     ].join(' · ');
     final waitingDays = item.createdAt == null
         ? 0
         : DateTime.now().difference(item.createdAt!).inDays;
     final late = isNew && waitingDays >= 7;
-    const metaStyle = TextStyle(fontSize: 12, color: Color(0xCC0E1A3A));
-    final bodyStyle = TextStyle(
-      fontSize: 14.5,
-      height: 1.45,
-      color: AppColors.ink,
-      fontWeight: isNew ? FontWeight.w500 : FontWeight.w400,
+    const bodyStyle = TextStyle(
+      fontSize: 16,
+      height: 1.42,
+      fontWeight: FontWeight.w500,
+      letterSpacing: 0,
+      color: ink,
+    );
+    const nameStyle = TextStyle(
+      fontSize: 13,
+      fontWeight: FontWeight.w600,
+      letterSpacing: 0,
+      color: ink,
     );
 
-    Widget? footer;
-    if (item.hasReply) {
-      footer = const _CardFooter(
-        icon: Icons.chat_bubble_outline_rounded,
-        text: 'Management replied',
-        color: Color(0xFF15803D),
-      );
-    } else if (late) {
-      footer = _CardFooter(
-        icon: Icons.schedule_rounded,
-        text: 'Waiting $waitingDays days',
-        color: const Color(0xFFC2410C),
-      );
-    }
+    Widget tag(IconData icon, String text, Color c) => Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 13, color: c),
+        const SizedBox(width: 4),
+        Text(
+          text,
+          style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: c),
+        ),
+      ],
+    );
 
     return Material(
       color: Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(18),
-        side: const BorderSide(color: Color(0xFFE3E8F1), width: 1.5),
+        side: const BorderSide(color: Color(0xFFEEF0F4)),
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 10, 14),
+        child: IntrinsicHeight(
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              Container(width: 4, color: color),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Status chip, and date · name on the right.
-                    Row(
-                      children: [
-                        _CardChip(status),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text.rich(
-                            _highlight(
-                              meta,
-                              item.anonymous ? '' : query,
-                              metaStyle,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 13, 14, 13),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            FeedbackStatus.label(status).toUpperCase(),
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.6,
+                              color: color,
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.right,
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text.rich(
-                      _highlight(item.text, query, bodyStyle),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    if (footer != null) ...[
-                      const SizedBox(height: 10),
-                      const Divider(
-                        height: 1,
-                        thickness: 1,
-                        color: Color(0xFFEDF0F5),
+                          const Spacer(),
+                          Text(
+                            _when(item.createdAt),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              letterSpacing: 0,
+                              color: soft,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 10),
-                      footer,
+                      const SizedBox(height: 8),
+                      Text.rich(
+                        _highlight(item.text, query, bodyStyle),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          if (hidden) ...[
+                            const Icon(
+                              Icons.lock_outline_rounded,
+                              size: 12,
+                              color: ink,
+                            ),
+                            const SizedBox(width: 4),
+                          ],
+                          Expanded(
+                            child: Text.rich(
+                              _highlight(who, hidden ? '' : query, nameStyle),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (item.hasReply) ...[
+                            const SizedBox(width: 8),
+                            tag(
+                              Icons.chat_bubble_outline_rounded,
+                              'Replied',
+                              const Color(0xFF15803D),
+                            ),
+                          ] else if (late) ...[
+                            const SizedBox(width: 8),
+                            tag(
+                              Icons.schedule_rounded,
+                              'Waiting $waitingDays days',
+                              const Color(0xFFC2410C),
+                            ),
+                          ],
+                        ],
+                      ),
                     ],
-                  ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: 10),
-              const Icon(
-                Icons.chevron_right_rounded,
-                color: Color(0xCC0E1A3A),
-                size: 22,
               ),
             ],
           ),
         ),
       ),
-    );
-  }
-}
-
-/// The status chip at the top left of a card.
-class _CardChip extends StatelessWidget {
-  const _CardChip(this.status);
-
-  final String status;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 22,
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: _statusTint(status),
-        borderRadius: BorderRadius.circular(11),
-      ),
-      child: Text(
-        FeedbackStatus.label(status),
-        style: TextStyle(
-          color: _statusInk(status),
-          fontSize: 11.5,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-    );
-  }
-}
-
-/// The small line at the bottom of a card: an icon and a few words.
-class _CardFooter extends StatelessWidget {
-  const _CardFooter({
-    required this.icon,
-    required this.text,
-    required this.color,
-  });
-
-  final IconData icon;
-  final String text;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, size: 15, color: color),
-        const SizedBox(width: 6),
-        Text(
-          text,
-          style: TextStyle(
-            color: color,
-            fontSize: 12.5,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
     );
   }
 }
@@ -1020,47 +995,5 @@ String _when(DateTime? d) {
 }
 
 /// Same status colours as the Suggestion Box tab.
-Color _statusDot(String status) {
-  switch (status) {
-    case FeedbackStatus.newItem:
-      return const Color(0xFFE9A83B);
-    case FeedbackStatus.underReview:
-      return const Color(0xFF8B5CF6);
-    case FeedbackStatus.planned:
-      return const Color(0xFF0EA5A4);
-    case FeedbackStatus.inProgress:
-      return AppColors.blue;
-    default:
-      return const Color(0xFF16A34A);
-  }
-}
+Color _statusDot(String status) => FeedbackStatus.color(status);
 
-Color _statusTint(String status) {
-  switch (status) {
-    case FeedbackStatus.newItem:
-      return const Color(0xFFFDF3DF);
-    case FeedbackStatus.underReview:
-      return const Color(0xFFF1EBFE);
-    case FeedbackStatus.planned:
-      return const Color(0xFFE0F5F4);
-    case FeedbackStatus.inProgress:
-      return const Color(0xFFE6EDFF);
-    default:
-      return const Color(0xFFE3F6EA);
-  }
-}
-
-Color _statusInk(String status) {
-  switch (status) {
-    case FeedbackStatus.newItem:
-      return const Color(0xFF8A5A00);
-    case FeedbackStatus.underReview:
-      return const Color(0xFF5B34C7);
-    case FeedbackStatus.planned:
-      return const Color(0xFF0B6B6A);
-    case FeedbackStatus.inProgress:
-      return AppColors.blueDeep;
-    default:
-      return const Color(0xFF166534);
-  }
-}

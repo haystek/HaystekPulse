@@ -1060,10 +1060,14 @@ class _WeekHeroState extends State<_WeekHero> {
       d.day - (d.weekday - DateTime.monday),
     );
     final fri = DateTime(mon.year, mon.month, mon.day + 4);
-    final start = mon.month == fri.month
-        ? 'Mon ${mon.day}'
-        : 'Mon ${mon.day} ${months[mon.month - 1]}';
-    return '$start – Fri ${fri.day} ${months[fri.month - 1]}';
+    final sm = months[mon.month - 1], em = months[fri.month - 1];
+    if (mon.year != fri.year) {
+      return '$sm ${mon.day}, ${mon.year} – $em ${fri.day}, ${fri.year}';
+    }
+    if (mon.month != fri.month) {
+      return '$sm ${mon.day} – $em ${fri.day}, ${fri.year}';
+    }
+    return '$sm ${mon.day}–${fri.day}, ${fri.year}';
   }
 
   /// The top: "This week" with "Mon 12 – Fri 16 Oct" under it, and the
@@ -2041,10 +2045,10 @@ String _shortWeek(String weekId) {
   final monday = DateTime(d.year, d.month, d.day - (d.weekday - 1));
   final friday = DateTime(monday.year, monday.month, monday.day + 4);
   if (monday.month == friday.month) {
-    return '${monday.day}–${friday.day} ${_monthNames[friday.month - 1]}';
+    return '${_monthNames[friday.month - 1]} ${monday.day}–${friday.day}';
   }
-  return '${monday.day} ${_monthNames[monday.month - 1]}–'
-      '${friday.day} ${_monthNames[friday.month - 1]}';
+  return '${_monthNames[monday.month - 1]} ${monday.day} – '
+      '${_monthNames[friday.month - 1]} ${friday.day}';
 }
 
 /// A row of week cards you can swipe sideways, newest on the right.
@@ -2288,7 +2292,11 @@ class _RingSummary extends StatelessWidget {
           Expanded(
             child: Text(
               label,
-              style: const TextStyle(color: AppColors.muted, fontSize: 14),
+              style: const TextStyle(
+                color: Color(0xE60E1A3A),
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
           Text(
@@ -3831,50 +3839,12 @@ class _StatusChip extends StatelessWidget {
 
 /// Colours for each status: the dot, the light tag background and the
 /// dark tag text.
-Color _statusDot(String status) {
-  switch (status) {
-    case FeedbackStatus.newItem:
-      return const Color(0xFFE9A83B);
-    case FeedbackStatus.underReview:
-      return const Color(0xFF8B5CF6);
-    case FeedbackStatus.planned:
-      return const Color(0xFF0EA5A4);
-    case FeedbackStatus.inProgress:
-      return AppColors.blue;
-    default:
-      return const Color(0xFF16A34A);
-  }
-}
+Color _statusDot(String status) => FeedbackStatus.color(status);
 
-Color _statusTint(String status) {
-  switch (status) {
-    case FeedbackStatus.newItem:
-      return const Color(0xFFFDF3DF);
-    case FeedbackStatus.underReview:
-      return const Color(0xFFF1EBFE);
-    case FeedbackStatus.planned:
-      return const Color(0xFFE0F5F4);
-    case FeedbackStatus.inProgress:
-      return const Color(0xFFE6EDFF);
-    default:
-      return const Color(0xFFE3F6EA);
-  }
-}
+Color _statusTint(String status) =>
+    FeedbackStatus.color(status).withValues(alpha: 0.12);
 
-Color _statusInk(String status) {
-  switch (status) {
-    case FeedbackStatus.newItem:
-      return const Color(0xFF8A5A00);
-    case FeedbackStatus.underReview:
-      return const Color(0xFF5B34C7);
-    case FeedbackStatus.planned:
-      return const Color(0xFF0B6B6A);
-    case FeedbackStatus.inProgress:
-      return AppColors.blueDeep;
-    default:
-      return const Color(0xFF166534);
-  }
-}
+Color _statusInk(String status) => FeedbackStatus.color(status);
 
 /// One suggestion card (design "List B · Text first"):
 ///
@@ -3898,149 +3868,10 @@ class _FeedbackCard extends StatelessWidget {
     return '${d.day} ${_monthNames[d.month - 1]}';
   }
 
-  // card design S2: status colour bar, message first.
+  // Design A "Mood face": the same card as everywhere (bulb icon).
   @override
-  Widget build(BuildContext context) {
-    final t = Theme.of(context).textTheme;
-    final color = FeedbackStatus.color(item.status);
-    final d = item.createdAt;
-    final now = DateTime.now();
-    final today =
-        d != null &&
-        d.year == now.year &&
-        d.month == now.month &&
-        d.day == now.day;
-    final when = d == null
-        ? ''
-        : today
-        ? '${d.hour % 12 == 0 ? 12 : d.hour % 12}:'
-              '${d.minute.toString().padLeft(2, '0')} '
-              '${d.hour < 12 ? 'AM' : 'PM'}'
-        : _date(d);
-    final name = (item.authorName ?? '').trim();
-    final id = (item.authorEmployeeId ?? '').trim();
-    final hidden = item.anonymous || name.isEmpty;
-    const soft = Color(0xCC0E1A3A);
-    const green = Color(0xFF15803D);
-    return Material(
-      color: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
-        side: const BorderSide(color: Color(0xFFEEF0F4)),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Container(width: 4, color: color),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 13, 14, 13),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Text(
-                            FeedbackStatus.label(item.status).toUpperCase(),
-                            style: t.labelSmall?.copyWith(
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 0.5,
-                              color: color,
-                            ),
-                          ),
-                          const Spacer(),
-                          Text(
-                            when,
-                            style: t.bodySmall?.copyWith(
-                              fontSize: 12,
-                              color: soft,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        item.text.trim(),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: t.bodyLarge?.copyWith(
-                          fontSize: 16,
-                          height: 1.42,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: -0.15,
-                          color: const Color(0xFF111827),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          if (hidden) ...[
-                            const Icon(
-                              Icons.lock_outline_rounded,
-                              size: 12,
-                              color: soft,
-                            ),
-                            const SizedBox(width: 4),
-                          ],
-                          Expanded(
-                            child: Text.rich(
-                              hidden
-                                  ? const TextSpan(text: 'Anonymous')
-                                  : TextSpan(
-                                      children: [
-                                        TextSpan(
-                                          text: name,
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.w600,
-                                            color: Color(0xFF374151),
-                                          ),
-                                        ),
-                                        if (id.isNotEmpty)
-                                          TextSpan(text: ' · $id'),
-                                      ],
-                                    ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: t.bodySmall?.copyWith(
-                                fontSize: 12,
-                                color: soft,
-                              ),
-                            ),
-                          ),
-                          if (item.hasReply) ...[
-                            const SizedBox(width: 8),
-                            const Icon(
-                              Icons.chat_bubble_outline_rounded,
-                              size: 12,
-                              color: green,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              'Replied',
-                              style: t.bodySmall?.copyWith(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: green,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) =>
+      FeedbackListCard(item: item, onTap: onTap);
 }
 
 /// The status chip at the top left of a card.

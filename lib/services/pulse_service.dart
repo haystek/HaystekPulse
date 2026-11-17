@@ -233,8 +233,14 @@ class PulseService {
     final d = _dateOf(weekId);
     final monday = DateTime(d.year, d.month, d.day - (d.weekday - 1));
     final friday = DateTime(monday.year, monday.month, monday.day + 4);
-    return '${monday.day} ${months[monday.month - 1]} – '
-        '${friday.day} ${months[friday.month - 1]}';
+    final sm = months[monday.month - 1], em = months[friday.month - 1];
+    if (monday.year != friday.year) {
+      return '$sm ${monday.day}, ${monday.year} – $em ${friday.day}, ${friday.year}';
+    }
+    if (monday.month != friday.month) {
+      return '$sm ${monday.day} – $em ${friday.day}, ${friday.year}';
+    }
+    return '$sm ${monday.day}–${friday.day}, ${friday.year}';
   }
 
   static DateTime _dateOf(String weekId) {

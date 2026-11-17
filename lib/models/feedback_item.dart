@@ -129,17 +129,17 @@ class FeedbackStatus {
   static Color color(String status) {
     switch (status) {
       case underReview:
-        return const Color(0xFFB5651D);
+        return const Color(0xFF8B5CF6); // purple
       case planned:
-        return const Color(0xFF1C5FC0);
+        return const Color(0xFF0D9488); // teal
       case inProgress:
-        return const Color(0xFFD9770B);
+        return const Color(0xFF2563EB); // blue
       case implemented:
-        return const Color(0xFF178A47);
+        return const Color(0xFF16A34A); // green
       case noted:
-        return const Color(0xFF5B6478);
+        return const Color(0xFFDB2777); // pink
       default:
-        return const Color(0xFF8A6A00);
+        return const Color(0xFFE08A00); // new: amber
     }
   }
 }

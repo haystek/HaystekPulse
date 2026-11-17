@@ -170,7 +170,7 @@ class _AdminProfile extends StatelessWidget {
                 Text(
                   email.isEmpty ? '—' : email,
                   textAlign: TextAlign.center,
-                  style: _s(13.5, c: AppColors.muted),
+                  style: _s(14.5, c: AppColors.muted),
                 ),
 
                 // Admins: the promise that keeps people speaking openly.
@@ -208,7 +208,7 @@ class _AdminProfile extends StatelessWidget {
                               ),
                               TextSpan(
                                 text: 'never who wrote it',
-                                style: _s(13, w: FontWeight.w500),
+                                style: _s(14, w: FontWeight.w500),
                               ),
                               const TextSpan(
                                 text:
@@ -217,7 +217,7 @@ class _AdminProfile extends StatelessWidget {
                               ),
                             ],
                           ),
-                          style: _s(13, c: AppColors.muted, h: 1.45),
+                          style: _s(14, c: AppColors.muted, h: 1.45),
                         ),
                       ],
                     ),
@@ -348,7 +348,7 @@ class _ProfilePicture extends StatelessWidget {
     ),
   ];
 
-  Widget _chip(String emoji, String text) => Container(
+  Widget _chip(IconData icon, String text) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
     decoration: BoxDecoration(
       color: Colors.white,
@@ -359,7 +359,7 @@ class _ProfilePicture extends StatelessWidget {
     child: Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(emoji, style: const TextStyle(fontSize: 13)),
+        Icon(icon, size: 14, color: AppColors.blue),
         const SizedBox(width: 6),
         Text(text, style: _s(11.5)),
       ],
@@ -381,7 +381,7 @@ class _ProfilePicture extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 240,
+      height: 190,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(30),
         gradient: const LinearGradient(
@@ -401,13 +401,13 @@ class _ProfilePicture extends StatelessWidget {
           if (isAdmin) ...[
             Positioned(
               left: 14,
-              top: 30,
-              child: _tilt(-6, _chip('💬', 'Read & reply')),
+              top: 22,
+              child: _tilt(-6, _chip(Icons.chat_bubble_outline_rounded, 'Read & reply')),
             ),
             Positioned(
-              right: -8,
-              top: 118,
-              child: _tilt(6, _chip('🙈', 'No names')),
+              right: 14,
+              top: 88,
+              child: _tilt(6, _chip(Icons.visibility_off_outlined, 'No names')),
             ),
           ],
 
@@ -415,14 +415,14 @@ class _ProfilePicture extends StatelessWidget {
           Positioned(
             left: 0,
             right: 0,
-            top: 40,
+            top: 22,
             child: Center(
               child: Container(
-                width: 116,
-                height: 116,
+                width: 96,
+                height: 96,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(36),
+                  borderRadius: BorderRadius.circular(30),
                   gradient: const LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
@@ -446,7 +446,7 @@ class _ProfilePicture extends StatelessWidget {
                     ? const Icon(
                         Icons.shield_outlined,
                         color: Colors.white,
-                        size: 54,
+                        size: 46,
                       )
                     : initial == null
                     ? const Icon(
@@ -466,7 +466,7 @@ class _ProfilePicture extends StatelessWidget {
           Positioned(
             left: 0,
             right: 0,
-            top: 180,
+            top: 138,
             child: Center(
               child: Container(
                 padding: const EdgeInsets.fromLTRB(12, 7, 14, 7),
@@ -551,7 +551,7 @@ class _ListRow extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 1),
-                  Text(sub, style: _s(12.5, c: AppColors.muted)),
+                  Text(sub, style: _s(13.5, c: AppColors.muted)),
                 ],
               ),
             ),
@@ -860,7 +860,7 @@ class _CodeProfileState extends State<_CodeProfile> {
 
   Widget _label(String t) => Padding(
     padding: const EdgeInsets.only(bottom: 5),
-    child: Text(t, style: _s(11.5, c: _soft).copyWith(letterSpacing: 0.7)),
+    child: Text(t, style: _s(12, c: _soft).copyWith(letterSpacing: 0.7)),
   );
 
   Widget _item(bool hidden, String t) => Padding(
@@ -882,7 +882,7 @@ class _CodeProfileState extends State<_CodeProfile> {
           ),
         ),
         const SizedBox(width: 10),
-        Expanded(child: Text(t, style: _s(14))),
+        Expanded(child: Text(t, style: _s(15))),
       ],
     ),
   );
@@ -950,7 +950,7 @@ class _CodeProfileState extends State<_CodeProfile> {
                     ),
                   ),
                   const SizedBox(height: 1),
-                  Text(sub, style: _s(12.5, c: AppColors.muted)),
+                  Text(sub, style: _s(13.5, c: AppColors.muted)),
                 ],
               ),
             ),
@@ -979,7 +979,10 @@ class _CodeProfileState extends State<_CodeProfile> {
           alignment: Alignment.topCenter,
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 560),
-            child: ListView(
+            child: Column(
+              children: [
+                Expanded(
+                  child: ListView(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
               children: [
                 // Who you are here: nobody.
@@ -1024,7 +1027,7 @@ class _CodeProfileState extends State<_CodeProfile> {
                           const SizedBox(height: 2),
                           Text(
                             'Employee · No email · No name',
-                            style: _s(12.5, c: AppColors.muted),
+                            style: _s(13.5, c: AppColors.muted),
                           ),
                         ],
                       ),
@@ -1098,7 +1101,11 @@ class _CodeProfileState extends State<_CodeProfile> {
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('💡', style: TextStyle(fontSize: 18)),
+                        const Icon(
+                          Icons.lightbulb_outline,
+                          size: 20,
+                          color: Color(0xFFB7791F),
+                        ),
                         const SizedBox(width: 10),
                         Expanded(
                           child: Column(
@@ -1106,7 +1113,7 @@ class _CodeProfileState extends State<_CodeProfile> {
                             children: [
                               Text(
                                 'Want credit for a good idea?',
-                                style: _s(14, w: FontWeight.w500),
+                                style: _s(15, w: FontWeight.w500),
                               ),
                               const SizedBox(height: 3),
                               Text.rich(
@@ -1115,13 +1122,13 @@ class _CodeProfileState extends State<_CodeProfile> {
                                     const TextSpan(
                                       text: 'When you send, choose ',
                                     ),
+                                    const WidgetSpan(
+                                      alignment: PlaceholderAlignment.middle,
+                                      child: Icon(Icons.person_outline, size: 15, color: AppColors.blue),
+                                    ),
                                     TextSpan(
-                                      text: '👤 With my name',
-                                      style: _s(
-                                        12.5,
-                                        w: FontWeight.w500,
-                                        c: AppColors.blue,
-                                      ),
+                                      text: ' With my name',
+                                      style: _s(13.5, w: FontWeight.w500, c: AppColors.blue),
                                     ),
                                     const TextSpan(
                                       text:
@@ -1130,7 +1137,7 @@ class _CodeProfileState extends State<_CodeProfile> {
                                     ),
                                   ],
                                 ),
-                                style: _s(12.5, c: AppColors.muted, h: 1.45),
+                                style: _s(13.5, c: AppColors.muted, h: 1.45),
                               ),
                             ],
                           ),
@@ -1180,7 +1187,7 @@ class _CodeProfileState extends State<_CodeProfile> {
                                   ),
                                   Text(
                                     'Needed only when you change your phone',
-                                    style: _s(12, c: AppColors.muted),
+                                    style: _s(13, c: AppColors.muted),
                                   ),
                                 ],
                               ),
@@ -1194,7 +1201,7 @@ class _CodeProfileState extends State<_CodeProfile> {
                           Text(
                             'Your code is not saved on this phone. Use the code '
                             'you saved when you joined.',
-                            style: _s(13, c: AppColors.muted, h: 1.45),
+                            style: _s(14, c: AppColors.muted, h: 1.45),
                           )
                         else
 
@@ -1249,11 +1256,11 @@ class _CodeProfileState extends State<_CodeProfile> {
                 // Help & Privacy, Delete my account.
                 KeyedSubtree(
                   key: _ProfileTour.help,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
+                  child: Material(
+                    color: Colors.white,
+                    shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: _line),
+                      side: const BorderSide(color: _line),
                     ),
                     clipBehavior: Clip.antiAlias,
                     child: Material(
@@ -1287,8 +1294,14 @@ class _CodeProfileState extends State<_CodeProfile> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
-                const _VersionLine(),
+              ],
+            ),
+                ),
+                // Always at the very bottom.
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(20, 8, 20, 12),
+                  child: _VersionLine(),
+                ),
               ],
             ),
           ),
@@ -1318,7 +1331,7 @@ class _VersionLine extends StatelessWidget {
         return Text(
           text,
           textAlign: TextAlign.center,
-          style: _s(12, c: _soft),
+          style: _s(13, c: _soft),
         );
       },
     );

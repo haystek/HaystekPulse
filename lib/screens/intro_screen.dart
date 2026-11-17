@@ -334,10 +334,10 @@ class _IPage extends StatelessWidget {
       children: [
         Container(
           height: tall
-              ? (h * 0.55).clamp(320.0, 480.0)
+              ? (h * (h > 880 ? 0.60 : 0.55)).clamp(320.0, h > 880 ? 560.0 : 480.0)
               : short
               ? (h * 0.32).clamp(220.0, 300.0)
-              : (h * 0.40).clamp(250.0, 380.0),
+              : (h * (h > 880 ? 0.47 : 0.40)).clamp(250.0, h > 880 ? 460.0 : 380.0),
           clipBehavior: Clip.antiAlias,
           decoration: const BoxDecoration(
             gradient: _iGrad,

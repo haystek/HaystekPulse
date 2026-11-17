@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import '../widgets/employee_inbox.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -71,9 +72,9 @@ class EmployeeHomeScreen extends StatelessWidget {
 
   static String _greeting() {
     final h = DateTime.now().hour;
-    if (h < 12) return 'Good morning,';
-    if (h < 17) return 'Good afternoon,';
-    return 'Good evening,';
+    if (h < 12) return 'Good morning';
+    if (h < 17) return 'Good afternoon';
+    return 'Good evening';
   }
 
   @override
@@ -1490,7 +1491,7 @@ class _SuggestCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Ideas, concerns, requests. Any day.',
+                      'Ideas, concerns, requests.\nAny day.',
                       style: _inter(13, color: AppColors.muted, height: 1.35),
                     ),
                   ],
@@ -1503,7 +1504,7 @@ class _SuggestCard extends StatelessWidget {
                   backgroundColor: AppColors.blue,
                   foregroundColor: Colors.white,
                   minimumSize: const Size(0, 40),
-                  padding: const EdgeInsets.symmetric(horizontal: 18),
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
                   shape: const StadiumBorder(),
                   textStyle: _inter(14, weight: FontWeight.w700),
                 ),
@@ -1918,10 +1919,7 @@ class _RecentActivityState extends State<_RecentActivity> {
                   ],
                 ),
                 const SizedBox(height: 6),
-                for (final r in rows.take(3)) ...[
-                  _row(r),
-                  const SizedBox(height: 10),
-                ],
+                _inboxPanel(rows.take(3).toList()),
               ],
             );
           },
@@ -1968,6 +1966,54 @@ class _RecentActivityState extends State<_RecentActivity> {
           ),
         ),
       ],
+    );
+  }
+
+  /// Same card as My Feedback (S2), so employee screens look the same.
+  Widget _card(_Recent r) => EmployeeFeedbackCard(
+    icon: r.icon,
+    iconColor: r.iconColor,
+    iconBg: r.iconBg,
+    kind: r.isBox ? 'Suggestion' : 'Weekly Pulse',
+    title: r.title,
+    sub: r.sub,
+    status: r.status,
+    replied: r.hasReply,
+    anonymous: r.item?.anonymous,
+    sentName: r.item?.authorName,
+    margin: EdgeInsets.zero,
+    onTap: r.item == null
+        ? () => widget.onOpen(1)
+        : () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => FeedbackThreadScreen(item: r.item!),
+            ),
+          ),
+  );
+
+  /// Design A "Inbox" – employee card, same as My Feedback.
+  Widget _inboxPanel(List<_Recent> rows) => EmployeeInboxPanel(
+    children: [for (final r in rows) _inboxRow(r)],
+  );
+
+  Widget _inboxRow(_Recent r) {
+    final item = r.item;
+    return EmployeeInboxRow(
+      isBox: r.isBox,
+      status: r.status,
+      title: r.title,
+      sub: r.sub,
+      hasReply: r.hasReply,
+      anonymous: item?.anonymous,
+      sentName: item?.authorName,
+      barColor: r.status == null ? r.iconColor : null,
+      onTap: item == null
+          ? () => widget.onOpen(1)
+          : () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => FeedbackThreadScreen(item: item),
+                ),
+              ),
     );
   }
 
@@ -2018,10 +2064,6 @@ class _RecentActivityState extends State<_RecentActivity> {
                             color: AppColors.blue,
                           ),
                         ),
-                        if (r.status != null) ...[
-                          const SizedBox(width: 6),
-                          _statusChip(r.status!),
-                        ],
                         // Ma'am: how it was sent, so old ones can be checked.
                         if (r.item != null) ...[
                           const SizedBox(width: 8),
@@ -2037,7 +2079,10 @@ class _RecentActivityState extends State<_RecentActivity> {
                       style: _inter(14, weight: FontWeight.normal),
                     ),
                     const SizedBox(height: 3),
-                    Text.rich(
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text.rich(
                       TextSpan(
                         children: [
                           TextSpan(text: r.sub),
@@ -2056,6 +2101,13 @@ class _RecentActivityState extends State<_RecentActivity> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: _inter(12.5, color: _soft),
+                          ),
+                        ),
+                        if (r.status != null) ...[
+                          const SizedBox(width: 8),
+                          _statusChip(r.status!),
+                        ],
+                      ],
                     ),
                   ],
                 ),
