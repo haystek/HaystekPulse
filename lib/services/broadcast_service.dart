@@ -1,9 +1,11 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
 import '../models/employee.dart';
+import 'dual_role.dart';
 import 'notification_service.dart';
 import 'push_sender.dart';
 import 'text_crypto.dart';
@@ -130,14 +132,34 @@ class BroadcastService {
         })
         .timeout(const Duration(seconds: 15));
 
-    // Everyone's phone is in the "employees" group.
-    unawaited(
-      PushSender.toTopic(
+    // Everyone's phone is in the "employees" group, except the sender's own
+    // phone when it is an HR/Ops phone (its private "me" group). If that
+    // can't be sent, send to everyone as before.
+    final me = FirebaseAuth.instance.currentUser?.uid ?? '';
+    final everyoneButMe =
+        "'${NotificationService.topicEmployees}' in topics && "
+        "!('${DualRole.meTopic(me)}' in topics)";
+    final pushTitle = '📢 ${title.trim()}';
+    final pushBody = PushSender.shorten(body);
+    final pushData = {'type': typeBroadcast, 'broadcastId': ref.id};
+    Future<bool> push() async {
+      final ok = await PushSender.toCondition(
+        everyoneButMe,
+        title: pushTitle,
+        body: pushBody,
+        data: pushData,
+      );
+      if (ok) return true;
+      return PushSender.toTopic(
         NotificationService.topicEmployees,
-        title: '📢 ${title.trim()}',
-        body: PushSender.shorten(body),
-        data: {'type': typeBroadcast, 'broadcastId': ref.id},
-      ).catchError((Object e) {
+        title: pushTitle,
+        body: pushBody,
+        data: pushData,
+      );
+    }
+
+    unawaited(
+      push().catchError((Object e) {
         debugPrint('[Broadcast] push failed: $e');
         return false;
       }),

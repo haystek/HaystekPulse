@@ -23,6 +23,24 @@ class PushSender {
     );
   }
 
+  /// To phones matching a topic condition, for example
+  /// "'employees' in topics && !('me_x' in topics)".
+  static Future<bool> toCondition(
+    String condition, {
+    required String title,
+    required String body,
+    Map<String, String>? data,
+  }) {
+    return _safe(
+      () => impl.sendPush(
+        condition: condition,
+        title: title,
+        body: body,
+        data: data,
+      ),
+    );
+  }
+
   /// Returns true if at least one device accepted the notification.
   static Future<bool> toTokens(
     List<String> tokens, {

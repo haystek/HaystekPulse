@@ -3,6 +3,7 @@
 Future<bool> sendPush({
   String? topic,
   String? token,
+  String? condition,
   required String title,
   required String body,
   Map<String, String>? data,

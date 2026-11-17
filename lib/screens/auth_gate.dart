@@ -49,9 +49,17 @@ class AuthGate extends StatelessWidget {
         final user = userSnap.data;
         if (user == null) {
           _checkedUid = null;
-          // First time on this phone: the short intro, then sign in.
-          StartupSplash.done();
-          return const IntroGate(child: LoginScreen());
+          // HR/Ops phone switching sides: a short loading screen, not the
+          // sign-in screen.
+          return ValueListenableBuilder<bool>(
+            valueListenable: auth.switchingSides,
+            builder: (context, switching, _) {
+              if (switching) return const _Loading();
+              // First time on this phone: the short intro, then sign in.
+              StartupSplash.done();
+              return const IntroGate(child: LoginScreen());
+            },
+          );
         }
         // Once per login: sign out if it was deleted in the console.
         if (_checkedUid != user.uid) {

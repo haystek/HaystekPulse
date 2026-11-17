@@ -7,6 +7,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../models/employee.dart';
 import 'device_id.dart';
+import 'dual_role.dart';
 import 'notification_service.dart';
 import 'personal_code.dart';
 import 'vault_service.dart';
@@ -102,6 +103,10 @@ class AuthService {
   /// Set when this phone was signed out because the account moved.
   /// The sign-in screen shows "Your account moved to another phone".
   bool movedNotice = false;
+
+  /// HR/Ops phone: true while switching sides, so a loading screen shows
+  /// instead of the sign-in screen for that moment.
+  final ValueNotifier<bool> switchingSides = ValueNotifier<bool>(false);
 
   DocumentReference<Map<String, dynamic>> _session(String uid) =>
       _db.collection('sessions').doc(uid);
@@ -721,15 +726,167 @@ class AuthService {
     }
     await user.updatePassword(newPassword);
     pendingPassword = newPassword;
+    await _updateSavedAdminPassword(newPassword);
     await _db.collection('employees').doc(user.uid).update({
       'mustChangePassword': false,
     });
+  }
+
+  // ---------------------------------------------------------------
+  // HR/Ops phone: Admin + Employee on one phone (admin first).
+  // The admin sign-in is kept only on this phone (DualRole).
+  // ---------------------------------------------------------------
+
+  /// Leaves this side WITHOUT forgetting the recovery code and without
+  /// leaving the notification groups, so the other side opens at once.
+  Future<void> switchSignOut() async {
+    pendingName = null;
+    pendingAdmin = null;
+    pendingAdminCode = null;
+    pendingPassword = null;
+    pendingCode = null;
+    newPersonalCode = null;
+    pendingEntryCode = null;
+    NotificationService.instance.pause();
+    await VaultService.instance.close();
+    await _auth.signOut();
+  }
+
+  /// Admin Profile -> "Also join as Employee". No admin password here
+  /// (asked once, the first time they switch back to admin). Marks this
+  /// phone as the admin's HR/Ops phone, then signs in like any employee:
+  /// recovery code, or a new account with an entry code.
+  /// If the code is wrong, the screen shows the error and they can try
+  /// again (already off the admin side).
+  Future<void> joinAsEmployee({String? recoveryCode, String? entryCode}) async {
+    switchingSides.value = true;
+    try {
+      await _joinAsEmployee(recoveryCode: recoveryCode, entryCode: entryCode);
+    } finally {
+      switchingSides.value = false;
+    }
+  }
+
+  Future<void> _joinAsEmployee({String? recoveryCode, String? entryCode}) async {
+    if (recoveryCode != null) {
+      if (!PersonalCode.looksValid(PersonalCode.normalize(recoveryCode))) {
+        throw FirebaseAuthException(code: 'personal-code-wrong');
+      }
+    } else if (normalizeEntryCode(entryCode ?? '').isEmpty) {
+      throw FirebaseAuthException(code: 'entry-code-wrong');
+    }
+    final user = _auth.currentUser;
+    if (user != null) {
+      if (user.email == null || isCodeAccount) {
+        throw FirebaseAuthException(code: 'no-current-user');
+      }
+      await DualRole.save(email: user.email!, uid: user.uid);
+      await switchSignOut();
+    } else if (!await DualRole.isOn()) {
+      throw FirebaseAuthException(code: 'no-current-user');
+    }
+    if (recoveryCode != null) {
+      await signInWithPersonalCode(recoveryCode);
+    } else {
+      await joinWithEntryCode(entryCode!);
+    }
+  }
+
+  /// Employee Profile -> "Switch to Admin" (HR/Ops phone only).
+  /// [password]: typed the first time (then kept on this phone).
+  Future<void> switchToAdmin({String? password}) async {
+    switchingSides.value = true;
+    try {
+      await _switchToAdmin(password: password);
+    } finally {
+      switchingSides.value = false;
+    }
+  }
+
+  Future<void> _switchToAdmin({String? password}) async {
+    final login = await DualRole.adminLogin();
+    if (login == null) throw FirebaseAuthException(code: 'dual-admin-missing');
+    final pass = password ?? login.password;
+    if (pass == null) {
+      throw FirebaseAuthException(code: 'dual-admin-password-needed');
+    }
+    await switchSignOut();
+    try {
+      await signIn(login.email, pass);
+      await DualRole.save(email: login.email, password: pass, uid: login.uid);
+    } on FirebaseAuthException catch (e) {
+      const wrong = ['invalid-credential', 'wrong-password'];
+      // Back to the employee side either way.
+      await autoSignIn();
+      if (wrong.contains(e.code)) {
+        if (password == null) {
+          // The saved one stopped working (changed elsewhere).
+          await DualRole.forgetPassword();
+          throw FirebaseAuthException(code: 'dual-admin-changed');
+        }
+        throw FirebaseAuthException(code: 'wrong-password');
+      }
+      rethrow;
+    }
+  }
+
+  /// Admin Profile -> "Switch to Employee" (HR/Ops phone). False if the
+  /// employee side could not open (then the admin stays signed in).
+  Future<bool> switchToEmployee() async {
+    switchingSides.value = true;
+    try {
+      return await _switchToEmployee();
+    } finally {
+      switchingSides.value = false;
+    }
+  }
+
+  Future<bool> _switchToEmployee() async {
+    if (await savedCode() == null) return false;
+    await switchSignOut();
+    if (await autoSignIn()) return true;
+    final login = await DualRole.adminLogin();
+    final pass = login?.password;
+    if (login != null && pass != null) {
+      try {
+        await signIn(login.email, pass);
+      } catch (_) {}
+    }
+    return false;
+  }
+
+  /// Password changed on an HR/Ops phone: keep the saved one up to date.
+  Future<void> _updateSavedAdminPassword(String password) async {
+    final user = _auth.currentUser;
+    final login = await DualRole.adminLogin();
+    if (user == null || login == null || login.uid != user.uid) return;
+    await DualRole.save(email: login.email, password: password, uid: login.uid);
   }
 
   /// Signs out at once. The notification cleanup (leaving this phone's
   /// groups) runs in the background, so the login screen shows straight
   /// away. A new sign-in waits for that cleanup to finish.
   Future<void> signOut() async {
+    // HR/Ops phone: the admin signs out -> straight to the employee side.
+    final uid = _auth.currentUser?.uid;
+    if (uid != null && !isCodeAccount) {
+      final login = await DualRole.adminLogin();
+      if (login != null && login.uid == uid && await savedCode() != null) {
+        switchingSides.value = true;
+        try {
+          await switchSignOut();
+          if (await autoSignIn()) return;
+        } finally {
+          switchingSides.value = false;
+        }
+        // Employee side could not open: fully signed out.
+        unawaited(NotificationService.instance.stop());
+        return;
+      }
+    }
+    // An employee signs out on an HR/Ops phone: the saved admin sign-in
+    // goes too, so the phone is fully clean.
+    if (isCodeAccount) await DualRole.clear();
     pendingName = null;
     pendingAdmin = null;
     pendingAdminCode = null;
@@ -833,6 +990,7 @@ class AuthService {
       await _withWait(user.delete());
       debugPrint('[Delete] login removed: ${watch.elapsedMilliseconds} ms');
       if (code) await _forgetCodeOnPhone();
+      await DualRole.clear();
       pendingCode = null;
       newPersonalCode = null;
       pendingEntryCode = null;
@@ -922,6 +1080,11 @@ class AuthService {
         case 'personal-code-not-found':
           return 'No account found for this recovery code. Please check it '
               'and try again.';
+        case 'dual-admin-changed':
+          return 'Your admin password has changed. Tap Switch to Admin '
+              'again and enter the new password.';
+        case 'dual-admin-missing':
+          return 'The admin sign-in is not saved on this phone.';
         case 'personal-code-wrong':
           return 'This recovery code is not correct. It looks like '
               'K7M2P-X9F4R. Please check it and try again.';
@@ -952,6 +1115,7 @@ class AuthService {
     );
     await user.reauthenticateWithCredential(credential);
     await user.updatePassword(newPassword);
+    await _updateSavedAdminPassword(newPassword);
     // Lock the history with the new password too, so nothing is lost.
     try {
       await VaultService.instance.rewrapPassword(newPassword);

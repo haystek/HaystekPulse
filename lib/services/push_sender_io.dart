@@ -25,6 +25,7 @@ String? _projectId;
 Future<bool> sendPush({
   String? topic,
   String? token,
+  String? condition,
   required String title,
   required String body,
   Map<String, String>? data,
@@ -57,6 +58,7 @@ Future<bool> sendPush({
         'message': {
           if (topic != null) 'topic': topic,
           if (token != null) 'token': token,
+          if (condition != null) 'condition': condition,
           'notification': {'title': title, 'body': body},
           if (data != null && data.isNotEmpty) 'data': data,
           'android': {

@@ -9,7 +9,9 @@ import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/ui.dart';
 import '../widgets/app_tour.dart';
+import '../services/dual_role.dart';
 import 'delete_account_screen.dart';
+import 'dual_role_screens.dart';
 import 'help_screen.dart';
 import 'vault_screens.dart';
 import 'reset_admin_code.dart';
@@ -30,6 +32,19 @@ Widget _inter(BuildContext context, Widget child) {
 /// Used by the account menu and the Profile screen.
 /// Asks "Sign out?" and signs out only after the dialog has closed.
 Future<void> confirmSignOut(BuildContext context) async {
+  // HR/Ops phone (admin + employee): say what happens.
+  final dual = await DualRole.isOn();
+  if (!context.mounted) return;
+  final code = AuthService.instance.isCodeAccount;
+  final text = !dual
+      ? (code
+            ? 'You’ll need your recovery code to sign in again. Make sure '
+                  'you saved it.'
+            : 'You’ll need your email and password to sign in again.')
+      : (code
+            ? 'You’ll need your recovery code to sign in again. The admin '
+                  'sign-in saved on this phone is removed too.'
+            : 'You’ll go to your employee side on this phone.');
   final ok = await showDialog<bool>(
     context: context,
     builder: (dialogContext) => AlertDialog(
@@ -48,10 +63,7 @@ Future<void> confirmSignOut(BuildContext context) async {
         ),
       ),
       content: Text(
-        AuthService.instance.isCodeAccount
-            ? 'You’ll need your recovery code to sign in again. Make sure '
-                  'you saved it.'
-            : 'You’ll need your email and password to sign in again.',
+        text,
         style: GoogleFonts.inter(
           fontSize: 15,
           height: 1.45,
@@ -250,6 +262,9 @@ class _AdminProfile extends StatelessWidget {
                       // Reset admin code (admins only).
                       if (isAdmin) ...[
                         const AdminCodeRow(),
+                        divider(),
+                        // HR/Ops: also use this phone as an employee.
+                        const _DualRoleAdminRow(),
                         divider(),
                         _ListRow(
                           icon: Icons.vpn_key_outlined,
@@ -834,12 +849,39 @@ class _CodeProfile extends StatefulWidget {
 
 class _CodeProfileState extends State<_CodeProfile> {
   String? _code;
+
+  /// HR/Ops phone: shows "Switch to Admin".
+  bool _dual = false;
+
+  /// Switches to the admin side (no typing: the sign-in is on this phone).
+  Future<void> _toAdmin() async {
+    // First time: the admin password, once (then kept on this phone).
+    final login = await DualRole.adminLogin();
+    String? typed;
+    if (login != null && login.password == null) {
+      if (!mounted) return;
+      typed = await askAdminPassword(context);
+      if (typed == null) return;
+    }
+    if (!mounted) return;
+    final nav = Navigator.of(context, rootNavigator: true);
+    final messenger = ScaffoldMessenger.of(context);
+    nav.popUntil((r) => r.isFirst);
+    try {
+      await AuthService.instance.switchToAdmin(password: typed);
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(AuthService.messageFor(e))));
+    }
+  }
   bool _loaded = false;
   bool _show = false;
 
   @override
   void initState() {
     super.initState();
+    DualRole.isOn().then((on) {
+      if (mounted && on) setState(() => _dual = true);
+    });
     AuthService.instance.savedCode().then((c) {
       if (mounted)
         setState(() {
@@ -1267,6 +1309,15 @@ class _CodeProfileState extends State<_CodeProfile> {
                       color: Colors.white,
                       child: Column(
                         children: [
+                          if (_dual) ...[
+                            _row(
+                              icon: Icons.admin_panel_settings_outlined,
+                              title: 'Switch to Admin',
+                              sub: 'Open your admin side on this phone',
+                              onTap: _toAdmin,
+                            ),
+                            const Divider(height: 1, color: Color(0xFFEEF1F6)),
+                          ],
                           _row(
                             icon: Icons.shield_outlined,
                             title: 'Help & Privacy',
@@ -1371,4 +1422,64 @@ class _ProfileTour {
           'when you leave Haystek.',
     ),
   ];
+}
+
+/// Admin Profile (HR/Ops): "Also join as Employee" (code only), or once
+/// joined, "Switch to Employee" (no typing).
+class _DualRoleAdminRow extends StatefulWidget {
+  const _DualRoleAdminRow();
+
+  @override
+  State<_DualRoleAdminRow> createState() => _DualRoleAdminRowState();
+}
+
+class _DualRoleAdminRowState extends State<_DualRoleAdminRow> {
+  bool _on = false;
+  bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  /// Joined = this admin's HR/Ops phone AND the employee side is set up.
+  Future<void> _load() async {
+    final l = await DualRole.adminLogin();
+    final me = FirebaseAuth.instance.currentUser?.uid;
+    final code = await AuthService.instance.savedCode();
+    if (mounted) setState(() => _on = l != null && l.uid == me && code != null);
+  }
+
+  Future<void> _switch() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    final nav = Navigator.of(context, rootNavigator: true);
+    final messenger = ScaffoldMessenger.of(context);
+    nav.popUntil((r) => r.isFirst);
+    final ok = await AuthService.instance.switchToEmployee();
+    if (!ok) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Could not open the employee side. Please try again.'),
+        ),
+      );
+    }
+  }
+
+  void _join() => Navigator.of(context).push(
+    MaterialPageRoute<void>(builder: (_) => const AlsoEmployeeScreen()),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    return _ListRow(
+      icon: Icons.swap_horiz_rounded,
+      title: _on ? 'Switch to Employee' : 'Also join as Employee',
+      sub: _on
+          ? 'Open your employee side on this phone'
+          : 'Use this phone as an employee too',
+      onTap: _on ? _switch : _join,
+    );
+  }
 }

@@ -19,6 +19,7 @@ import '../screens/weekly_pulse_screen.dart';
 import '../theme/app_theme.dart';
 import '../widgets/top_banner.dart';
 import 'broadcast_service.dart';
+import 'dual_role.dart';
 import 'feedback_service.dart';
 import 'pulse_service.dart';
 import 'push_sender.dart';
@@ -185,7 +186,20 @@ class NotificationService {
       // with a management and an employee account). First leave the
       // other role's groups, so a person never gets the other side's
       // notifications.
-      if (employee.isManagement) {
+      // HR/Ops phone (admin + employee): stays in both sides' groups, and
+      // in its own "me" group so the admin's broadcast skips this phone.
+      final dual = await DualRole.adminLogin();
+      if (employee.isManagement && dual != null && dual.uid == employee.uid) {
+        await _fm.subscribeToTopic(topicManagement);
+        await _fm.subscribeToTopic(DualRole.meTopic(employee.uid));
+      } else if (!employee.isManagement && dual != null) {
+        await _fm.subscribeToTopic(DualRole.meTopic(dual.uid));
+        ScheduleService.changed.removeListener(_onScheduleChanged);
+        ScheduleService.changed.addListener(_onScheduleChanged);
+        await _fm.subscribeToTopic(topicEmployees);
+        await _syncPendingTopics(employee.uid);
+        await _syncFeedbackTopics(employee.uid);
+      } else if (employee.isManagement) {
         await _fm.unsubscribeFromTopic(topicEmployees);
         await _leavePendingTopics();
         await _fm.subscribeToTopic(topicManagement);
@@ -324,6 +338,14 @@ class NotificationService {
     } catch (error) {
       debugPrint('Could not leave the pending group: $error');
     }
+  }
+
+  /// HR/Ops phone switching sides: forget who is signed in, but keep this
+  /// phone's address, so it stays in both sides' groups.
+  void pause() {
+    _startedFor = null;
+    _employee = null;
+    ScheduleService.changed.removeListener(_onScheduleChanged);
   }
 
   /// Called on sign-out, so the next person to use this phone does not
