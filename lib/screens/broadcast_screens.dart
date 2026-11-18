@@ -1191,6 +1191,9 @@ class _NewBroadcastScreenState extends State<NewBroadcastScreen> {
                     TextFormField(
                       controller: _title,
                       maxLength: 120,
+                      minLines: 1,
+                      maxLines: 4,
+                      textInputAction: TextInputAction.next,
                       textCapitalization: TextCapitalization.sentences,
                       style: threadText(15),
                       decoration: deco(
@@ -1202,9 +1205,9 @@ class _NewBroadcastScreenState extends State<NewBroadcastScreen> {
                     ),
                     if (_quote != null) ...[
                       const SizedBox(height: 16),
-                      label('From a suggestion (name not shared)'),
+                      label('From the suggestion (name not shared)'),
                       Container(
-                        padding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
+                        padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
                         decoration: BoxDecoration(
                           color: const Color(0xFFF6F8FB),
                           borderRadius: BorderRadius.circular(14),
@@ -1222,16 +1225,6 @@ class _NewBroadcastScreenState extends State<NewBroadcastScreen> {
                                   color: AppColors.muted,
                                   height: 1.4,
                                 ),
-                              ),
-                            ),
-                            IconButton(
-                              tooltip: 'Remove',
-                              visualDensity: VisualDensity.compact,
-                              onPressed: () => setState(() => _quote = null),
-                              icon: const Icon(
-                                Icons.close_rounded,
-                                size: 18,
-                                color: threadSoft,
                               ),
                             ),
                           ],

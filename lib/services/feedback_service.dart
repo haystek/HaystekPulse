@@ -296,7 +296,8 @@ class FeedbackService {
   /// A message still on its way shows as [ThreadEntry.pending].
   Stream<List<ThreadEntry>> watchThread(String id, {int limit = 50}) {
     if (id.startsWith(DemoData.idPrefix)) {
-      return Stream.value(const <ThreadEntry>[]);
+      // Sample item: a short conversation that matches its status.
+      return DemoData.watchThread(id);
     }
     return _feedback
         .doc(id)

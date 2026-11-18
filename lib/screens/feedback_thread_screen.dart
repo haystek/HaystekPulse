@@ -1387,19 +1387,7 @@ class ThreadQuoteHeader extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
             child: _V1Text(text: item.text),
           ),
-          if (!item.isFromBox && item.rating != null)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 6, 14, 0),
-              child: Text(
-                '${management ? 'Said' : 'You said'} ${PulseRating.label(item.rating!)}',
-                style: threadText(
-                  13,
-                  weight: FontWeight.w600,
-                  color: PulseRating.color(item.rating!),
-                ),
-              ),
-            ),
-          // Status.
+          // Status on the left, the Pulse answer on the right.
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
             child: Row(
@@ -1417,6 +1405,28 @@ class ThreadQuoteHeader extends StatelessWidget {
                   FeedbackStatus.label(item.status),
                   style: threadText(13.5, weight: FontWeight.w600, color: color),
                 ),
+                if (!item.isFromBox && item.rating != null) ...[
+                  const Spacer(),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: PulseRating.color(item.rating!)
+                          .withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      '${management ? 'Said' : 'You said'} ${PulseRating.label(item.rating!)}',
+                      style: threadText(
+                        13,
+                        weight: FontWeight.w600,
+                        color: PulseRating.color(item.rating!),
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

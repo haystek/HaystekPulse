@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
+import '../demo_data.dart';
 import '../models/employee.dart';
 import 'dual_role.dart';
 import 'notification_service.dart';
@@ -99,15 +100,30 @@ class BroadcastService {
       .orderBy('createdAt', descending: true)
       .limit(100)
       .snapshots()
-      .map((s) => s.docs.map(Broadcast.fromDoc).toList());
+      .map((s) {
+        final real = s.docs.map(Broadcast.fromDoc).toList();
+        if (!DemoData.on) return real;
+        // Sample broadcasts too (memory only).
+        final old = DateTime(2000);
+        return [...real, ...DemoData.broadcasts()]..sort(
+          (a, b) => (b.createdAt ?? old).compareTo(a.createdAt ?? old),
+        );
+      });
 
-  Stream<Broadcast?> watchOne(String id) => _updates
+  Stream<Broadcast?> watchOne(String id) => id.startsWith(DemoData.idPrefix)
+      ? Stream.value(
+          DemoData.broadcasts().where((b) => b.id == id).firstOrNull,
+        )
+      : _updates
       .doc(id)
       .snapshots()
       .map((d) => d.exists ? Broadcast.fromDoc(d) : null);
 
   /// Oldest first, like a chat.
-  Stream<List<BroadcastComment>> watchComments(String id) => _updates
+  Stream<List<BroadcastComment>> watchComments(String id) =>
+      id.startsWith(DemoData.idPrefix)
+      ? Stream.value(DemoData.broadcastComments(id))
+      : _updates
       .doc(id)
       .collection('comments')
       .orderBy('createdAt')
@@ -179,6 +195,8 @@ class BroadcastService {
   }) async {
     final t = text.trim();
     if (t.isEmpty) return;
+    // Sample broadcast: nothing is saved.
+    if (broadcastId.startsWith(DemoData.idPrefix)) return;
     final ref = _updates.doc(broadcastId);
     final batch = _db.batch();
     batch.set(ref.collection('comments').doc(), <String, dynamic>{
@@ -209,5 +227,7 @@ class BroadcastService {
       .catchError((Object e) => debugPrint('[Broadcast] markSeen: $e'));
 
   /// Admin: removes a broadcast (for example sent by mistake).
-  Future<void> delete(String id) => _updates.doc(id).delete();
+  Future<void> delete(String id) => id.startsWith(DemoData.idPrefix)
+      ? Future<void>.value()
+      : _updates.doc(id).delete();
 }

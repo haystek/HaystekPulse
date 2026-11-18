@@ -3,6 +3,8 @@ import 'dart:async';
 import 'models/feedback_item.dart';
 import 'models/pulse_rating.dart';
 import 'models/pulse_totals.dart';
+import 'services/feedback_service.dart';
+import 'services/broadcast_service.dart';
 import 'services/pulse_service.dart';
 
 /// Sample data, so the app can be shown before real answers come in.
@@ -63,87 +65,18 @@ class DemoData {
   /// comment. The two "New" ones have no reply, to test "Needs reply".
   static const List<(String, String, bool, String, String, String)>
   _comments = [
-    // New, no reply yet.
-    (
-      PulseRating.difficult,
-      'Too many late-night calls with the client this week. Hard to switch off.',
-      true,
-      '',
-      FeedbackStatus.newItem,
-      '',
-    ),
-    // Okay.
-    (
-      PulseRating.okay,
-      'Work was fine, but too many meetings. I had little time to actually code.',
-      false,
-      'Ravi Kumar',
-      FeedbackStatus.planned,
-      'Thanks for sharing. We’re trying no-meeting Wednesday afternoons from next week.',
-    ),
-    // Difficult.
-    (
-      PulseRating.difficult,
-      'Very stressful week. The deadline was too tight and I worked late three days.',
-      true,
-      '',
-      FeedbackStatus.underReview,
-      'Thank you for telling us. Your manager will talk with you this week about the workload and timelines.',
-    ),
-    // Okay.
-    (
-      PulseRating.okay,
-      'The requirements changed twice this week, so I had to redo some work.',
-      false,
-      'Priya S',
-      FeedbackStatus.inProgress,
-      'Sorry about that. We’ve asked the product team to finalise requirements before the sprint starts.',
-    ),
-    // Difficult.
-    (
-      PulseRating.difficult,
-      'I’m stuck on a task and don’t know who to ask for help.',
-      false,
-      'Karthik M',
-      FeedbackStatus.inProgress,
-      'We’ve assigned a senior developer to pair with you. They’ll reach out today.',
-    ),
-    // New, no reply yet.
-    (
-      PulseRating.okay,
-      'Not sure what my priorities are after the team change.',
-      true,
-      '',
-      FeedbackStatus.newItem,
-      '',
-    ),
-    // Okay.
-    (
-      PulseRating.okay,
-      'Okay week. The AC in our bay is too cold.',
-      false,
-      'Arjun Reddy',
-      FeedbackStatus.implemented,
-      'We’ve asked facilities to adjust the temperature.',
-    ),
-    // Difficult.
-    (
-      PulseRating.difficult,
-      'The production issue on Tuesday was hard. Nobody knew who was on call.',
-      false,
-      'Sneha Rao',
-      FeedbackStatus.implemented,
-      'We’ve now made an on-call list and shared it with everyone.',
-    ),
-    // Difficult.
-    (
-      PulseRating.difficult,
-      'Not feeling well this week, and it was hard to focus.',
-      true,
-      '',
-      FeedbackStatus.noted,
-      'Please take care of yourself. You can take leave if you need it, and talk to HR anytime.',
-    ),
+    (PulseRating.difficult, 'Too many late-night calls with the client this week. Hard to switch off.', true, '', FeedbackStatus.newItem, ''),
+    (PulseRating.okay, 'Work was fine, but too many meetings. I had little time to actually code.', false, 'Ravi Kumar', FeedbackStatus.planned, 'Thanks for sharing. We’re trying no-meeting Wednesday afternoons from next week.'),
+    (PulseRating.difficult, 'Very stressful week. The deadline was too tight and I worked late three days.', true, '', FeedbackStatus.underReview, 'Thank you for telling us. If you’re comfortable, please share your name here so we can help you with the workload. Sharing it is your choice.'),
+    (PulseRating.okay, 'The requirements changed twice this week, so I had to redo some work.', false, 'Priya S', FeedbackStatus.inProgress, 'Sorry about that. We’ve asked the product team to finalise requirements before the sprint starts.'),
+    (PulseRating.difficult, 'I’m stuck on a task and don’t know who to ask for help.', false, 'Karthik M', FeedbackStatus.inProgress, 'We’ve assigned a senior developer to pair with you. They’ll reach out today.'),
+    (PulseRating.okay, 'Not sure what my priorities are after the team change.', true, '', FeedbackStatus.newItem, ''),
+    (PulseRating.okay, 'My laptop is very slow. Builds take 20 minutes.', false, 'Rahul T', FeedbackStatus.inProgress, 'IT is adding more memory to your laptop this week. A spare laptop is ready at the help desk until then.'),
+    (PulseRating.okay, 'Okay week. The AC in our bay is too cold.', false, 'Arjun Reddy', FeedbackStatus.implemented, 'We’ve asked facilities to adjust the temperature.'),
+    (PulseRating.difficult, 'The production issue on Tuesday was hard. Nobody knew who was on call.', false, 'Sneha Rao', FeedbackStatus.implemented, 'We’ve now made an on-call list and shared it with everyone.'),
+    (PulseRating.difficult, 'Travelling to the client site every day this week was tiring.', true, '', FeedbackStatus.underReview, 'Thanks for sharing. If you’re comfortable, please share your name here so we can check which of your visits can be done online.'),
+    (PulseRating.okay, 'Helping the new joiners took most of my week.', false, 'Divya K', FeedbackStatus.implemented, 'Thank you for helping them. We’ve added a second buddy so the work is shared.'),
+    (PulseRating.difficult, 'Not feeling well this week, and it was hard to focus.', true, '', FeedbackStatus.noted, 'Please take care of yourself. You can take leave if you need it, and talk to HR anytime.'),
   ];
 
   /// Sample comments for one week (none for weeks without sample totals).
@@ -187,69 +120,19 @@ class DemoData {
   /// The two "New" ones have no reply, to test "Needs reply".
   static const List<(int, String, bool, String, String, String, String)>
   _suggestions = [
-    (
-      0,
-      'Can we have a quiet room for calls? The open area is very noisy after lunch.',
-      false,
-      'Sneha Rao',
-      'HST1012',
-      FeedbackStatus.newItem,
-      '',
-    ),
-    (
-      1,
-      'Please add more vegetarian options in the canteen on Fridays.',
-      true,
-      '',
-      '',
-      FeedbackStatus.newItem,
-      '',
-    ),
-    (
-      2,
-      'Can we have a water dispenser on the 3rd floor? Everyone walks down to the 2nd floor to fill bottles.',
-      false,
-      'Ravi Kumar',
-      'HST1001',
-      FeedbackStatus.planned,
-      'Good point. We’ve ordered one, and it should be installed next week.',
-    ),
-    (
-      4,
-      'The meeting room booking often clashes. Two teams show up for the same slot.',
-      false,
-      'Karthik M',
-      'HST1027',
-      FeedbackStatus.inProgress,
-      'Thanks for raising this. We’re moving all bookings to the shared calendar from Monday.',
-    ),
-    (
-      7,
-      'Please allow work from home on Fridays.',
-      true,
-      '',
-      '',
-      FeedbackStatus.underReview,
-      'We’re discussing this with team leads and will share a decision by the end of the month.',
-    ),
-    (
-      12,
-      'The Wi-Fi is very slow after 4 PM.',
-      false,
-      'Anitha P',
-      'HST1009',
-      FeedbackStatus.implemented,
-      'We upgraded the internet plan last week. Please let us know if it’s still slow.',
-    ),
-    (
-      20,
-      'Can we have a short team lunch once a month?',
-      false,
-      'Priya S',
-      'HST1018',
-      FeedbackStatus.noted,
-      'Thanks for the idea. We’ve noted it for next quarter’s budget.',
-    ),
+    (0, 'Can we have a quiet room for calls? The open area is very noisy after lunch.', false, 'Sneha Rao', 'HST1012', FeedbackStatus.newItem, ''),
+    (1, 'Please add more vegetarian options in the canteen on Fridays.', true, '', '', FeedbackStatus.newItem, ''),
+    (1, 'The parking lights near Gate 2 are not working. It is dark after 7 PM.', false, 'Vikram N', 'HST1034', FeedbackStatus.underReview, 'Thanks for flagging this. Facilities is checking the wiring and will update us by Thursday.'),
+    (2, 'Can we have a water dispenser on the 3rd floor? Everyone walks down to the 2nd floor to fill bottles.', false, 'Ravi Kumar', 'HST1001', FeedbackStatus.planned, 'Good point. We’ve ordered one, and it should be installed next week.'),
+    (3, 'Laptop chargers keep going missing from the meeting rooms. Can IT keep a few spares?', true, '', '', FeedbackStatus.planned, 'IT will keep 10 spare chargers at the help desk from Monday. Please return them after use.'),
+    (4, 'The meeting room booking often clashes. Two teams show up for the same slot.', false, 'Karthik M', 'HST1027', FeedbackStatus.inProgress, 'Thanks for raising this. We’re moving all bookings to the shared calendar from Monday.'),
+    (5, 'New joiners wait 3 or 4 days for system access. Can we make this faster?', false, 'Meera J', 'HST1041', FeedbackStatus.inProgress, 'IT and HR are making one checklist so access is ready on day one. It starts with the next batch.'),
+    (7, 'Please allow work from home on Fridays.', true, '', '', FeedbackStatus.underReview, 'We’re discussing this with team leads and will share a decision by the end of the month.'),
+    (9, 'The washroom on the 2nd floor needs cleaning more often.', true, '', '', FeedbackStatus.implemented, 'Cleaning is now twice a day, at 11 AM and 4 PM. Thanks for telling us.'),
+    (12, 'The Wi-Fi is very slow after 4 PM.', false, 'Anitha P', 'HST1009', FeedbackStatus.implemented, 'We upgraded the internet plan last week. Please let us know if it’s still slow.'),
+    (15, 'Can we get standing desks for people with back pain?', false, 'Suresh B', 'HST1007', FeedbackStatus.implemented, 'Six standing desks are now in the 3rd floor bay. You can book them at the front desk.'),
+    (20, 'Can we have a short team lunch once a month?', false, 'Priya S', 'HST1018', FeedbackStatus.noted, 'Thanks for the idea. We’ve noted it for next quarter’s budget.'),
+    (28, 'Can we play music in the pantry?', true, '', '', FeedbackStatus.noted, 'We tried it, but some teams found it distracting. We’ll keep the pantry quiet for now.'),
   ];
 
   /// Sample Suggestion Box entries, newest first.
@@ -326,6 +209,8 @@ class DemoData {
     (4, PulseRating.okay),
     (5, PulseRating.difficult),
     (6, PulseRating.good),
+    (7, PulseRating.okay),
+    (8, PulseRating.difficult),
   ];
 
   /// When a sample answer was sent: the open day of that week, 7:30 PM.
@@ -350,81 +235,25 @@ class DemoData {
   /// (weeks ago, text, anonymous, status, reply) for the comments written
   /// with the Okay and Difficult sample answers above.
   static const List<(int, String, bool, String, String)> _myComments = [
-    (
-      1,
-      'Work was fine, but too many meetings. I had little time to actually code.',
-      false,
-      FeedbackStatus.planned,
-      'Thanks for sharing. We’re trying no-meeting Wednesday afternoons from next week.',
-    ),
-    (
-      2,
-      'Very stressful week. The deadline was too tight and I worked late three days.',
-      true,
-      FeedbackStatus.underReview,
-      'Thank you for telling us. Your manager will talk with you this week about the workload and timelines.',
-    ),
-    (
-      4,
-      'Okay week. The AC in our bay is too cold.',
-      false,
-      FeedbackStatus.implemented,
-      'We’ve asked facilities to adjust the temperature.',
-    ),
-    (
-      5,
-      'Not feeling well this week, and it was hard to focus.',
-      true,
-      FeedbackStatus.noted,
-      'Please take care of yourself. You can take leave if you need it, and talk to HR anytime.',
-    ),
+    (1, 'Work was fine, but too many meetings. I had little time to actually code.', false, FeedbackStatus.planned, 'Thanks for sharing. We’re trying no-meeting Wednesday afternoons from next week.'),
+    (2, 'Very stressful week. The deadline was too tight and I worked late three days.', true, FeedbackStatus.underReview, 'Thank you for telling us. If you’re comfortable, please share your name here so we can help you with the workload. Sharing it is your choice.'),
+    (4, 'Okay week. The AC in our bay is too cold.', false, FeedbackStatus.implemented, 'We’ve asked facilities to adjust the temperature.'),
+    (5, 'Not feeling well this week, and it was hard to focus.', true, FeedbackStatus.noted, 'Please take care of yourself. You can take leave if you need it, and talk to HR anytime.'),
+    (7, 'My laptop is very slow. Builds take 20 minutes.', false, FeedbackStatus.inProgress, 'IT is adding more memory to your laptop this week. A spare laptop is ready at the help desk until then.'),
+    (8, 'Travelling to the client site every day this week was tiring.', true, FeedbackStatus.implemented, 'We’re moving some client visits to online calls for the whole team. Thanks for telling us.'),
   ];
 
   /// (days ago, text, anonymous, status, reply) for sample suggestions.
   /// The first one is New with no reply, to test rows without a reply.
   static const List<(int, String, bool, String, String)> _mySuggestions = [
-    (
-      1,
-      'Can we have a quiet room for calls? The open area is noisy after lunch.',
-      false,
-      FeedbackStatus.newItem,
-      '',
-    ),
-    (
-      3,
-      'Can we have a water dispenser on the 3rd floor? Everyone walks down to the 2nd floor to fill bottles.',
-      false,
-      FeedbackStatus.planned,
-      'Good point. We’ve ordered one, and it should be installed next week.',
-    ),
-    (
-      6,
-      'The meeting room booking often clashes. Two teams show up for the same slot.',
-      false,
-      FeedbackStatus.inProgress,
-      'Thanks for raising this. We’re moving all bookings to the shared calendar from Monday.',
-    ),
-    (
-      10,
-      'Please allow work from home on Fridays.',
-      true,
-      FeedbackStatus.underReview,
-      'We’re discussing this with team leads and will share a decision by the end of the month.',
-    ),
-    (
-      15,
-      'The Wi-Fi is very slow after 4 PM.',
-      false,
-      FeedbackStatus.implemented,
-      'We upgraded the internet plan last week. Please let us know if it’s still slow.',
-    ),
-    (
-      24,
-      'Can we have a short team lunch once a month?',
-      false,
-      FeedbackStatus.noted,
-      'Thanks for the idea. We’ve noted it for next quarter’s budget.',
-    ),
+    (1, 'Can we have a quiet room for calls? The open area is noisy after lunch.', false, FeedbackStatus.newItem, ''),
+    (3, 'Can we have a water dispenser on the 3rd floor? Everyone walks down to the 2nd floor to fill bottles.', false, FeedbackStatus.planned, 'Good point. We’ve ordered one, and it should be installed next week.'),
+    (5, 'Laptop chargers keep going missing from the meeting rooms. Can IT keep a few spares?', true, FeedbackStatus.planned, 'IT will keep 10 spare chargers at the help desk from Monday. Please return them after use.'),
+    (6, 'The meeting room booking often clashes. Two teams show up for the same slot.', false, FeedbackStatus.inProgress, 'Thanks for raising this. We’re moving all bookings to the shared calendar from Monday.'),
+    (10, 'Please allow work from home on Fridays.', true, FeedbackStatus.underReview, 'We’re discussing this with team leads and will share a decision by the end of the month.'),
+    (13, 'The washroom on the 2nd floor needs cleaning more often.', true, FeedbackStatus.implemented, 'Cleaning is now twice a day, at 11 AM and 4 PM. Thanks for telling us.'),
+    (15, 'The Wi-Fi is very slow after 4 PM.', false, FeedbackStatus.implemented, 'We upgraded the internet plan last week. Please let us know if it’s still slow.'),
+    (24, 'Can we have a short team lunch once a month?', false, FeedbackStatus.noted, 'Thanks for the idea. We’ve noted it for next quarter’s budget.'),
   ];
 
   /// Everything the employee "sent": sample suggestions and the comments
@@ -476,6 +305,170 @@ class DemoData {
       (a, b) => (b.createdAt ?? fallback).compareTo(a.createdAt ?? fallback),
     );
     return list;
+  }
+
+  // -------------------------------------------------------------------
+  // Sample conversations (inside a sample item)
+  // -------------------------------------------------------------------
+
+  static FeedbackItem? _find(String id) {
+    for (final f in [...all(), ...mine()]) {
+      if (f.id == id) return f;
+    }
+    return null;
+  }
+
+  /// The steps an item went through to reach its status.
+  static List<String> _path(String status) {
+    switch (status) {
+      case FeedbackStatus.underReview:
+        return const [FeedbackStatus.underReview];
+      case FeedbackStatus.planned:
+        return const [FeedbackStatus.underReview, FeedbackStatus.planned];
+      case FeedbackStatus.inProgress:
+        return const [
+          FeedbackStatus.underReview,
+          FeedbackStatus.planned,
+          FeedbackStatus.inProgress,
+        ];
+      case FeedbackStatus.implemented:
+        return const [
+          FeedbackStatus.underReview,
+          FeedbackStatus.planned,
+          FeedbackStatus.inProgress,
+          FeedbackStatus.implemented,
+        ];
+      case FeedbackStatus.noted:
+        return const [FeedbackStatus.underReview, FeedbackStatus.noted];
+      default:
+        return const [];
+    }
+  }
+
+  /// A sample item's conversation: each status change, admin's reply with
+  /// the last one, and for Implemented a short thank-you from the employee.
+  static List<ThreadEntry> thread(String id) {
+    final item = _find(id);
+    if (item == null) return const [];
+    final steps = _path(item.status);
+    final reply = item.managementMessage.trim();
+    if (steps.isEmpty && reply.isEmpty) return const [];
+
+    final now = DateTime.now();
+    final start = item.createdAt ?? now.subtract(const Duration(days: 1));
+    var end = start.add(const Duration(days: 3));
+    if (end.isAfter(now)) end = now;
+    final thanks = item.status == FeedbackStatus.implemented;
+    final count = (steps.isEmpty ? 1 : steps.length) + (thanks ? 1 : 0);
+    final gap = end.difference(start) ~/ (count + 1);
+    DateTime at(int i) => start.add(gap * (i + 1));
+
+    final list = <ThreadEntry>[];
+    if (steps.isEmpty) {
+      list.add(
+        ThreadEntry(id: '${id}_t0', fromManagement: true, text: reply, at: at(0)),
+      );
+    } else {
+      for (var i = 0; i < steps.length; i++) {
+        final last = i == steps.length - 1;
+        list.add(
+          ThreadEntry(
+            id: '${id}_t$i',
+            fromManagement: true,
+            text: last ? reply : '',
+            status: steps[i],
+            at: at(i),
+          ),
+        );
+      }
+    }
+    if (thanks) {
+      list.add(
+        ThreadEntry(
+          id: '${id}_thanks',
+          fromManagement: false,
+          text: 'Thank you, this helps a lot.',
+          at: at(count - 1),
+        ),
+      );
+    }
+    return list;
+  }
+
+  /// Live: redraws when the sample's status is changed in the app.
+  static Stream<List<ThreadEntry>> watchThread(String id) async* {
+    yield thread(id);
+    await for (final _ in changes) {
+      yield thread(id);
+    }
+  }
+
+  // -------------------------------------------------------------------
+  // Broadcast samples (admin and employee)
+  // -------------------------------------------------------------------
+
+  /// (days ago, title, message, [(admin, name or '', text, hours after)]).
+  static const List<(int, String, String, List<(bool, String, String, int)>)>
+  _broadcasts = [
+    (1, 'Quiet room is ready on the 4th floor', 'Book it in the shared calendar, 30 minutes at a time. Thanks for the suggestion!', [
+      (false, 'Sneha Rao', 'Thank you! This helps a lot for client calls.', 2),
+      (false, '', 'Can we book it for longer meetings too?', 5),
+      (true, '', 'For now 30 minutes, so everyone gets a turn. We’ll check again next month.', 7),
+    ]),
+    (3, 'New water dispenser on the 3rd floor', 'It’s next to the lift. No more walking down to the 2nd floor.', [
+      (false, '', 'Finally! Thanks team.', 3),
+    ]),
+    (5, 'Fire drill on Thursday at 11 AM', 'When the alarm rings, please leave by the nearest stairs and meet at the main gate. It takes about 15 minutes.', [
+      (false, '', 'Will the lifts be off during the drill?', 2),
+      (true, '', 'Yes, please use the stairs only.', 3),
+    ]),
+    (8, 'Team lunch on the last Friday of the month', 'Lunch is on us. Please tell your lead about any food preferences by Wednesday.', [
+      (false, 'Priya S', 'Please add vegetarian options.', 1),
+      (true, '', 'Yes, there will be vegetarian and vegan options.', 4),
+    ]),
+    (11, 'Standing desks are here', 'Six standing desks are in the 3rd floor bay. You can book them at the front desk.', [
+      (false, 'Suresh B', 'Thank you, my back is happy!', 4),
+    ]),
+    (14, 'Wi-Fi upgrade done', 'We upgraded the internet plan. Please tell us if it is still slow after 4 PM.', []),
+    (20, 'New on-call list for production issues', 'The on-call list is now on the team board. Please check your week and swap with a teammate if needed.', [
+      (false, 'Sneha Rao', 'This is very helpful. Thank you.', 6),
+    ]),
+  ];
+
+  static DateTime _bcAt(int daysAgo) {
+    final n = DateTime.now();
+    return DateTime(n.year, n.month, n.day - daysAgo, 11, 0);
+  }
+
+  /// Sample broadcasts, newest first.
+  static List<Broadcast> broadcasts() => [
+    for (var i = 0; i < _broadcasts.length; i++)
+      Broadcast(
+        id: '${idPrefix}bc_$i',
+        title: _broadcasts[i].$2,
+        body: _broadcasts[i].$3,
+        createdAt: _bcAt(_broadcasts[i].$1),
+        commentCount: _broadcasts[i].$4.length,
+      ),
+  ];
+
+  /// Comments of one sample broadcast, oldest first.
+  static List<BroadcastComment> broadcastComments(String id) {
+    for (var i = 0; i < _broadcasts.length; i++) {
+      if ('${idPrefix}bc_$i' != id) continue;
+      final at = _bcAt(_broadcasts[i].$1);
+      return [
+        for (var j = 0; j < _broadcasts[i].$4.length; j++)
+          BroadcastComment(
+            id: '${id}_c$j',
+            text: _broadcasts[i].$4[j].$3,
+            admin: _broadcasts[i].$4[j].$1,
+            name: _broadcasts[i].$4[j].$2.isEmpty ? null : _broadcasts[i].$4[j].$2,
+            createdAt: at.add(Duration(hours: _broadcasts[i].$4[j].$4)),
+          ),
+      ];
+    }
+    return const [];
   }
 
   static FeedbackItem _withChanges(FeedbackItem f) {
