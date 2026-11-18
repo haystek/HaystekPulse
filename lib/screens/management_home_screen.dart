@@ -88,6 +88,10 @@ class _ManagementHomeScreenState extends State<ManagementHomeScreen>
   bool _refreshing = false;
   int _tab = 0;
 
+  /// The Broadcast tab is built the first time it is opened, so its
+  /// first-time tips show there and not on the Weekly Pulse tab.
+  bool _broadcastOpened = false;
+
   /// When back was last pressed on the home screen.
   DateTime? _lastBack;
 
@@ -386,7 +390,9 @@ class _ManagementHomeScreenState extends State<ManagementHomeScreen>
                                   ),
                                 ),
                                 // Broadcast: send to everyone, read the comments.
-                                BroadcastList(employee: widget.employee),
+                                _broadcastOpened
+                                    ? BroadcastList(employee: widget.employee)
+                                    : const SizedBox.shrink(),
                               ],
                             ),
                             // Refresh: a light white cover with a spinner in
@@ -410,7 +416,10 @@ class _ManagementHomeScreenState extends State<ManagementHomeScreen>
               bottomNavigationBar: _BottomTabs(
                 index: _tab,
                 newCount: newCount,
-                onTap: (i) => setState(() => _tab = i),
+                onTap: (i) => setState(() {
+                  _tab = i;
+                  if (i == 2) _broadcastOpened = true;
+                }),
               ),
             ),
           ),
