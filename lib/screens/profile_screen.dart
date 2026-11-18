@@ -185,61 +185,15 @@ class _AdminProfile extends StatelessWidget {
                   style: _s(14.5, c: AppColors.muted),
                 ),
 
-                // Admins: the promise that keeps people speaking openly.
-                if (isAdmin) ...[
-                  const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
-                    decoration: BoxDecoration(
-                      color: AppColors.blueTint,
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.shield_outlined,
-                              size: 18,
-                              color: AppColors.blue,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Your promise to the team',
-                              style: _s(14.5, w: FontWeight.w600),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Text.rich(
-                          TextSpan(
-                            children: [
-                              const TextSpan(
-                                text: 'You see every message, but ',
-                              ),
-                              TextSpan(
-                                text: 'never who wrote it',
-                                style: _s(14, w: FontWeight.w500),
-                              ),
-                              const TextSpan(
-                                text:
-                                    ', unless they choose “With my name”. '
-                                    'This is what makes people speak openly.',
-                              ),
-                            ],
-                          ),
-                          style: _s(14, c: AppColors.muted, h: 1.45),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
                 const SizedBox(height: 14),
 
                 // Settings. The border is on the Material itself, so the
                 // rows and the tap ripple stay inside the rounded corners.
-                Material(
+                // First time: a short tip on each row (admins).
+                TourStarter(
+                  id: 'admin_profile_tour_v1',
+                  steps: _AdminTour.steps,
+                  child: Material(
                   color: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(18),
@@ -249,6 +203,7 @@ class _AdminProfile extends StatelessWidget {
                   child: Column(
                     children: [
                       _ListRow(
+                        key: _AdminTour.password,
                         icon: Icons.lock_outline,
                         title: 'Change password',
                         sub: 'Use at least 8 characters',
@@ -261,17 +216,18 @@ class _AdminProfile extends StatelessWidget {
                       divider(),
                       // Reset admin code (admins only).
                       if (isAdmin) ...[
-                        const AdminCodeRow(),
-                        divider(),
-                        // HR/Ops: also use this phone as an employee.
-                        const _DualRoleAdminRow(),
+                        AdminCodeRow(key: _AdminTour.code),
                         divider(),
                         _ListRow(
+                          key: _AdminTour.reset,
                           icon: Icons.vpn_key_outlined,
                           title: 'Reset admin code',
                           sub: 'Make a new code and share it with HR',
                           onTap: () => showResetAdminCode(context),
                         ),
+                        divider(),
+                        // HR/Ops: also use this phone as an employee.
+                        _DualRoleAdminRow(key: _AdminTour.employee),
                         divider(),
                       ],
                       // Backup code (older email employee accounts only).
@@ -289,12 +245,13 @@ class _AdminProfile extends StatelessWidget {
                         divider(),
                       ],
                       _ListRow(
+                        key: _AdminTour.help,
                         icon: Icons.shield_outlined,
                         title: 'Help & Privacy',
                         sub: 'Questions and answers about the app',
                         onTap: () => Navigator.of(context).push(
                           MaterialPageRoute<void>(
-                            builder: (_) => const HelpScreen(),
+                            builder: (_) => HelpScreen(admin: isAdmin),
                           ),
                         ),
                       ),
@@ -316,10 +273,12 @@ class _AdminProfile extends StatelessWidget {
                     ],
                   ),
                 ),
+                ),
                 const SizedBox(height: 24),
 
                 // Sign out.
                 OutlinedButton.icon(
+                  key: _AdminTour.signOut,
                   onPressed: () => confirmSignOut(context),
                   icon: const Icon(Icons.logout_rounded, size: 20),
                   label: const Text('Sign out'),
@@ -518,6 +477,7 @@ class _ProfilePicture extends StatelessWidget {
 /// One row in the admin profile list: icon square, title, small text, arrow.
 class _ListRow extends StatelessWidget {
   const _ListRow({
+    super.key,
     required this.icon,
     required this.title,
     required this.sub,
@@ -924,7 +884,7 @@ class _CodeProfileState extends State<_CodeProfile> {
           ),
         ),
         const SizedBox(width: 10),
-        Expanded(child: Text(t, style: _s(15))),
+        Expanded(child: Text(t, style: _s(13.5))),
       ],
     ),
   );
@@ -1006,11 +966,13 @@ class _CodeProfileState extends State<_CodeProfile> {
   @override
   Widget build(BuildContext context) {
     final code = _code;
+    // profbg: light grey page, white cards.
+    const page = Color(0xFFF4F6FA);
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: page,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
+        backgroundColor: page,
+        surfaceTintColor: page,
         leadingWidth: 68,
         leading: const AppBackButton(),
         title: const SizedBox.shrink(),
@@ -1021,10 +983,7 @@ class _CodeProfileState extends State<_CodeProfile> {
           alignment: Alignment.topCenter,
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 560),
-            child: Column(
-              children: [
-                Expanded(
-                  child: ListView(
+            child: ListView(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
               children: [
                 // Who you are here: nobody.
@@ -1139,6 +1098,13 @@ class _CodeProfileState extends State<_CodeProfile> {
                         color: const Color(0xFFC9D6FF),
                         width: 1.5,
                       ),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x0F0E1A3A),
+                          blurRadius: 10,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
                     ),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1199,6 +1165,13 @@ class _CodeProfileState extends State<_CodeProfile> {
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(18),
                       border: Border.all(color: _line),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x0F0E1A3A),
+                          blurRadius: 10,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1229,7 +1202,7 @@ class _CodeProfileState extends State<_CodeProfile> {
                                   ),
                                   Text(
                                     'Needed only when you change your phone',
-                                    style: _s(13, c: AppColors.muted),
+                                    style: _s(13.5, c: AppColors.muted),
                                   ),
                                 ],
                               ),
@@ -1300,6 +1273,8 @@ class _CodeProfileState extends State<_CodeProfile> {
                   key: _ProfileTour.help,
                   child: Material(
                     color: Colors.white,
+                    elevation: 1.5,
+                    shadowColor: const Color(0x330E1A3A),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(18),
                       side: const BorderSide(color: _line),
@@ -1345,14 +1320,9 @@ class _CodeProfileState extends State<_CodeProfile> {
                     ),
                   ),
                 ),
-              ],
-            ),
-                ),
-                // Always at the very bottom.
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(20, 8, 20, 12),
-                  child: _VersionLine(),
-                ),
+                // Version: end of the list.
+                const SizedBox(height: 16),
+                const _VersionLine(),
               ],
             ),
           ),
@@ -1382,7 +1352,7 @@ class _VersionLine extends StatelessWidget {
         return Text(
           text,
           textAlign: TextAlign.center,
-          style: _s(13, c: _soft),
+          style: _s(12, c: _soft),
         );
       },
     );
@@ -1427,7 +1397,7 @@ class _ProfileTour {
 /// Admin Profile (HR/Ops): "Also join as Employee" (code only), or once
 /// joined, "Switch to Employee" (no typing).
 class _DualRoleAdminRow extends StatefulWidget {
-  const _DualRoleAdminRow();
+  const _DualRoleAdminRow({super.key});
 
   @override
   State<_DualRoleAdminRow> createState() => _DualRoleAdminRowState();
@@ -1482,4 +1452,51 @@ class _DualRoleAdminRowState extends State<_DualRoleAdminRow> {
       onTap: _on ? _switch : _join,
     );
   }
+}
+
+/// Admin Profile tips (first time only).
+class _AdminTour {
+  static final password = GlobalKey(debugLabel: 'tourAdminPassword');
+  static final code = GlobalKey(debugLabel: 'tourAdminCode');
+  static final employee = GlobalKey(debugLabel: 'tourAdminEmployee');
+  static final reset = GlobalKey(debugLabel: 'tourAdminReset');
+  static final help = GlobalKey(debugLabel: 'tourAdminHelp');
+  static final signOut = GlobalKey(debugLabel: 'tourAdminSignOut');
+
+  static List<TourStep> steps() => [
+    TourStep(
+      password,
+      'Change password',
+      'Change the password you use to sign in.',
+    ),
+    TourStep(
+      code,
+      'Admin code',
+      'New admins need this code to sign up. Tap the eye to see it, and '
+          'copy it to share with HR.',
+    ),
+    TourStep(
+      reset,
+      'Reset admin code',
+      'Makes a new admin code. The old one stops working, so share the '
+          'new one with HR.',
+    ),
+    TourStep(
+      employee,
+      'Also join as Employee',
+      'Use this phone as an employee too. Once joined, switch between '
+          'Admin and Employee here.',
+    ),
+    TourStep(
+      help,
+      'Help & Privacy',
+      'You see every message, but never who wrote it, unless they choose '
+          '“With my name”. Answers about the app are here.',
+    ),
+    TourStep(
+      signOut,
+      'Sign out',
+      'Sign out of the admin side on this phone.',
+    ),
+  ];
 }

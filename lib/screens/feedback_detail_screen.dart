@@ -10,6 +10,7 @@ import '../services/feedback_service.dart';
 import '../theme/app_theme.dart';
 import 'broadcast_screens.dart';
 import 'feedback_thread_screen.dart';
+import '../widgets/app_tour.dart';
 import '../services/notification_service.dart';
 
 /// Inter font for everything on this screen (same as the other screens).
@@ -283,6 +284,7 @@ class _FeedbackDetailScreenState extends State<FeedbackDetailScreen> {
               actionIcon: Icons.campaign_outlined,
               actionTooltip: 'Broadcast to everyone',
               onAction: _openBroadcast,
+              actionKey: _AdminChatTour.broadcast,
             ),
             Expanded(
               child: StreamBuilder<List<ThreadEntry>>(
@@ -325,11 +327,19 @@ class _FeedbackDetailScreenState extends State<FeedbackDetailScreen> {
                 },
               ),
             ),
-            ThreadComposer(
+            // First time: 4 short tips (Broadcast, status, reply, send).
+            TourStarter(
+              id: 'admin_chat_tour_v1',
+              steps: _AdminChatTour.steps,
+              child: ThreadComposer(
               controller: _reply,
+              fieldKey: _AdminChatTour.reply,
+              sendKey: _AdminChatTour.send,
               hint: name == null ? 'Reply to the employee…' : 'Reply to $name…',
               onSend: _sendReply,
-              leading: Tooltip(
+              leading: KeyedSubtree(
+                key: _AdminChatTour.status,
+                child: Tooltip(
                 message: 'Change status',
                 child: Material(
                   color: Colors.white,
@@ -351,6 +361,8 @@ class _FeedbackDetailScreenState extends State<FeedbackDetailScreen> {
                   ),
                 ),
               ),
+              ),
+            ),
             ),
           ],
         ),
@@ -509,94 +521,94 @@ class _ShareDialogState extends State<_ShareDialog> {
     child: Text(s, style: _s(13.5, w: FontWeight.w500, c: _muted)),
   );
 
-  /// Only the employee | Employee + everyone, with a sliding highlight.
+  /// Only the employee / Employee + everyone.
+  // Design A: two choices as rows.
   Widget _switch() {
-    Widget label(IconData icon, String text, bool on, bool everyone) =>
-        Expanded(
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: () => _choose(everyone),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 6),
-              child: Center(
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
+    Widget option({
+      required IconData icon,
+      required String title,
+      required String line,
+      required bool everyone,
+    }) {
+      final on = _everyone == everyone;
+      return Material(
+        color: on ? const Color(0xFFF5F8FF) : Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: BorderSide(
+            color: on ? AppColors.blue : _line,
+            width: 1.5,
+          ),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => _choose(everyone),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 11, 14, 11),
+            child: Row(
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: on ? AppColors.blue : const Color(0xFFEEF2FA),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    icon,
+                    size: 18,
+                    color: on ? Colors.white : _muted,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(
-                        icon,
-                        size: 17,
-                        color: on ? AppColors.blue : _muted,
-                      ),
-                      const SizedBox(width: 6),
-                      AnimatedDefaultTextStyle(
-                        duration: const Duration(milliseconds: 220),
-                        curve: Curves.easeOutCubic,
-                        style: _s(
-                          13.5,
-                          w: on ? FontWeight.w600 : FontWeight.w500,
-                          c: on ? AppColors.blue : _muted,
-                        ),
-                        child: Text(text, maxLines: 1),
-                      ),
+                      Text(title, style: _s(15, w: FontWeight.w600)),
+                      const SizedBox(height: 1),
+                      Text(line, style: _s(12.5, c: _muted)),
                     ],
                   ),
                 ),
-              ),
-            ),
-          ),
-        );
-    return Container(
-      height: 46,
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF1F4F9),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Stack(
-        children: [
-          AnimatedAlign(
-            duration: const Duration(milliseconds: 240),
-            curve: Curves.easeOutCubic,
-            alignment: _everyone ? Alignment.centerRight : Alignment.centerLeft,
-            child: FractionallySizedBox(
-              widthFactor: 0.5,
-              heightFactor: 1,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(11),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x2E0E1A3A),
-                      blurRadius: 8,
-                      offset: Offset(0, 2),
-                      spreadRadius: -2,
+                const SizedBox(width: 10),
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  width: 20,
+                  height: 20,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: on ? AppColors.blue : const Color(0xFFC9D0DC),
+                      width: on ? 6 : 2,
                     ),
-                  ],
+                  ),
                 ),
-              ),
+              ],
             ),
           ),
-          Row(
-            children: [
-              label(
-                Icons.person_outline_rounded,
-                'Only the employee',
-                !_everyone,
-                false,
-              ),
-              label(
-                Icons.campaign_outlined,
-                'Employee + everyone',
-                _everyone,
-                true,
-              ),
-            ],
-          ),
-        ],
-      ),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        option(
+          icon: Icons.person_outline_rounded,
+          title: 'Only the employee',
+          line: 'Only the person who sent it',
+          everyone: false,
+        ),
+        const SizedBox(height: 8),
+        option(
+          icon: Icons.campaign_outlined,
+          title: 'Employee + everyone',
+          line: 'Also shared as a broadcast, no name',
+          everyone: true,
+        ),
+      ],
     );
   }
 
@@ -1218,4 +1230,38 @@ class _StatusRow extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Admin chat tips (first time only).
+class _AdminChatTour {
+  static final broadcast = GlobalKey(debugLabel: 'tourBroadcast');
+  static final status = GlobalKey(debugLabel: 'tourStatus');
+  static final reply = GlobalKey(debugLabel: 'tourReply');
+  static final send = GlobalKey(debugLabel: 'tourSend');
+
+  static List<TourStep> steps() => [
+    TourStep(
+      broadcast,
+      'Share with everyone',
+      'Send a broadcast about this to all employees. The sender’s name '
+          'is never shared.',
+    ),
+    TourStep(
+      status,
+      'Change status',
+      'Move it to Under Review, Planned, In Progress, Implemented or '
+          'Noted. The employee sees the change.',
+    ),
+    TourStep(
+      reply,
+      'Reply',
+      'Write to the employee here. Only they see it, and they get a '
+          'notification.',
+    ),
+    TourStep(
+      send,
+      'Send',
+      'Tap to send your reply.',
+    ),
+  ];
 }

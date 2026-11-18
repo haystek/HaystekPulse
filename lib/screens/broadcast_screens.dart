@@ -8,6 +8,7 @@ import '../services/broadcast_service.dart';
 import '../services/typed_name.dart';
 import '../theme/app_theme.dart';
 import '../widgets/ui.dart';
+import '../widgets/app_tour.dart';
 import 'typed_name_field.dart';
 import 'feedback_thread_screen.dart'
     show
@@ -163,7 +164,7 @@ class _BroadcastListState extends State<BroadcastList> {
         } else {
           for (final b in items) {
             children
-              ..add(_Card(b: b, onTap: () => _open(b)))
+              ..add(_Card(b: b, admin: admin, onTap: () => _open(b)))
               ..add(const SizedBox(height: 10));
           }
         }
@@ -189,9 +190,24 @@ class _BroadcastListState extends State<BroadcastList> {
 class _ShareBox extends StatelessWidget {
   const _ShareBox();
 
+  static final _shareKey = GlobalKey(debugLabel: 'tourShare');
+
   @override
   Widget build(BuildContext context) {
-    return Material(
+    // First time: one tip on this box.
+    return TourStarter(
+      id: 'admin_broadcast_tour_v1',
+      steps: () => [
+        TourStep(
+          _shareKey,
+          'Share an update',
+          'Tap here to send a broadcast to all employees. Everyone gets a '
+              'notification and can comment.',
+        ),
+      ],
+      child: KeyedSubtree(
+      key: _shareKey,
+      child: Material(
       color: const Color(0xFFF6F8FB),
       borderRadius: BorderRadius.circular(18),
       clipBehavior: Clip.antiAlias,
@@ -223,7 +239,9 @@ class _ShareBox extends StatelessWidget {
                   style: threadText(14.5, color: threadSoft),
                 ),
               ),
-              Container(
+              Tooltip(
+                message: 'New broadcast',
+                child: Container(
                 width: 34,
                 height: 34,
                 decoration: BoxDecoration(
@@ -237,19 +255,25 @@ class _ShareBox extends StatelessWidget {
                   color: AppColors.blue,
                 ),
               ),
+              ),
             ],
           ),
         ),
       ),
+      ),
+    ),
     );
   }
 }
 
 class _Card extends StatelessWidget {
-  const _Card({required this.b, required this.onTap});
+  const _Card({required this.b, required this.onTap, this.admin = false});
 
   final Broadcast b;
   final VoidCallback onTap;
+
+  /// Admin sees "No comments" instead of "Be the first to comment".
+  final bool admin;
 
   @override
   Widget build(BuildContext context) {
@@ -272,10 +296,13 @@ class _Card extends StatelessWidget {
                 children: [
                   Text(
                     b.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                     style: threadText(
-                      15.5,
-                      weight: FontWeight.w600,
-                      color: AppColors.ink,
+                      15,
+                      weight: FontWeight.w500,
+                      color: const Color(0xFF111827),
+                      height: 1.4,
                     ),
                   ),
                   if (b.quote != null) ...[
@@ -289,8 +316,8 @@ class _Card extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: threadText(
-                        14,
-                        color: AppColors.muted,
+                        13.5,
+                        color: threadSoft,
                         height: 1.4,
                       ),
                     ),
@@ -304,10 +331,10 @@ class _Card extends StatelessWidget {
                         color: AppColors.blue,
                       ),
                       const SizedBox(width: 6),
-                      Flexible(
+                      Expanded(
                         child: Text(
                           count == 0
-                              ? 'Be the first to comment'
+                              ? (admin ? 'No comments' : 'Be the first to comment')
                               : count == 1
                               ? '1 comment'
                               : '$count comments',
@@ -316,12 +343,13 @@ class _Card extends StatelessWidget {
                           style: threadText(
                             12.5,
                             weight: FontWeight.w500,
-                            color: AppColors.blue,
+                            color: admin && count == 0
+                                ? threadSoft
+                                : AppColors.blue,
                           ),
                         ),
                       ),
                       const SizedBox(width: 10),
-                      const Spacer(),
                       Text(
                         _when(b.createdAt),
                         style: threadText(12, color: AppColors.muted),
@@ -517,6 +545,9 @@ class _BroadcastDetailScreenState extends State<BroadcastDetailScreen> {
     );
   }
 
+  /// For the first-time tip on the delete button.
+  static final _deleteKey = GlobalKey(debugLabel: 'tourDelete');
+
   Future<void> _delete() async {
     final ok = await showDialog<bool>(
       context: context,
@@ -571,12 +602,24 @@ class _BroadcastDetailScreenState extends State<BroadcastDetailScreen> {
           title: const SizedBox.shrink(),
           actions: [
             if (_admin)
-              IconButton(
-                tooltip: 'Delete',
-                onPressed: _delete,
-                icon: const Icon(
-                  Icons.delete_outline_rounded,
-                  color: threadSoft,
+              // First time: one tip on the delete button.
+              TourStarter(
+                id: 'admin_broadcast_delete_tip_v1',
+                steps: () => [
+                  TourStep(
+                    _deleteKey,
+                    'Delete broadcast',
+                    'Tap to delete this broadcast. It will be removed for everyone.',
+                  ),
+                ],
+                child: IconButton(
+                  key: _deleteKey,
+                  tooltip: 'Delete',
+                  onPressed: _delete,
+                  icon: const Icon(
+                    Icons.delete_outline_rounded,
+                    color: threadSoft,
+                  ),
                 ),
               ),
             const ThreadTitlePill('Broadcast', icon: Icons.campaign_outlined),

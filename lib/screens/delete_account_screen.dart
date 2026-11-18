@@ -184,13 +184,14 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
 
   Widget _point(IconData icon, String text, {Color color = AppColors.ink}) {
     return Padding(
-      padding: const EdgeInsets.only(top: 8),
+      // delsize: a little smaller so it fits on smaller phones.
+      padding: const EdgeInsets.only(top: 7),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 18, color: color),
+          Icon(icon, size: 17, color: color),
           const SizedBox(width: 10),
-          Expanded(child: Text(text, style: _t(14, height: 1.4))),
+          Expanded(child: Text(text, style: _t(13, height: 1.38))),
         ],
       ),
     );
@@ -226,16 +227,16 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
               children: [
                 Text(
                   'Delete your account?',
-                  style: _t(24, weight: FontWeight.w500),
+                  style: _t(22, weight: FontWeight.w600),
                 ),
                 const SizedBox(height: 6),
                 Text(
                   'Do this only when you leave Haystek. For a new phone or '
                   'a reinstall, you don’t need to delete anything. This '
                   'can’t be undone.',
-                  style: _t(14.5, color: AppColors.muted, height: 1.45),
+                  style: _t(13.5, color: AppColors.muted, height: 1.42),
                 ),
-                const SizedBox(height: 18),
+                const SizedBox(height: 14),
 
                 // What is lost.
                 Container(
@@ -300,7 +301,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 22),
+                const SizedBox(height: 16),
 
                 if (needSecret) ...[
                   TextField(
@@ -341,7 +342,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                   const SizedBox(height: 10),
                   Text(_error!, style: _t(13.5, color: _red)),
                 ],
-                const SizedBox(height: 24),
+                const SizedBox(height: 18),
 
                 // Cancel: the big, easy choice.
                 FilledButton(

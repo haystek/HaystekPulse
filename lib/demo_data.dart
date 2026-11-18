@@ -39,6 +39,7 @@ class DemoData {
     [9, 5, 3, 1], //   this week:   18 of 30 so far, still open
   ];
 
+
   static Map<String, PulseTotals> weeks(String thisWeek) {
     final back = _sample.length - 1;
     return {
@@ -52,16 +53,12 @@ class DemoData {
         ),
     };
   }
-
   /// Sample items start with this id, so the app never saves them.
   static const String idPrefix = 'demo_';
-
   static bool isDemo(FeedbackItem item) => item.id.startsWith(idPrefix);
-
   // -------------------------------------------------------------------
   // Weekly Pulse comment samples (management)
   // -------------------------------------------------------------------
-
   /// (rating, text, anonymous, name, status, reply) for each sample
   /// comment. The two "New" ones have no reply, to test "Needs reply".
   static const List<(String, String, bool, String, String, String)>

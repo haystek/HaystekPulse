@@ -10,9 +10,32 @@ import 'package:flutter/widgets.dart';
 class PulseTextScaler extends TextScaler {
   const PulseTextScaler(this.widthFactor);
 
-  /// 390 wide (a normal iPhone) = 1.0.
-  factory PulseTextScaler.forWidth(double width) =>
-      PulseTextScaler((width / 390).clamp(0.96, 1.06));
+  /// Screen width -> size step (straight lines in between):
+  ///   360 and less (small Android, iPhone SE)  92%
+  ///   390 (iPhone 16)                          96%
+  ///   412 (S10+, most big Androids)           100%
+  ///   440 and more (iPhone Pro Max, tablets)  106%
+  /// Same rule for Android and iPhone.
+  factory PulseTextScaler.forWidth(double width) {
+    const steps = _widthSteps;
+    if (width <= steps.first[0]) return PulseTextScaler(steps.first[1]);
+    for (var i = 1; i < steps.length; i++) {
+      final p = steps[i - 1];
+      final q = steps[i];
+      if (width <= q[0]) {
+        final t = (width - p[0]) / (q[0] - p[0]);
+        return PulseTextScaler(p[1] + t * (q[1] - p[1]));
+      }
+    }
+    return PulseTextScaler(steps.last[1]);
+  }
+
+  static const List<List<double>> _widthSteps = [
+    [360, 0.92],
+    [390, 0.96],
+    [412, 1.00],
+    [440, 1.06],
+  ];
 
   final double widthFactor;
 

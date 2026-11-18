@@ -794,7 +794,7 @@ class _RatingTile extends StatelessWidget {
                             textAlign: TextAlign.center,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: _inter(12, color: AppColors.muted),
+                            style: _inter(13, color: _soft, height: 1.3),
                           ),
                         ],
                       ),

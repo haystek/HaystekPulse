@@ -1010,7 +1010,13 @@ class ThreadComposer extends StatelessWidget {
     required this.onSend,
     this.footnote,
     this.leading,
+    this.fieldKey,
+    this.sendKey,
   });
+
+  /// For first-time tips on the reply box and the send button.
+  final GlobalKey? fieldKey;
+  final GlobalKey? sendKey;
 
   final TextEditingController controller;
   final String hint;
@@ -1040,7 +1046,9 @@ class ThreadComposer extends StatelessWidget {
                 children: [
                   if (leading != null) ...[leading!, const SizedBox(width: 10)],
                   Expanded(
-                    child: TextField(
+                    child: KeyedSubtree(
+                      key: fieldKey,
+                      child: TextField(
                       controller: controller,
                       minLines: 1,
                       maxLines: 5,
@@ -1081,9 +1089,12 @@ class ThreadComposer extends StatelessWidget {
                         ),
                       ),
                     ),
+                    ),
                   ),
                   const SizedBox(width: 10),
-                  Material(
+                  KeyedSubtree(
+                    key: sendKey,
+                    child: Material(
                     color: canSend ? AppColors.blue : const Color(0xFFE3E8F1),
                     shape: const CircleBorder(),
                     child: InkWell(
@@ -1099,6 +1110,7 @@ class ThreadComposer extends StatelessWidget {
                         ),
                       ),
                     ),
+                  ),
                   ),
                 ],
               ),
@@ -1218,7 +1230,11 @@ class ThreadQuoteHeader extends StatelessWidget {
     this.actionIcon,
     this.actionTooltip,
     this.onAction,
+    this.actionKey,
   });
+
+  /// For a first-time tip on the right button.
+  final GlobalKey? actionKey;
 
   final FeedbackItem item;
   final bool collapsed;
@@ -1304,7 +1320,9 @@ class ThreadQuoteHeader extends StatelessWidget {
               ],
             ),
           ),
-          action ?? const SizedBox(width: 42),
+          action == null
+              ? const SizedBox(width: 42)
+              : KeyedSubtree(key: actionKey, child: action),
         ],
       ),
     );

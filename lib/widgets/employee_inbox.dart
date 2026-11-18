@@ -170,6 +170,15 @@ class EmployeeInboxRow extends StatelessWidget {
                                   c: FeedbackStatus.color(st)),
                             ),
                           ],
+                          // Arrow after the status.
+                          if (onTap != null) ...[
+                            const SizedBox(width: 2),
+                            const Icon(
+                              Icons.chevron_right_rounded,
+                              size: 20,
+                              color: _soft,
+                            ),
+                          ],
                         ],
                       ),
                       const SizedBox(height: 5),
