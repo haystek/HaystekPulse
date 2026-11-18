@@ -24,6 +24,7 @@ import 'broadcast_screens.dart';
 import 'feedback_detail_screen.dart';
 import 'feedback_list_screen.dart';
 import 'profile_screen.dart';
+import 'dual_role_screens.dart';
 import '../widgets/list_card.dart';
 
 /// Inter font for everything on these screens, sheets and dialogs
@@ -355,6 +356,16 @@ class _ManagementHomeScreenState extends State<ManagementHomeScreen>
                       ),
                     ),
                   ),
+                  // HR/Ops phone only: "Employee view" on/off.
+                  Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 560),
+                      child: const RoleToggle(
+                        admin: true,
+                        margin: EdgeInsets.fromLTRB(20, 0, 20, 6),
+                      ),
+                    ),
+                  ),
                   Expanded(
                     child: Align(
                       alignment: Alignment.topCenter,
@@ -445,10 +456,10 @@ class _ManagementHomeScreenState extends State<ManagementHomeScreen>
                 ),
               );
             }
-            final weeks = <String, PulseTotals>{
-              if (DemoData.on) ...DemoData.weeks(thisWeek),
-              ...weekSnap.data!,
-            };
+            // Samples on: real answers are added on top of the sample.
+            final weeks = DemoData.on
+                ? DemoData.withReal(thisWeek, weekSnap.data!)
+                : weekSnap.data!;
             final total = DemoData.on ? DemoData.people : totalSnap.data!;
             final totals = weeks[shown] ?? const PulseTotals();
             final pending = total > totals.submitted

@@ -27,6 +27,7 @@ import '../widgets/pulse_line.dart';
 import '../widgets/shimmer.dart';
 import '../widgets/ui.dart' hide PulseLine;
 import 'broadcast_screens.dart';
+import 'dual_role_screens.dart';
 import 'feedback_thread_screen.dart';
 import 'my_feedback_screen.dart';
 import 'profile_screen.dart';
@@ -132,6 +133,11 @@ class EmployeeHomeScreen extends StatelessWidget {
                     ],
                   ),
                 ),
+                ),
+                // HR/Ops phone only: "Employee view" on/off.
+                const RoleToggle(
+                  admin: false,
+                  margin: EdgeInsets.fromLTRB(20, 0, 20, 4),
                 ),
                 Expanded(
                   child: ListView(

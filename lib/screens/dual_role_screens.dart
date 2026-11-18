@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../services/auth_service.dart';
+import '../services/dual_role.dart';
 import '../theme/app_theme.dart';
 import '../widgets/ui.dart';
 
@@ -138,7 +142,7 @@ class _Hero extends StatelessWidget {
                   sub,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: _s(12.5, c: _soft),
+                  style: _s(12, c: _soft),
                 ),
               ],
             ),
@@ -194,7 +198,7 @@ class _Hero extends StatelessWidget {
               Positioned(
                 left: 20,
                 top: height * 0.1,
-                right: w * 0.25,
+                right: w * 0.06, // Cards wide enough for the full email.
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: Transform.rotate(
@@ -246,7 +250,7 @@ class _Hero extends StatelessWidget {
               Positioned(
                 right: 18,
                 bottom: height * 0.12,
-                left: w * 0.25,
+                left: w * 0.06,
                 child: Align(
                   alignment: Alignment.centerRight,
                   child: Transform.rotate(
@@ -462,6 +466,55 @@ Future<String?> askAdminPassword(BuildContext context) {
   );
 }
 
+/// Checks the admin password with a separate, temporary sign-in, so the
+/// employee side stays open while checking. Null = correct (or could not
+/// tell; then the normal switch checks it again).
+Future<String?> _checkAdminPassword(String password) async {
+  final login = await DualRole.adminLogin();
+  if (login == null) return null;
+  FirebaseApp app;
+  try {
+    app = Firebase.app('admin_check');
+  } catch (_) {
+    try {
+      app = await Firebase.initializeApp(
+        name: 'admin_check',
+        options: Firebase.app().options,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+  final auth = FirebaseAuth.instanceFor(app: app);
+  try {
+    await auth
+        .signInWithEmailAndPassword(email: login.email, password: password)
+        .timeout(const Duration(seconds: 15));
+    await auth.signOut();
+    return null;
+  } on FirebaseAuthException catch (e) {
+    switch (e.code) {
+      case 'invalid-credential':
+      case 'wrong-password':
+        return 'Wrong password. Please try again.';
+      case 'user-not-found':
+      case 'user-disabled':
+        await DualRole.clear();
+        return 'This admin account no longer exists, so Switch to Admin '
+            'is now removed from this phone.';
+      case 'too-many-requests':
+        return 'Too many tries. Please wait a few minutes and try again.';
+      case 'network-request-failed':
+        return 'No internet connection. Please try again.';
+    }
+    return AuthService.messageFor(e);
+  } on TimeoutException {
+    return 'No internet connection. Please try again.';
+  } catch (_) {
+    return null;
+  }
+}
+
 class _PasswordDialog extends StatefulWidget {
   const _PasswordDialog();
 
@@ -472,6 +525,8 @@ class _PasswordDialog extends StatefulWidget {
 class _PasswordDialogState extends State<_PasswordDialog> {
   final _c = TextEditingController();
   bool _hide = true;
+  bool _busy = false;
+  String? _error;
 
   @override
   void dispose() {
@@ -479,10 +534,23 @@ class _PasswordDialogState extends State<_PasswordDialog> {
     super.dispose();
   }
 
-  void _ok() {
+  Future<void> _ok() async {
     final p = _c.text;
-    if (p.isEmpty) return;
-    Navigator.of(context).pop(p);
+    if (p.isEmpty || _busy) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    final error = await _checkAdminPassword(p);
+    if (!mounted) return;
+    if (error == null) {
+      Navigator.of(context).pop(p);
+      return;
+    }
+    setState(() {
+      _busy = false;
+      _error = error;
+    });
   }
 
   @override
@@ -512,7 +580,11 @@ class _PasswordDialogState extends State<_PasswordDialog> {
             obscureText: _hide,
             autocorrect: false,
             enableSuggestions: false,
+            enabled: !_busy,
             onSubmitted: (_) => _ok(),
+            onChanged: (_) {
+              if (_error != null) setState(() => _error = null);
+            },
             style: _ds(15),
             decoration: InputDecoration(
               hintText: 'Your admin password',
@@ -535,25 +607,202 @@ class _PasswordDialogState extends State<_PasswordDialog> {
               ),
             ),
           ),
+          if (_error != null) ...[
+            const SizedBox(height: 10),
+            Text(
+              _error!,
+              style: _ds(14, c: Theme.of(context).colorScheme.error),
+            ),
+          ],
         ],
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: _busy ? null : () => Navigator.of(context).pop(),
           child: Text('Cancel', style: _ds(15, w: FontWeight.w500, c: _dsoft)),
         ),
         FilledButton(
-          onPressed: _ok,
+          onPressed: _busy ? null : _ok,
           style: FilledButton.styleFrom(
             backgroundColor: AppColors.blue,
+            disabledBackgroundColor: AppColors.blue,
             shape: const StadiumBorder(),
           ),
-          child: Text(
-            'Switch to Admin',
-            style: _ds(15, w: FontWeight.w600, c: Colors.white),
-          ),
+          child: _busy
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : Text(
+                  'Switch to Admin',
+                  style: _ds(15, w: FontWeight.w600, c: Colors.white),
+                ),
         ),
       ],
+    );
+  }
+}
+
+/// HR/Ops phone only: "Employee view" on/off at the top of home.
+/// Off = Admin side, On = Employee side. Turning it switches sides, the
+/// same way as Profile. Shows nothing on other phones.
+class RoleToggle extends StatefulWidget {
+  const RoleToggle({super.key, required this.admin, this.margin = EdgeInsets.zero});
+
+  /// True on the Admin home, false on the Employee home.
+  final bool admin;
+  final EdgeInsets margin;
+
+  @override
+  State<RoleToggle> createState() => _RoleToggleState();
+}
+
+class _RoleToggleState extends State<RoleToggle> {
+  bool _show = false;
+  bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  /// Admin home: only when this admin has also joined as employee here.
+  /// Employee home: only on an HR/Ops phone.
+  Future<void> _load() async {
+    final login = await DualRole.adminLogin();
+    var show = login != null;
+    if (show && widget.admin) {
+      final me = FirebaseAuth.instance.currentUser?.uid;
+      final code = await AuthService.instance.savedCode();
+      show = login!.uid == me && code != null;
+    }
+    if (mounted) setState(() => _show = show);
+  }
+
+  Future<void> _toEmployee() async {
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _busy = true);
+    final ok = await AuthService.instance.switchToEmployee();
+    if (!ok) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Could not open the employee side. Please try again.'),
+        ),
+      );
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _toAdmin() async {
+    // First time: the admin password, once (checked in the box).
+    final login = await DualRole.adminLogin();
+    String? typed;
+    if (login != null && login.password == null) {
+      if (!mounted) return;
+      typed = await askAdminPassword(context);
+      if (typed == null) return;
+    }
+    if (!mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _busy = true);
+    try {
+      await AuthService.instance.switchToAdmin(password: typed);
+    } catch (err) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(AuthService.messageFor(err))),
+      );
+      if (mounted) setState(() => _busy = false);
+      _load();
+    }
+  }
+
+  // Design C: account card.
+  @override
+  Widget build(BuildContext context) {
+    if (!_show) return const SizedBox.shrink();
+    final admin = widget.admin;
+    final email = FirebaseAuth.instance.currentUser?.email ?? '';
+    final initial = email.isEmpty ? 'A' : email[0].toUpperCase();
+    return Container(
+      margin: widget.margin,
+      padding: const EdgeInsets.fromLTRB(10, 8, 8, 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE3E7EF), width: 1.2),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: admin ? AppColors.blue : const Color(0xFFEAF0FF),
+              borderRadius: BorderRadius.circular(11),
+            ),
+            child: admin
+                ? Text(
+                    initial,
+                    style: _ds(15, w: FontWeight.w700, c: Colors.white),
+                  )
+                : const Icon(
+                    Icons.lock_outline_rounded,
+                    size: 18,
+                    color: AppColors.blue,
+                  ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _busy ? 'Switching…' : 'You are in',
+                  style: _ds(12, c: _dsoft).copyWith(height: 1.2),
+                ),
+                Text(
+                  admin ? 'Admin' : 'Employee',
+                  style: _ds(15, w: FontWeight.w700).copyWith(height: 1.25),
+                ),
+              ],
+            ),
+          ),
+          OutlinedButton(
+            onPressed: _busy ? null : (admin ? _toEmployee : _toAdmin),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.blue,
+              side: const BorderSide(color: Color(0xFFD6DEF5), width: 1.5),
+              shape: const StadiumBorder(),
+              minimumSize: const Size(0, 38),
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+            ),
+            child: _busy
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.swap_horiz_rounded, size: 18),
+                      const SizedBox(width: 4),
+                      Text(
+                        admin ? 'Employee' : 'Admin',
+                        style: _ds(14, w: FontWeight.w600, c: AppColors.blue),
+                      ),
+                    ],
+                  ),
+          ),
+        ],
+      ),
     );
   }
 }

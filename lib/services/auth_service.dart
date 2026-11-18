@@ -818,6 +818,11 @@ class AuthService {
       const wrong = ['invalid-credential', 'wrong-password'];
       // Back to the employee side either way.
       await autoSignIn();
+      if (e.code == 'user-not-found' || e.code == 'user-disabled') {
+        // The admin account was deleted: forget it on this phone.
+        await DualRole.clear();
+        throw FirebaseAuthException(code: 'dual-admin-gone');
+      }
       if (wrong.contains(e.code)) {
         if (password == null) {
           // The saved one stopped working (changed elsewhere).
@@ -1030,6 +1035,9 @@ class AuthService {
         // With "Email enumeration protection" ON in Firebase, both cases
         // come as 'invalid-credential' (Firebase doesn't say which).
         // With it OFF, the two cases below come separately.
+        case 'dual-admin-gone':
+          return 'This admin account no longer exists, so Switch to Admin '
+              'is now removed from this phone.';
         case 'invalid-credential':
           return wrongLogin;
         case 'user-not-found':

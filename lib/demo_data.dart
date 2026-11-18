@@ -55,6 +55,28 @@ class DemoData {
         ),
     };
   }
+  /// Samples plus real answers. For the same week the real answers are
+  /// added on top of the sample, so testing still shows the summary.
+  static Map<String, PulseTotals> withReal(
+    String thisWeek,
+    Map<String, PulseTotals> real,
+  ) {
+    final out = weeks(thisWeek);
+    real.forEach((id, r) {
+      final s = out[id];
+      out[id] = s == null
+          ? r
+          : PulseTotals(
+              great: s.great + r.great,
+              good: s.good + r.good,
+              okay: s.okay + r.okay,
+              difficult: s.difficult + r.difficult,
+              submitted: s.submitted + r.submitted,
+            );
+    });
+    return out;
+  }
+
   /// Sample items start with this id, so the app never saves them.
   static const String idPrefix = 'demo_';
   static bool isDemo(FeedbackItem item) => item.id.startsWith(idPrefix);
