@@ -606,3 +606,8 @@ Tick each box `[x]` when done, with the date.
 ### ⚠️ sendPush – key rule
 - Do NOT delete or disable the old push keys (fcm_sender_dev.json / fcm_sender.json) until every tester has installed the new build that uses sendPush. Build 12 and older send notifications with the old DEV key – disabling it stops their notifications.
 - Order: 1) sendPush function + app change, test on DEV  2) new TestFlight build, Ma'am/testers update  3) then delete the key files from the project and delete the old keys in Google Cloud.
+
+### Tomorrow (20 Nov) – do first
+1. [ ] Find the LIVE `serviceAccount.json` and `AuthKey_B348XC2G9K.p8` (not in the project folder): `find ~ -name "serviceAccount*.json" -o -name "AuthKey_*.p8" 2>/dev/null | grep -v Library`. Copy them to ~/Desktop/pulse_keys (rename the LIVE one to live-serviceAccount.json), then put that folder on a pen drive / private Drive.
+2. [ ] Take `fcm_sender_backup.zip` out of git (password lost): `git rm --cached fcm_sender_backup.zip`, add it to .gitignore, commit, push.
+3. [ ] sendPush: send Claude `functions/index.js` + `lib/services/push_sender_io.dart`. Follow the key rule above.
