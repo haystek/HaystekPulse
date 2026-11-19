@@ -1,14 +1,14 @@
-# Haystek Pulse – Project Notes (as of 17 Nov 2026)
+# Haystek Pulse – Project Notes (as of 19 Nov 2026)
 
 Give this file to Claude at the start of any new chat: "Read this first."
 
 ## 1. Basics
 - Flutter + Firebase app. Mac path: `/Users/haystek/haystek_pulse`, current branch `branch5`, repo `haystek/HaystekPulse` (private).
-- Branches: branch3 pushed (c4da0b7); branch4 = UI polish, pushed (926b064); branch5 = HR/Ops switch, pushed (dc1387b).
+- Branches: branch3 pushed (c4da0b7); branch4 = UI polish, pushed (926b064); branch5 = HR/Ops switch + all work since, pushed (latest de349a8, 19 Nov).
 - Flavors: `dev` → Firebase `haystek-pulse-dev`, `prod` → `haystek-pulse` (LIVE).
 - One bundle ID for both: `com.haystek.haystekPulse`, Apple Team `T6LJAQ4AL7`, App Store Apple ID `6833529873`.
-- Firebase account: mobileapp@haystek.com (Owner). shivakumar.t@haystek.com is also Owner. Billing account `01CFFA-F4B1B1-1B6168` "My Billing Account" (Haystek org, INR). Blaze plan. Linked projects: haystek-pulse, haystek-pulse-dev, My First Project (empty default).
-- Company (for Google/Apple forms): HAYSTEK TECHNOLOGIES PRIVATE LIMITED, No. 1-53, Plot No. 27, Phase-I, Third Floor, Kavuri Hills, Madhapur, Shaikpet, Hyderabad, Telangana 500081.
+- Firebase account: mobileapp@haystek.com (Owner). shivakumar.t@haystek.com is also Owner. Billing account `01CFFA-F4B1B1-1B6168` "My Billing Account" (Haystek org, INR). Blaze plan. Since 19 Nov: company Visa card = Primary, old Mastercard = Backup (remove after the first company-card payment); organisation verification done (key person: Aarthi Ma'am, role "Other" – Business Development & Operations Manager); budget ₹500/month, alerts only (50/90/100%, email), covers haystek-pulse + haystek-pulse-dev. Linked projects: haystek-pulse, haystek-pulse-dev, My First Project (empty default).
+- Company (for Google/Apple forms, as on the GST certificate): HAYSTEK TECHNOLOGIES PRIVATE LIMITED (Private Limited Company), HNO 1-53, Plot 27, Sagacity Heights, Third Floor, Kavuri Hills, Hyderabad, Telangana 500081. Keep the GST certificate PDF for proof requests.
 - Functions (same in DEV and LIVE, asia-south1, 256 MB, nodejs24):
   - `codes` (https): gives join codes to the Zoho Pulse Codes page.
   - `topUpCodes` (Firestore update trigger): a used join code is replaced by a new one (keeps 20).
@@ -26,6 +26,20 @@ Give this file to Claude at the start of any new chat: "Read this first."
 - Never unlink billing. Never send a DEV build to the App Store.
 
 ## 3. Done (latest first)
+- 19 Nov – **Billing done**: company card Primary (old card Backup), organisation verification successful, ₹500 budget alert (alerts only, DEV + LIVE). Current usage ₹0 (free tier).
+- 19 Nov – **DEV build 12** (1.0.0+12) uploaded from Xcode (TestFlight Internal Only), shared with Ma'am. Build 11 also uploaded. Xcode needed the Apple account added (Settings → Apple Accounts) – `flutter build ipa` shows "No Accounts / No signing certificate" at the IPA step; the archive is fine, upload from Xcode (Organizer → Distribute App → TestFlight Internal Only).
+- 19 Nov – **Admin home tips** (9, top to bottom: Search, All weeks, Pick a week (explains the coloured bar), This week at a glance, Answers, What people said, Suggestion Box, Broadcast, Your profile). Admin home list builds all parts (`cacheExtent: 3000`) so tips reach them. Broadcast tab built only when opened (its tip no longer shows on Weekly Pulse).
+- 19 Nov – **Tips engine** (`app_tour.dart`): after the last tip / Skip the page scrolls back smoothly; tall items scroll to the top first; the tip card goes on the side with more room, else sits at the bottom (never off screen).
+- 19 Nov – **Welcome tip 3** highlights the whole "Admin? Sign in with work email" line.
+- 19 Nov – **Create admin account – design E**: admin code first in a dark blue card with 6 boxes (dots until Show), then name/email/password in one card, one hint line; footer hidden on this screen; fields scroll above the keyboard (`_kbRoom`, 160).
+- 19 Nov – **HR switch fixes**: admin password checked inside the box (temporary second Firebase app "admin_check", no loading screen on a wrong password); box shows the admin email, empty/wrong password shakes + message, "Forgot password?" sends a reset link, box scrolls with the keyboard. Admin Sign out removes the saved admin password (next Switch to Admin asks again). Deleted admin → "This admin account no longer exists…" and the switch is removed (`dual-admin-gone`).
+- 19 Nov – Admin home **account card** (design C) on HR/Ops phones only: "You are in Admin [⇄ Employee]" / "You are in Employee [⇄ Admin]" (`RoleToggle` in `dual_role_screens.dart`, on both home screens).
+- 19 Nov – Small fixes: Suggestion Box "13 suggestions / newest first" on two lines; broadcast with no comments shows admins "No comments yet. Employees' comments will show here."; Also join as Employee picture cards wider.
+- 18 Nov – **Demo data** (memory only, `DemoData.on = true`): office-related suggestions (13), Pulse comments (12), employee answers (8 weeks) + comments + suggestions, broadcasts (7) with comments; threads match each status; anonymous replies ask for the name ("If you're comfortable, please share your name…"); this week's sample answers are ADDED to real ones (`DemoData.withReal`).
+- 18 Nov – Pulse chat header: status left, "Said Okay" pill right. New broadcast form: full title wraps, "From the suggestion (name not shared)", no remove (x).
+- 18 Nov – Help & Privacy redesign (employee + admin Q&A), privacy policy matched to the app and deployed to DEV + LIVE, profile grey background, text size by screen width, delete screen fits small phones. Errors TTL policy on `expireAt` serving on DEV + LIVE.
+- 18–19 Nov – **DEV wiped several times** for clean tests (`wipedev.js`: all logins, employees, devices, sessions, vaults, user_state, test data; keeps entry/join codes, admin codes, settings). Single person: `deluser.js email [--yes]` (login + employees record only).
+- 18 Nov – iPhone upload error "x86_64 / Missing 64-bit" (objective_c.framework built for the simulator): fix = `flutter clean`, `pub get`, `pod install`, rebuild; check before upload with `lipo -info …/objective_c.framework/objective_c` (must say arm64). "dev couldn't be removed" error = Xcode had the archive open: quit Xcode, `rm -rf build/ios` (sudo if needed).
 - 17 Nov – **HR/Ops: Admin + Employee on one phone** (admin first, Ma'am approved). branch5.
   - Admin Profile → "Also join as Employee": screen with only the recovery code / entry code (no admin password), then works like a normal employee sign-in.
   - Employee Profile → "Switch to Admin" (only on that phone): first time asks the admin password once, then one tap. Admin Profile → "Switch to Employee". Admin Sign out → straight to the employee side. Short loading screen while switching (no "Welcome back" screen).
@@ -81,10 +95,21 @@ Give this file to Claude at the start of any new chat: "Read this first."
 
 ## 4. Open / later
 
-### Pending now (16 Nov)
+### Pending now (19 Nov)
+- [ ] Ma'am's feedback on DEV build 12 → fix one by one.
+- [ ] Ma'am's OK on new wording: account card ("You are in", "Switching…"), password box messages + "Forgot password?", "This admin account no longer exists…", admin home tips (9), Create admin account card, "Employees' comments will show here.", sample data texts, Help & Privacy admin answers.
+- [ ] Weekly Pulse to open **Friday 6:00 PM** (later, DEV then LIVE): `settings/pulse` + `pulseHeadsUp` schedule `"45 17 * * 5"` (Asia/Kolkata) in `functions/index.js`, deploy.
+- [ ] Check APNs key on the LIVE project (DEV has it – checked 19 Nov).
+- [ ] "No employees yet" text: change to "No employee has joined yet / Answers show here once people join." (as in the doc)? Decide.
+- [ ] Add `android/.kotlin/` to `.gitignore`.
+- [ ] Confirm Android double back to close works (`DoubleBackToClose` already in auth_gate).
+- [ ] Test on simulators (iPhone SE, iPhone 16); `flutter clean` before the next iPhone build afterwards.
+- [ ] Remove the old card after the first company-card payment; tell Aarthi Ma'am to approve a bank OTP/e-mandate message if one comes.
+
+### Pending before (16 Nov)
 - [ ] **pulseHeadsUp time is wrong**: code says Monday 7:45 PM (`"45 19 * * 1"`, comment wrongly says Friday 5:45 PM). DEV Pulse opens Monday 12:22 PM → set `schedule: "7 12 * * 1"`, fix the comment, deploy DEV (`firebase deploy --only functions:pulseHeadsUp --project haystek-pulse-dev`), commit. LIVE: same, after the LIVE open time is decided (and a clear yes).
-- [ ] Upload TestFlight build 7, add to the Internal Testing group.
-- [ ] Share the Android APK with Android testers.
+- [x] TestFlight builds 7–12 uploaded (latest 12, 19 Nov).
+- [ ] Share the Android APK (build 12) with Android testers.
 - [ ] Reply as admin to Sir's / Ma'am's suggestions in the app; change a status once; send one Broadcast.
 - [ ] Collect their comments (Employee + Admin sheets) and make the changes.
 - [ ] Some doc images still blurry (only small copies): Suggestion 3 (sent), Weekly Pulse 2, 3, 7, Profile tips. Need new phone screenshots.
@@ -102,9 +127,9 @@ Plan (separate git branch, DEV first, ₹0 cost, ~2–3 h):
 Until then: keep one safe copy of the key files outside the project (password manager / private company Drive), never in git/chat/email.
 
 ### Google Cloud / Firebase account
-- [ ] Budget alert → ₹1,000 (Billing → Budgets & alerts → edit the existing budget). Email only, nothing stops. Don't use service spend caps (they stop Functions = no join codes / notifications).
-- [ ] Company verification (Billing → Verify): company name + address above + mobile OTP. Deadline **13 Feb 2027** (account can be suspended). Asked Ma'am before doing it.
-- [ ] Company card: waiting for Ma'am. Cardholder adds it (OTP / e-mandate, online + international on), make it Primary, only then remove the current card. RBI: auto-charges without OTP up to the bank's mandate limit. Never leave the account without a card; never unlink billing.
+- [x] Budget alert ₹500, alerts only, DEV + LIVE (19 Nov). Was planned: ₹1,000 (Billing → Budgets & alerts → edit the existing budget). Email only, nothing stops. Don't use service spend caps (they stop Functions = no join codes / notifications).
+- [x] Company verification – done 19 Nov (successful).
+- [x] Company card added and Primary (19 Nov); old card is Backup. Remove the old card after the first company-card payment (early Dec, only if there is a charge). Was: waiting for Ma'am. Cardholder adds it (OTP / e-mandate, online + international on), make it Primary, only then remove the current card. RBI: auto-charges without OTP up to the bank's mandate limit. Never leave the account without a card; never unlink billing.
 - [ ] Firestore daily backups for LIVE (currently "Scheduled backups: Disabled").
 - [ ] Keep mobileapp@haystek.com password with Ma'am/IT (safe place), company recovery phone/email, 2-step verification on both owner accounts.
 - Start-up smoothness: splash → loader → Home flickers. Tried a fade (rejected) and a native splash (reverted). Ideas ready: branded native splash with the logo card at the loader's position (splash.png / splash_android12.png made), and/or a simple spinner instead of the full loader inside the app.
@@ -251,12 +276,12 @@ Tick `[x]` when done.
 
 ### Tomorrow (18 Nov)
 
-1. [ ] Test the HR switch on DEV (iPhone `--release --flavor dev`): Also join as Employee → Switch to Admin (password once) → Switch to Admin again (no typing) → Switch to Employee → Admin Sign out (goes to employee). Broadcast: other phone gets it, this phone doesn't.
-2. [ ] TestFlight **DEV build 9**: `version: 1.0.0+9`, `kSlowStart = false`, `flutter build ipa --release --flavor dev`, upload, What to Test "DEV build (test data) – HR/Ops switch. Do not release.", Internal Testing only.
-3. [ ] Check the APNs key is uploaded in the **DEV** Firebase project (Cloud Messaging), so notifications work on TestFlight.
-4. [ ] Send Ma'am the update (HR switch) + ask her OK on the new wording.
+1. [x] Test the HR switch on DEV (iPhone `--release --flavor dev`): Also join as Employee → Switch to Admin (password once) → Switch to Admin again (no typing) → Switch to Employee → Admin Sign out (goes to employee). Broadcast: other phone gets it, this phone doesn't.
+2. [x] TestFlight **DEV build 9** (then 10, 11, 12): `version: 1.0.0+9`, `kSlowStart = false`, `flutter build ipa --release --flavor dev`, upload, What to Test "DEV build (test data) – HR/Ops switch. Do not release.", Internal Testing only.
+3. [x] Check the APNs key is uploaded in the **DEV** Firebase project (Cloud Messaging), so notifications work on TestFlight.
+4. [x] Send Ma'am the update (HR switch) + ask her OK on the new wording.
 5. [ ] `doubleback.js` (Android: press back twice to close).
-6. [ ] Commit + push.
+6. [x] Commit + push.
 
 ---
 
@@ -305,12 +330,12 @@ Tick `[x]` when done.
 3. [x] **"Anonymous" / "With your name" label** on every employee feedback (Home list + See all), so old weeks can be checked (Ma'am)
 4. [ ] **First-time tip on Home** (optional): "Tap a card to open it. Swipe up to leave the app." (from Ma'am's "how do I come out")
 5. [ ] **Android: press back twice to close** on Employee Home + Admin Home – `doubleback.js` ready, not run yet
-6. [x] **HR / Ops: Employee + Admin in one app** – built 17 Nov (admin first, as Ma'am approved); testing on DEV next. Old ideas below were the first draft:
+6. [x] **HR / Ops: Employee + Admin in one app** – built 17 Nov, tested and polished 18–19 Nov (account card on home, password check in the box). Old ideas below were the first draft:
    - Join as employee and sign in as admin with work email, in either order (Profile)
    - Switch between Employee and Admin anytime, no logout
    - Get both employee and admin notifications; tapping opens the right side
    - Own broadcast/reminder: they also get it as employee (or skip the sender – decide)
-7. [ ] **TestFlight build 9** (version `1.0.0+9`, DEV) – check `kSlowStart = false` first. PROD build later = 10+.
+7. [x] **TestFlight build 9** (version `1.0.0+9`, DEV) – check `kSlowStart = false` first. PROD build later = 10+.
 8. [ ] Optional: Android 12 splash logo card same size as loader card
 9. [ ] Optional later: pull down to refresh on Home and lists
 
@@ -345,8 +370,8 @@ Tick `[x]` when done.
 
 ### Waiting on Ma'am
 
-- [ ] Company card as primary on billing + e-mandate (bank OTP). Don't remove current card until then.
-- [ ] Company verification – deadline 13 Feb 2027
+- [x] Company card added and Primary (19 Nov)
+- [x] Company verification – done 19 Nov (was due 13 Feb 2027)
 - [x] HR / Ops switch: Ma'am approved admin-first (built 17 Nov)
 - [ ] OK on the new wording for the HR switch (list in section 3)
 - [ ] OK on the new look (employee Inbox cards, admin Ticket cards)
@@ -557,8 +582,8 @@ Tick each box `[x]` when done, with the date.
 
 ### 8. Waiting on Ma'am
 
-- [ ] Company card added as **primary** on billing + **e-mandate** (bank OTP) – don't remove the current card until this is done
-- [ ] Company verification (deadline **13 Feb 2027**)
+- [x] Company card added as **primary** on billing (19 Nov)
+- [x] Company verification – done 19 Nov (was due **13 Feb 2027**)
 
 ---
 
