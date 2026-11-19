@@ -679,7 +679,9 @@ class _BroadcastDetailScreenState extends State<BroadcastDetailScreen> {
                             Padding(
                               padding: const EdgeInsets.only(left: 4),
                               child: Text(
-                                'No comments yet. Share what you think.',
+                                _admin
+                                    ? 'No comments yet. Employees’ comments will show here.'
+                                    : 'No comments yet. Share what you think.',
                                 style: threadText(
                                   13.5,
                                   color: AppColors.muted,

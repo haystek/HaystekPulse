@@ -72,6 +72,10 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  /// Room kept under a field when the keyboard opens: the keyboard's
+  /// "Done" bar plus the next field, so the field is never hidden.
+  static const EdgeInsets _kbRoom = EdgeInsets.only(bottom: 160);
+
   _Entry _entry = _Entry.welcome;
   final _entryCode = TextEditingController();
   final _personalCode = TextEditingController();
@@ -819,6 +823,150 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  /// Create account (design E): the admin code in a dark blue card with
+  /// 6 boxes. Hidden as dots until Show is tapped. One invisible field on
+  /// top takes the typing.
+  Widget _adminCodeCard() {
+    return FormField<String>(
+      validator: (_) =>
+          _adminCode.text.trim().isEmpty ? 'Enter the admin code' : null,
+      builder: (field) {
+        final code = _adminCode.text;
+        Widget box(int i) {
+          final filled = i < code.length;
+          final next = i == code.length;
+          return Expanded(
+            child: Container(
+              height: 48,
+              margin: EdgeInsets.only(left: i == 0 ? 0 : 7),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: filled
+                    ? Colors.white
+                    : Colors.white.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: next
+                      ? Colors.white
+                      : Colors.white.withValues(alpha: 0.25),
+                  width: next ? 2 : 1.5,
+                ),
+              ),
+              child: Text(
+                filled ? (_hideCode ? '•' : code[i]) : '',
+                style: GoogleFonts.inter(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.blue,
+                ),
+              ),
+            ),
+          );
+        }
+
+        return Container(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF0B1B4D), Color(0xFF14328F), AppColors.blue],
+              stops: [0, 0.55, 1],
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.key_outlined, size: 18, color: Colors.white),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Admin code (6 letters)',
+                      style: GoogleFonts.inter(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => setState(() => _hideCode = !_hideCode),
+                    style: _linkButton.copyWith(
+                      foregroundColor:
+                          const WidgetStatePropertyAll(Colors.white),
+                    ),
+                    child: Text(_hideCode ? 'Show' : 'Hide'),
+                  ),
+                ],
+              ),
+              Text(
+                'This makes sure only real admins can sign up. '
+                'Employees join with the entry code instead.',
+                style: GoogleFonts.inter(
+                  fontSize: 12.5,
+                  height: 1.4,
+                  color: const Color(0xFFC9D6FF),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Stack(
+                children: [
+                  Row(children: [for (var i = 0; i < 6; i++) box(i)]),
+                  // The real field: invisible, on top of the boxes.
+                  Positioned.fill(
+                    child: Opacity(
+                      opacity: 0,
+                      child: TextField(
+                        controller: _adminCode,
+                        scrollPadding: _kbRoom,
+                        autocorrect: false,
+                        enableSuggestions: false,
+                        showCursor: false,
+                        textCapitalization: TextCapitalization.characters,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(
+                            RegExp(r'[A-Za-z0-9]'),
+                          ),
+                          LengthLimitingTextInputFormatter(6),
+                          TextInputFormatter.withFunction(
+                            (old, now) =>
+                                now.copyWith(text: now.text.toUpperCase()),
+                          ),
+                        ],
+                        onChanged: (v) {
+                          field.didChange(v);
+                          setState(() {});
+                          _clearError();
+                        },
+                        decoration: const InputDecoration(
+                          border: InputBorder.none,
+                          counterText: '',
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (field.hasError) ...[
+                const SizedBox(height: 8),
+                Text(
+                  field.errorText!,
+                  style: GoogleFonts.inter(
+                    fontSize: 12.5,
+                    color: const Color(0xFFFFC9C2),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   /// The form under the blue block: sign in, or reset password.
   Widget _form(ThemeData theme) {
     if (_entry != _Entry.admin) return _codeForm();
@@ -846,6 +994,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     final emailField = TextFormField(
       controller: _email,
+      scrollPadding: _kbRoom,
       keyboardType: TextInputType.emailAddress,
       textInputAction: _resetMode ? TextInputAction.done : TextInputAction.next,
       autocorrect: false,
@@ -929,6 +1078,7 @@ class _LoginScreenState extends State<LoginScreen> {
       icon: Icons.lock_outline,
       field: TextFormField(
         controller: _password,
+        scrollPadding: _kbRoom,
         obscureText: _hidePassword,
         autofillHints: [
           _signUpMode ? AutofillHints.newPassword : AutofillHints.password,
@@ -966,11 +1116,11 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
       );
+
       Widget hint(String t) => Padding(
-        padding: const EdgeInsets.fromLTRB(6, 6, 6, 0),
+        padding: const EdgeInsets.fromLTRB(0,0,0,0),
         child: Text(t, style: _sub),
       );
-      Widget gap() => const SizedBox(height: 10);
 
       return Form(
         key: _formKey,
@@ -986,16 +1136,21 @@ class _LoginScreenState extends State<LoginScreen> {
             Text(
               'Only for managers and HR.',
               style: GoogleFonts.inter(
+
                 fontSize: 14,
                 color: AppColors.muted,
               ),
             ),
+            const SizedBox(height: 16),
+            // Design E: the admin code first, then your details.
+            if (_admin) _adminCodeCard(),
             section('ABOUT YOU'),
             _card([
               _row(
                 icon: Icons.person_outline,
                 field: TextFormField(
                   controller: _name,
+                  scrollPadding: _kbRoom,
                   textCapitalization: TextCapitalization.words,
                   textInputAction: TextInputAction.next,
                   autofillHints: const [AutofillHints.name],
@@ -1009,83 +1164,12 @@ class _LoginScreenState extends State<LoginScreen> {
                       : null,
                 ),
               ),
+              emailRow,
+              passwordRow,
             ]),
-            gap(),
-            _card([emailRow]),
-            hint('Must end with ${AuthService.officeDomain}'),
-            gap(),
-            _card([passwordRow]),
-            hint('At least 8 characters.'),
-            if (_admin) ...[
-              section('ADMIN CODE'),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(18),
-                  gradient: const LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [AppColors.blueTint, Color(0xFFF7F9FE)],
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _card([
-                      _row(
-                        icon: Icons.key_outlined,
-                        field: TextFormField(
-                          controller: _adminCode,
-                          obscureText: _hideCode,
-                          autocorrect: false,
-                          enableSuggestions: false,
-                          textCapitalization: TextCapitalization.characters,
-                          // Admin codes are 6 letters or numbers, like HSTADM.
-                          inputFormatters: [
-                            FilteringTextInputFormatter.allow(
-                              RegExp(r'[A-Za-z0-9]'),
-                            ),
-                            LengthLimitingTextInputFormatter(6),
-                            TextInputFormatter.withFunction(
-                              (old, now) =>
-                                  now.copyWith(text: now.text.toUpperCase()),
-                            ),
-                          ],
-                          style: GoogleFonts.inter(
-                            fontSize: 15.5,
-                            color: AppColors.ink,
-                          ),
-                          decoration: _plain('Admin code (6 letters)'),
-                          validator: (v) =>
-                              (_admin && (v == null || v.trim().isEmpty))
-                              ? 'Enter the admin code'
-                              : null,
-                        ),
-                        trailing: TextButton(
-                          onPressed: () =>
-                              setState(() => _hideCode = !_hideCode),
-                          style: _linkButton,
-                          child: Text(_hideCode ? 'Show' : 'Hide'),
-                        ),
-                      ),
-                    ]),
-                    const SizedBox(height: 8),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: Text(
-                        'This makes sure only real admins can sign up. '
-                        'Employees join with the entry code instead.',
-                        style: GoogleFonts.inter(
-                          fontSize: 12.5,
-                          height: 1.4,
-                          color: AppColors.muted,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+            hint(
+              'Must end with ${AuthService.officeDomain} · At least 8 characters.',
+            ),
             ...error,
             const SizedBox(height: 20),
             _GradientButton(
@@ -1356,7 +1440,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                     ),
                                   ),
                                 ),
-                                if (!typing)
+                                // Hidden while typing and on Create account,
+                                // so the form fits on the screen.
+                                if (!typing && !_signUpMode)
                                   const Padding(
                                     padding: EdgeInsets.fromLTRB(
                                       24,
@@ -2143,21 +2229,30 @@ class _WelcomeViewState extends State<_WelcomeView> {
                           ),
                         ),
                         const SizedBox(height: 6),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text('Admin?', style: _s(13, c: _soft)),
-                            KeyedSubtree(
-                              key: _WelcomeTour.admin2,
-                              child: TextButton(
-                                onPressed: widget.onAdmin,
-                                child: Text(
-                                  'Sign in with work email',
-                                  style: _s(13, c: AppColors.blue),
+                        // Tip 3 highlights the whole line.
+                        Center(
+                          child: KeyedSubtree(
+                            key: _WelcomeTour.admin2,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.only(left: 12),
+                                  child: Text(
+                                    'Admin?',
+                                    style: _s(13, c: _soft),
+                                  ),
                                 ),
-                              ),
+                                TextButton(
+                                  onPressed: widget.onAdmin,
+                                  child: Text(
+                                    'Sign in with work email',
+                                    style: _s(13, c: AppColors.blue),
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
+                          ),
                         ),
                         const SizedBox(height: 8),
                       ],

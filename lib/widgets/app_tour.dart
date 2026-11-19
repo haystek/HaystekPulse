@@ -11,6 +11,7 @@ class TourStep {
   final String text;
 }
 
+
 /// Shows a tour once per phone ([id] is remembered), a moment after
 /// [child] first appears. Navy tip card with a pointer; the rest of the
 /// screen is dimmed. Next / Skip / Got it.
@@ -88,6 +89,40 @@ class _TourOverlayState extends State<_TourOverlay> {
   int _i = 0;
   Rect? _rect;
 
+  /// Where each scrolling page was before the tips moved it.
+  final Map<ScrollPosition, double> _startAt = {};
+
+  /// Remembers where the pages around [ctx] are, the first time only.
+  void _remember(BuildContext ctx) {
+    var sc = Scrollable.maybeOf(ctx);
+    while (sc != null) {
+      final pos = sc.position;
+      if (pos.hasPixels) _startAt.putIfAbsent(pos, () => pos.pixels);
+      sc = Scrollable.maybeOf(sc.context);
+    }
+  }
+
+  /// Tips finished: scroll every page back smoothly.
+  void _scrollBack() {
+    _startAt.forEach((pos, px) {
+      try {
+        if (pos.hasPixels && (pos.pixels - px).abs() > 1) {
+          pos.animateTo(
+            px,
+            duration: const Duration(milliseconds: 450),
+            curve: Curves.easeOutCubic,
+          );
+        }
+      } catch (_) {}
+    });
+    _startAt.clear();
+  }
+
+  void _finish() {
+    _scrollBack();
+    widget.onDone();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -101,10 +136,11 @@ class _TourOverlayState extends State<_TourOverlay> {
   Future<void> _show(int i) async {
     final ctx = _steps[i].key.currentContext;
     if (ctx == null) return _next();
+    _remember(ctx);
     try {
       await Scrollable.ensureVisible(
         ctx,
-        alignment: 0.35,
+        alignment: _alignFor(ctx),
         duration: const Duration(milliseconds: 350),
         curve: Curves.easeOutCubic,
       );
@@ -119,9 +155,19 @@ class _TourOverlayState extends State<_TourOverlay> {
     });
   }
 
+  /// Tall items scroll to the top, so the tip has room below them.
+  double _alignFor(BuildContext ctx) {
+    final box = ctx.findRenderObject();
+    final h = MediaQuery.sizeOf(context).height;
+    if (box is RenderBox && box.hasSize && box.size.height > h * 0.35) {
+      return 0.0;
+    }
+    return 0.35;
+  }
+
   void _next() {
     if (_i + 1 >= _steps.length) {
-      widget.onDone();
+      _finish();
     } else {
       _show(_i + 1);
     }
@@ -137,7 +183,14 @@ class _TourOverlayState extends State<_TourOverlay> {
     }
     final step = _steps[_i];
     final last = _i == _steps.length - 1;
-    final below = rect.center.dy < size.height * 0.55;
+    final pad = MediaQuery.paddingOf(context);
+    // The tip goes on the side with more room. If it doesn't fit on either
+    // side (a tall item), it sits at the bottom of the screen, over it.
+    final roomBelow = size.height - pad.bottom - rect.bottom;
+    final roomAbove = rect.top - pad.top;
+    const tipHeight = 250.0;
+    final below = roomBelow >= roomAbove;
+    final fits = (below ? roomBelow : roomAbove) >= tipHeight;
     const pale = Color(0xFFC9D6FF);
     final card = Container(
       padding: const EdgeInsets.fromLTRB(18, 16, 14, 10),
@@ -205,7 +258,7 @@ class _TourOverlayState extends State<_TourOverlay> {
             children: [
               if (!last)
                 TextButton(
-                  onPressed: widget.onDone,
+                  onPressed: _finish,
                   style: TextButton.styleFrom(foregroundColor: pale),
                   child: const Text('Skip'),
                 ),
@@ -247,19 +300,23 @@ class _TourOverlayState extends State<_TourOverlay> {
             curve: Curves.easeOutCubic,
             left: 20,
             right: 20,
-            top: below ? rect.bottom + 16 : null,
-            bottom: below ? null : size.height - rect.top + 16,
+            top: fits && below ? rect.bottom + 16 : null,
+            bottom: !fits
+                ? pad.bottom + 16
+                : below
+                ? null
+                : size.height - rect.top + 16,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (below)
+                if (fits && below)
                   Padding(
                     padding: EdgeInsets.only(left: arrowX),
                     child: const _TourArrow(up: true),
                   ),
                 card,
-                if (!below)
+                if (fits && !below)
                   Padding(
                     padding: EdgeInsets.only(left: arrowX),
                     child: const _TourArrow(up: false),

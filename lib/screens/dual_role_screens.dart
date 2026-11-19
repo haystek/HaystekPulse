@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -522,21 +523,80 @@ class _PasswordDialog extends StatefulWidget {
   State<_PasswordDialog> createState() => _PasswordDialogState();
 }
 
-class _PasswordDialogState extends State<_PasswordDialog> {
+class _PasswordDialogState extends State<_PasswordDialog>
+    with SingleTickerProviderStateMixin {
   final _c = TextEditingController();
   bool _hide = true;
   bool _busy = false;
   String? _error;
 
+  /// Shown after "Forgot password?" sent the link.
+  String? _info;
+
+  /// The admin's work email on this phone.
+  String? _email;
+
+  /// Shakes the password box (empty or wrong password).
+  late final AnimationController _shake = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 420),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    DualRole.adminLogin().then((l) {
+      if (mounted) setState(() => _email = l?.email);
+    });
+  }
+
   @override
   void dispose() {
+    _shake.dispose();
     _c.dispose();
     super.dispose();
   }
 
+  void _showError(String message) {
+    setState(() {
+      _busy = false;
+      _info = null;
+      _error = message;
+    });
+    _shake.forward(from: 0);
+    HapticFeedback.lightImpact();
+  }
+
+  /// "Forgot password?": a reset link to the admin's work email.
+  Future<void> _forgot() async {
+    final email = _email;
+    if (email == null || _busy) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+      _info = null;
+    });
+    try {
+      await AuthService.instance.sendPasswordReset(email);
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _info = 'We sent a link to set a new password to $email. Check your '
+            'inbox and spam folder, then enter the new password here.';
+      });
+    } catch (e) {
+      if (!mounted) return;
+      _showError(AuthService.messageFor(e));
+    }
+  }
+
   Future<void> _ok() async {
     final p = _c.text;
-    if (p.isEmpty || _busy) return;
+    if (_busy) return;
+    if (p.isEmpty) {
+      _showError('Please enter your admin password.');
+      return;
+    }
     setState(() {
       _busy = true;
       _error = null;
@@ -547,10 +607,7 @@ class _PasswordDialogState extends State<_PasswordDialog> {
       Navigator.of(context).pop(p);
       return;
     }
-    setState(() {
-      _busy = false;
-      _error = error;
-    });
+    _showError(error);
   }
 
   @override
@@ -560,6 +617,8 @@ class _PasswordDialogState extends State<_PasswordDialog> {
       borderSide: const BorderSide(color: Color(0xFFCBD3E1), width: 1.5),
     );
     return AlertDialog(
+      // Scrolls when the keyboard is open.
+      scrollable: true,
       backgroundColor: Colors.white,
       surfaceTintColor: Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
@@ -574,7 +633,41 @@ class _PasswordDialogState extends State<_PasswordDialog> {
             style: _ds(15, c: _dsoft),
           ),
           const SizedBox(height: 14),
-          TextField(
+          // Which admin account.
+          if (_email != null) ...[
+            Container(
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF4F6FA),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.person_outline, size: 18, color: _dsoft),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _email!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: _ds(14.5, w: FontWeight.w500),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+          ],
+          AnimatedBuilder(
+            animation: _shake,
+            builder: (context, child) {
+              final t = _shake.value;
+              return Transform.translate(
+                offset: Offset(math.sin(t * math.pi * 4) * 10 * (1 - t), 0),
+                child: child,
+              );
+            },
+            child: TextField(
             controller: _c,
             autofocus: true,
             obscureText: _hide,
@@ -583,7 +676,12 @@ class _PasswordDialogState extends State<_PasswordDialog> {
             enabled: !_busy,
             onSubmitted: (_) => _ok(),
             onChanged: (_) {
-              if (_error != null) setState(() => _error = null);
+              if (_error != null || _info != null) {
+                setState(() {
+                  _error = null;
+                  _info = null;
+                });
+              }
             },
             style: _ds(15),
             decoration: InputDecoration(
@@ -607,6 +705,7 @@ class _PasswordDialogState extends State<_PasswordDialog> {
               ),
             ),
           ),
+          ),
           if (_error != null) ...[
             const SizedBox(height: 10),
             Text(
@@ -614,6 +713,20 @@ class _PasswordDialogState extends State<_PasswordDialog> {
               style: _ds(14, c: Theme.of(context).colorScheme.error),
             ),
           ],
+          if (_info != null) ...[
+            const SizedBox(height: 10),
+            Text(_info!, style: _ds(13.5, c: const Color(0xFF15803D))),
+          ],
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: _busy || _email == null ? null : _forgot,
+              child: Text(
+                'Forgot password?',
+                style: _ds(14, w: FontWeight.w500, c: AppColors.blue),
+              ),
+            ),
+          ),
         ],
       ),
       actions: [

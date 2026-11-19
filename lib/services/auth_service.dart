@@ -877,6 +877,8 @@ class AuthService {
     if (uid != null && !isCodeAccount) {
       final login = await DualRole.adminLogin();
       if (login != null && login.uid == uid && await savedCode() != null) {
+        // Signed out on purpose: next time, ask the password again.
+        await DualRole.forgetPassword();
         switchingSides.value = true;
         try {
           await switchSignOut();
@@ -901,6 +903,11 @@ class AuthService {
     pendingEntryCode = null;
     // Personal-code account: forget the code on this phone, so the next
     // person can't get in. Signing in again needs the code.
+    // HR/Ops phone: the admin signed out, so the next "Switch to Admin"
+    // asks for the password again.
+    if (!isCodeAccount && await DualRole.isOn()) {
+      await DualRole.forgetPassword();
+    }
     if (isCodeAccount) await _forgetCodeOnPhone();
     unawaited(NotificationService.instance.stop());
     // Forget the history key on this phone, so the next person sees nothing.
@@ -1089,6 +1096,7 @@ class AuthService {
           return 'No account found for this recovery code. Please check it '
               'and try again.';
         case 'dual-admin-changed':
+
           return 'Your admin password has changed. Tap Switch to Admin '
               'again and enter the new password.';
         case 'dual-admin-missing':

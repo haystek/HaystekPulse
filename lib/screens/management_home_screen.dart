@@ -26,15 +26,14 @@ import 'feedback_list_screen.dart';
 import 'profile_screen.dart';
 import 'dual_role_screens.dart';
 import '../widgets/list_card.dart';
+import '../widgets/app_tour.dart';
 
 /// Inter font for everything on these screens, sheets and dialogs
 /// (same as the employee screens).
 Widget _withInter(BuildContext context, Widget child) {
   final t = Theme.of(context);
   return Theme(
-    data: t.copyWith(
-      textTheme: GoogleFonts.interTextTheme(t.textTheme),
-    ),
+    data: t.copyWith(textTheme: GoogleFonts.interTextTheme(t.textTheme)),
     child: child,
   );
 }
@@ -334,24 +333,27 @@ class _ManagementHomeScreenState extends State<ManagementHomeScreen>
                                 const Spacer(),
                                 // NotificationBell(employee: widget.employee),
                                 // const SizedBox(width: 8),
-                                _AccountButton(
-                                  name: widget.employee.name,
-                                  onBlue: onBlue,
-                                  actions: [
-                                    MenuAction(
-                                      'Profile',
-                                      () => _push(
-                                        ProfileScreen(
-                                          employee: widget.employee,
+                                KeyedSubtree(
+                                  key: _AdminHomeTour.profile,
+                                  child: _AccountButton(
+                                    name: widget.employee.name,
+                                    onBlue: onBlue,
+                                    actions: [
+                                      MenuAction(
+                                        'Profile',
+                                        () => _push(
+                                          ProfileScreen(
+                                            employee: widget.employee,
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                    MenuAction('Refresh', _refresh),
-                                    MenuAction(
-                                      'Sign out',
-                                      () => confirmSignOut(context),
-                                    ),
-                                  ],
+                                      MenuAction('Refresh', _refresh),
+                                      MenuAction(
+                                        'Sign out',
+                                        () => confirmSignOut(context),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ],
                             ),
@@ -495,6 +497,8 @@ class _ManagementHomeScreenState extends State<ManagementHomeScreen>
 
             return ListView(
               physics: const AlwaysScrollableScrollPhysics(),
+              // Build every part at once, so the first-time tips can reach them.
+              cacheExtent: 3000,
               padding: const EdgeInsets.fromLTRB(0, 12, 0, 28),
               children: [
                 Padding(
@@ -508,34 +512,50 @@ class _ManagementHomeScreenState extends State<ManagementHomeScreen>
                         ),
                       ),
                       // Search Weekly Pulse comments only.
-                      Material(
-                        color: const Color(0xFFF2F6FF),
-                        shape: const CircleBorder(),
-                        child: IconButton(
-                          tooltip: 'Search comments',
-                          onPressed: () =>
-                              _push(const WeekCommentsScreen(weekId: null)),
-                          icon: const Icon(Icons.search, color: AppColors.blue),
+                      KeyedSubtree(
+                        key: _AdminHomeTour.search,
+                        child: Material(
+                          color: const Color(0xFFF2F6FF),
+                          shape: const CircleBorder(),
+                          child: IconButton(
+                            tooltip: 'Search comments',
+                            onPressed: () =>
+                                _push(const WeekCommentsScreen(weekId: null)),
+                            icon: const Icon(
+                              Icons.search,
+                              color: AppColors.blue,
+                            ),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 4),
-                      TextButton(
-                        onPressed: _openAllWeeks,
-                        child: const Text('All weeks'),
+                      KeyedSubtree(
+                        key: _AdminHomeTour.allWeeks,
+                        child: TextButton(
+                          onPressed: _openAllWeeks,
+                          child: const Text('All weeks'),
+                        ),
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 10),
-                _WeekCards(
-                  weekIds: weekIds,
-                  weeks: weeks,
-                  selected: shown,
-                  upcoming: beforeOpen ? thisWeek : null,
-                  closedThisWeek: PulseService.closedForThisWeek()
-                      ? thisWeek
-                      : null,
-                  onPick: _pickWeek,
+                TourStarter(
+                  id: 'admin_home_tour_v1',
+                  steps: _AdminHomeTour.steps,
+                  child: KeyedSubtree(
+                    key: _AdminHomeTour.weeks,
+                    child: _WeekCards(
+                      weekIds: weekIds,
+                      weeks: weeks,
+                      selected: shown,
+                      upcoming: beforeOpen ? thisWeek : null,
+                      closedThisWeek: PulseService.closedForThisWeek()
+                          ? thisWeek
+                          : null,
+                      onPick: _pickWeek,
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 20),
                 Padding(
@@ -543,15 +563,18 @@ class _ManagementHomeScreenState extends State<ManagementHomeScreen>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      _WeekHero(
-                        weekId: shown,
-                        totals: totals,
-                        total: total,
-                        isThisWeek: shown == thisWeek,
-                        open: _windowOpen && shown == thisWeek,
-                        notOpenYet: notOpenYet,
-                        closed: closed,
-                        lastWeek: weeks[PulseService.shiftWeek(shown, -1)],
+                      KeyedSubtree(
+                        key: _AdminHomeTour.hero,
+                        child: _WeekHero(
+                          weekId: shown,
+                          totals: totals,
+                          total: total,
+                          isThisWeek: shown == thisWeek,
+                          open: _windowOpen && shown == thisWeek,
+                          notOpenYet: notOpenYet,
+                          closed: closed,
+                          lastWeek: weeks[PulseService.shiftWeek(shown, -1)],
+                        ),
                       ),
                       const SizedBox(height: 14),
                       // Before it opens: no numbers yet, just who can answer.
@@ -559,47 +582,53 @@ class _ManagementHomeScreenState extends State<ManagementHomeScreen>
                         _SoonNote(total: total)
                       else
                         // The numbers and the reminder, in one white card.
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(22),
-                            border: Border.all(
-                              color: const Color(0xFFEDF0F6),
-                              width: 1.5,
+                        KeyedSubtree(
+                          key: _AdminHomeTour.ring,
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(22),
+                              border: Border.all(
+                                color: const Color(0xFFEDF0F6),
+                                width: 1.5,
+                              ),
                             ),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              _RingSummary(total: total, totals: totals),
-                              ...[
-                                const Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 14),
-                                  child: Divider(
-                                    height: 1,
-                                    color: Color(0xFFEDF0F6),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                _RingSummary(total: total, totals: totals),
+                                ...[
+                                  const Padding(
+                                    padding: EdgeInsets.symmetric(vertical: 14),
+                                    child: Divider(
+                                      height: 1,
+                                      color: Color(0xFFEDF0F6),
+                                    ),
                                   ),
-                                ),
-                                _RemindButton(
-                                  weekId: shown,
-                                  total: total,
-                                  pending: pending,
-                                  canNotify: canNotify,
-                                  windowOpen: _windowOpen && shown == _weekId,
-                                  sending: _sending,
-                                  onRemind: _remind,
-                                ),
+                                  _RemindButton(
+                                    weekId: shown,
+                                    total: total,
+                                    pending: pending,
+                                    canNotify: canNotify,
+                                    windowOpen: _windowOpen && shown == _weekId,
+                                    sending: _sending,
+                                    onRemind: _remind,
+                                  ),
+                                ],
                               ],
-                            ],
+                            ),
                           ),
                         ),
                       const SizedBox(height: 22),
-                      _WhatPeopleSaid(
-                        comments: comments,
-                        onOpen: _openItem,
-                        onSeeAll: () =>
-                            _push(WeekCommentsScreen(weekId: shown)),
+                      KeyedSubtree(
+                        key: _AdminHomeTour.comments,
+                        child: _WhatPeopleSaid(
+                          comments: comments,
+                          onOpen: _openItem,
+                          onSeeAll: () =>
+                              _push(WeekCommentsScreen(weekId: shown)),
+                        ),
                       ),
                     ],
                   ),
@@ -1446,8 +1475,20 @@ class _TimelineState extends State<_Timeline> {
   /// Ma'am: "Mon, Nov 16 · 12:22 PM".
   static String _dayDate(DateTime d) {
     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug',
-        'Sep', 'Oct', 'Nov', 'Dec'];
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
     final h = d.hour % 12 == 0 ? 12 : d.hour % 12;
     final m = d.minute.toString().padLeft(2, '0');
     return '${days[d.weekday - 1]}, ${months[d.month - 1]} ${d.day} · '
@@ -1458,11 +1499,7 @@ class _TimelineState extends State<_Timeline> {
     double size, {
     FontWeight weight = FontWeight.w400,
     Color color = Colors.white,
-  }) => GoogleFonts.inter(
-    fontSize: size,
-    fontWeight: weight,
-    color: color,
-  );
+  }) => GoogleFonts.inter(fontSize: size, fontWeight: weight, color: color);
 
   @override
   Widget build(BuildContext context) {
@@ -3581,17 +3618,27 @@ class _SuggestionTabState extends State<_SuggestionTab> {
                   ),
                 ),
                 const SizedBox(width: 10),
+                // Count and order on two lines, so nothing is cut off.
                 Expanded(
-                  child: Text(
-                    '${items.length} '
-                    '${items.length == 1 ? 'suggestion' : 'suggestions'}'
-                    ' · newest first',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: AppColors.muted,
-                      fontSize: 13.5,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        '${items.length} '
+                        '${items.length == 1 ? 'suggestion' : 'suggestions'}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: AppColors.ink,
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const Text(
+                        'newest first',
+                        style: TextStyle(color: AppColors.muted, fontSize: 12),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -3604,6 +3651,7 @@ class _SuggestionTabState extends State<_SuggestionTab> {
             padding: EdgeInsets.only(top: 80),
             child: Center(
               child: SizedBox(
+
                 width: 28,
                 height: 28,
                 child: CircularProgressIndicator(
@@ -3986,18 +4034,24 @@ class _BottomTabs extends StatelessWidget {
                 activeIcon: Icons.monitor_heart,
                 label: 'Weekly Pulse',
               ),
-              _tab(
-                i: 1,
-                icon: Icons.lightbulb_outline,
-                activeIcon: Icons.lightbulb,
-                label: 'Suggestion Box',
-                badge: newCount,
+              KeyedSubtree(
+                key: _AdminHomeTour.suggestTab,
+                child: _tab(
+                  i: 1,
+                  icon: Icons.lightbulb_outline,
+                  activeIcon: Icons.lightbulb,
+                  label: 'Suggestion Box',
+                  badge: newCount,
+                ),
               ),
-              _tab(
-                i: 2,
-                icon: Icons.campaign_outlined,
-                activeIcon: Icons.campaign,
-                label: 'Broadcast',
+              KeyedSubtree(
+                key: _AdminHomeTour.broadcastTab,
+                child: _tab(
+                  i: 2,
+                  icon: Icons.campaign_outlined,
+                  activeIcon: Icons.campaign,
+                  label: 'Broadcast',
+                ),
               ),
             ],
           ),
@@ -4103,4 +4157,63 @@ class _BottomTabs extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Admin home tips (shown once): what each part is for.
+class _AdminHomeTour {
+  static final weeks = GlobalKey(debugLabel: 'adminTourWeeks');
+  static final hero = GlobalKey(debugLabel: 'adminTourHero');
+  static final search = GlobalKey(debugLabel: 'adminTourSearch');
+  static final allWeeks = GlobalKey(debugLabel: 'adminTourAllWeeks');
+  static final suggestTab = GlobalKey(debugLabel: 'adminTourSuggest');
+  static final broadcastTab = GlobalKey(debugLabel: 'adminTourBroadcast');
+  static final profile = GlobalKey(debugLabel: 'adminTourProfile');
+  static final ring = GlobalKey(debugLabel: 'adminTourRing');
+  static final comments = GlobalKey(debugLabel: 'adminTourComments');
+
+  static List<TourStep> steps() => [
+    TourStep(search, 'Search comments', 'Find what people wrote in any week.'),
+    TourStep(
+      allWeeks,
+      'All weeks',
+      'See every week in one list, with a graph of how the team felt '
+          'over time.',
+    ),
+    TourStep(
+      weeks,
+      'Pick a week',
+      'Each card is one week. The coloured bar shows how people felt: '
+          'blue Great, light blue Good, yellow Okay, red Difficult. '
+          'Tap a week to see its results.',
+    ),
+    TourStep(
+      hero,
+      'This week at a glance',
+      'How the week is going, how many answered and how much time is left. '
+          'The summary shows once enough people answer.',
+    ),
+    TourStep(
+      ring,
+      'Answers',
+      'How many said Great, Good, Okay or Difficult. Tap Remind to send a '
+          'reminder only to people who have not answered yet.',
+    ),
+    TourStep(
+      comments,
+      'What people said',
+      'Comments written for this week. Tap one to reply or change its '
+          'status. A name shows only if the person chose to share it.',
+    ),
+    TourStep(
+      suggestTab,
+      'Suggestion Box',
+      'Read suggestions, change their status and reply.',
+    ),
+    TourStep(
+      broadcastTab,
+      'Broadcast',
+      'Send an update to everyone. They get a notification and can comment.',
+    ),
+    TourStep(profile, 'Your profile', 'Profile, Help & Privacy, and sign out.'),
+  ];
 }
