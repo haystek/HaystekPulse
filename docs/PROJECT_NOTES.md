@@ -602,3 +602,7 @@ Tick each box `[x]` when done, with the date.
 | Google Play | – | paid (one time) |
 
 <!-- PULSE-TRACKER END -->
+
+### ⚠️ sendPush – key rule
+- Do NOT delete or disable the old push keys (fcm_sender_dev.json / fcm_sender.json) until every tester has installed the new build that uses sendPush. Build 12 and older send notifications with the old DEV key – disabling it stops their notifications.
+- Order: 1) sendPush function + app change, test on DEV  2) new TestFlight build, Ma'am/testers update  3) then delete the key files from the project and delete the old keys in Google Cloud.
