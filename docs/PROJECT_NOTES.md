@@ -611,3 +611,13 @@ Tick each box `[x]` when done, with the date.
 1. [ ] Find the LIVE `serviceAccount.json` and `AuthKey_B348XC2G9K.p8` (not in the project folder): `find ~ -name "serviceAccount*.json" -o -name "AuthKey_*.p8" 2>/dev/null | grep -v Library`. Copy them to ~/Desktop/pulse_keys (rename the LIVE one to live-serviceAccount.json), then put that folder on a pen drive / private Drive.
 2. [ ] Take `fcm_sender_backup.zip` out of git (password lost): `git rm --cached fcm_sender_backup.zip`, add it to .gitignore, commit, push.
 3. [ ] sendPush: send Claude `functions/index.js` + `lib/services/push_sender_io.dart`. Follow the key rule above.
+
+### 20 Nov – done
+- Update screen: design B (soft card, animated) – 9b5ff0b. Wording waits for Ma'am's OK ("A new version is ready", "Please update Haystek Pulse to keep using the app.", "Your answers and settings stay safe").
+- Update check tested on iPhone + Android (DEV). Android was stuck on a blue screen once – fixed by uninstall + reinstall.
+- Versions: test builds raise only +number; each App Store release needs a higher first part (1.0.1, 1.0.2…). Set latestAndroid / latestIos only after the build is live in the store.
+
+### Monday (23 Nov) – do first
+1. [ ] Find LIVE serviceAccount.json + AuthKey_B348XC2G9K.p8, copy to the key backup folder.
+2. [ ] Take fcm_sender_backup.zip out of git (git rm --cached, .gitignore).
+3. [ ] sendPush: send Claude functions/index.js + lib/services/push_sender_io.dart. Follow the key rule.
