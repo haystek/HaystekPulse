@@ -26,6 +26,7 @@ import 'services/pulse_service.dart';
 class DemoData {
   static const bool on = true;
   static const int people = 30;
+
   /// Great, Good, Okay, Difficult. Oldest week first, this week last
   /// The weeks are different on purpose: good, mixed, a hard one, and a
   /// great one, so the week cards and headlines show every case.
