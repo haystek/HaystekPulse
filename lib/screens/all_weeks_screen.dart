@@ -6,7 +6,10 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../demo_data.dart';
 import '../models/pulse_rating.dart';
+import '../models/feedback_item.dart';
 import '../models/pulse_totals.dart';
+import '../services/feedback_service.dart';
+import 'feedback_detail_screen.dart';
 import '../services/pulse_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/ui.dart';
@@ -67,6 +70,14 @@ class _AllWeeksScreenState extends State<AllWeeksScreen> {
   bool _sending = false;
   bool _reminded = false;
 
+  /// Past weeks list: [_fAll], [_fReply] or [_fHard].
+  String _listFilter = _fAll;
+
+  /// Weekly Pulse comments (for "Reply to N comments" and "to reply").
+  late final Stream<List<FeedbackItem>> _comments = FeedbackService.instance
+      .watchAll()
+      .map((all) => [for (final f in all) if (!f.isFromBox) f]);
+
   @override
   void initState() {
     super.initState();
@@ -111,6 +122,70 @@ class _AllWeeksScreenState extends State<AllWeeksScreen> {
     } finally {
       if (mounted) setState(() => _sending = false);
     }
+  }
+
+  /// Asks first. Only after "Send" is the reminder sent.
+  Future<void> _confirmRemind() async {
+    final outside = widget.onRemind;
+    if (outside != null) {
+      // The home screen asks first and shows the result itself.
+      setState(() => _sending = true);
+      var sent = false;
+      try {
+        sent = await outside();
+      } catch (_) {}
+      if (!mounted) return;
+      setState(() {
+        _sending = false;
+        if (sent) _reminded = true;
+      });
+      return;
+    }
+    final messenger = ScaffoldMessenger.of(context);
+    final yes = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => _withInter(
+        dialogContext,
+        AlertDialog(
+          title: const Text('Send a reminder?'),
+          content: const Text(
+            'Only employees who have not answered this week will receive it.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Send'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (yes != true || !mounted) return;
+    setState(() => _sending = true);
+    var ok = false;
+    try {
+      ok = await (widget.onRemind ?? PulseService.instance.remindPending)();
+    } catch (_) {
+      ok = false;
+    }
+    if (!mounted) return;
+    setState(() {
+      _sending = false;
+      if (ok) _reminded = true;
+    });
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          ok
+              ? 'Reminder sent.'
+              : 'Could not send the reminder. Please try again.',
+        ),
+      ),
+    );
   }
 
   @override
@@ -164,7 +239,14 @@ class _AllWeeksScreenState extends State<AllWeeksScreen> {
                           ),
                         );
                       }
-                      return _buildList(snap.data!, totalSnap.data!);
+                      return StreamBuilder<List<FeedbackItem>>(
+                        stream: _comments,
+                        builder: (context, cSnap) => _buildList(
+                          snap.data!,
+                          totalSnap.data!,
+                          cSnap.data ?? const <FeedbackItem>[],
+                        ),
+                      );
                     },
                   );
                 },
@@ -176,7 +258,11 @@ class _AllWeeksScreenState extends State<AllWeeksScreen> {
     );
   }
 
-  Widget _buildList(Map<String, PulseTotals> saved, int realTotal) {
+  Widget _buildList(
+    Map<String, PulseTotals> saved,
+    int realTotal,
+    List<FeedbackItem> comments,
+  ) {
     final thisWeek = PulseService.thisWeekId();
     final weeks = <String, PulseTotals>{
       if (DemoData.on) ...DemoData.weeks(thisWeek),
@@ -184,6 +270,7 @@ class _AllWeeksScreenState extends State<AllWeeksScreen> {
     };
     final total = DemoData.on ? DemoData.people : realTotal;
     final selected = widget.selectedWeekId ?? thisWeek;
+    final now = DateTime.now();
 
     // The first week the app was used: the oldest week with answers,
     // or this week when nobody has answered yet.
@@ -192,8 +279,7 @@ class _AllWeeksScreenState extends State<AllWeeksScreen> {
       if (id.compareTo(firstWeek) < 0) firstWeek = id;
     }
 
-    // Every past week, newest first. Weeks where nobody answered still
-    // show, so no week goes missing. This week has its own card on top.
+    // Every past week, newest first.
     final pastIds = <String>[];
     for (
       var id = PulseService.shiftWeek(thisWeek, -1);
@@ -206,56 +292,210 @@ class _AllWeeksScreenState extends State<AllWeeksScreen> {
     PulseTotals totalsOf(String id) => weeks[id] ?? const PulseTotals();
     int? levelOf(String id) => _moodLevel(_result(totalsOf(id), total));
 
-    // The chart: up to 7 past weeks, oldest on the left.
-    final chartIds = pastIds.take(7).toList().reversed.toList();
-    final chartId = _pickChartWeek(chartIds, selected, levelOf);
+    // Weekly Pulse comments by week.
+    final byWeek = <String, List<FeedbackItem>>{};
+    for (final c in comments) {
+      final w = c.weekId;
+      if (w != null) byWeek.putIfAbsent(w, () => []).add(c);
+    }
+    int needReplyOf(String id) =>
+        (byWeek[id] ?? const <FeedbackItem>[]).where((c) => !c.hasReply).length;
+
+    final thisTotals = totalsOf(thisWeek);
+    final left = (total - thisTotals.submitted).clamp(0, total);
+    final lastWeek = PulseService.shiftWeek(thisWeek, -1);
+
+    // To do: only what needs the admin now.
+    final todos = <_Todo>[];
+    if (PulseService.isOpen(now) && total > 0 && left > 0) {
+      final closes = PulseService.closesAt(
+        now,
+      ).subtract(const Duration(minutes: 1));
+      todos.add(
+        _Todo(
+          icon: Icons.notifications_none,
+          tint: _softBlue,
+          iconColor: AppColors.blue,
+          title: 'Remind $left ${left == 1 ? 'person' : 'people'}',
+          sub: 'Weekly Pulse closes ${PulseService.dateTimeLabel(closes)}',
+          action: _reminded ? 'Sent ✓' : 'Remind',
+          onTap: _reminded || _sending ? null : _confirmRemind,
+        ),
+      );
+    }
+    final waiting = [
+      for (final c in comments)
+        if (!c.hasReply) c,
+    ]..sort((a, b) => (a.createdAt ?? now).compareTo(b.createdAt ?? now));
+    if (waiting.isNotEmpty) {
+      final oldest = waiting.first;
+      final days = now.difference(oldest.createdAt ?? now).inDays;
+      todos.add(
+        _Todo(
+          icon: Icons.chat_bubble_outline,
+          tint: const Color(0xFFFFF2E6),
+          iconColor: const Color(0xFFB45309),
+          title: waiting.length == 1
+              ? 'Reply to 1 comment'
+              : 'Reply to ${waiting.length} comments',
+          sub: days <= 0
+              ? 'Oldest is from today'
+              : (days == 1
+                    ? 'Oldest is 1 day old'
+                    : 'Oldest is $days days old'),
+          action: 'See ›',
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => const _NeedsReplyScreen()),
+          ),
+        ),
+      );
+    }
+    String? hardId;
+    for (final id in pastIds.take(8)) {
+      final l = levelOf(id);
+      if (l != null && l <= _mixedLevel) {
+        hardId = id;
+        break;
+      }
+    }
+    if (hardId != null) {
+      final id = hardId;
+      final d = totalsOf(id).countFor(PulseRating.difficult);
+      todos.add(
+        _Todo(
+          icon: Icons.warning_amber_rounded,
+          tint: const Color(0xFFFDE8E3),
+          iconColor: const Color(0xFFC2410C),
+          title: 'Look at week of ${_dayMonth(id)}',
+          sub: d > 0
+              ? '$d ${d == 1 ? 'person' : 'people'} said Difficult'
+              : _result(totalsOf(id), total),
+          action: 'Open ›',
+          onTap: () => Navigator.of(context).pop(id),
+        ),
+      );
+    }
 
     final children = <Widget>[
       _ThisWeekCard(
         weekId: thisWeek,
-        totals: totalsOf(thisWeek),
+        totals: thisTotals,
         total: total,
-        canRemind: widget.onRemind != null,
+        // The Remind button is in "To do" now.
+        canRemind: false,
         sending: _sending,
         reminded: _reminded,
         onRemind: _remind,
         onTap: () => Navigator.of(context).pop(thisWeek),
       ),
+      const SizedBox(height: 14),
+      _TodoCard(items: todos),
     ];
 
-    if (chartId != null) {
-      children.add(const SizedBox(height: 16));
+    // This week vs last week (only once enough people answered, for
+    // privacy – same rule as the result).
+    if (levelOf(thisWeek) != null && levelOf(lastWeek) != null) {
+      children.add(const SizedBox(height: 14));
       children.add(
-        _TrendCard(
-          chartIds: chartIds,
-          chartId: chartId,
-          totalsOf: totalsOf,
-          levelOf: levelOf,
-          total: total,
-          onPick: (id) => setState(() => _chartWeekId = id),
+        _CompareCard(
+          thisWeek: _countsOf(thisTotals),
+          lastWeek: _countsOf(totalsOf(lastWeek)),
+          soFar: PulseService.isOpen(now),
         ),
       );
     }
 
-    // One white card per month. The month name sits above it.
+    // Last 8 weeks: one bar per week.
+    if (pastIds.isNotEmpty) {
+      final barIds = [...pastIds.take(7).toList().reversed, thisWeek];
+      final picked = _chartWeekId != null && barIds.contains(_chartWeekId)
+          ? _chartWeekId!
+          : (barIds.contains(selected) ? selected : thisWeek);
+      children.add(const SizedBox(height: 14));
+      children.add(
+        _WeeksCard(
+          weekIds: barIds,
+          thisWeek: thisWeek,
+          selectedId: picked,
+          totalsOf: totalsOf,
+          levelOf: levelOf,
+          total: total,
+          onPick: (id) => setState(() => _chartWeekId = id),
+          onOpen: (id) => Navigator.of(context).pop(id),
+        ),
+      );
+    }
+
+    // Past weeks.
+    final replyIds = [
+      for (final id in pastIds)
+        if (needReplyOf(id) > 0) id,
+    ];
+    final hardIds = [
+      for (final id in pastIds)
+        if ((levelOf(id) ?? 99) <= _mixedLevel) id,
+    ];
+    final shownIds = _listFilter == _fReply
+        ? replyIds
+        : _listFilter == _fHard
+        ? hardIds
+        : pastIds;
+    if (pastIds.isNotEmpty) {
+      children.add(
+        const Padding(
+          padding: EdgeInsets.fromLTRB(4, 24, 4, 10),
+          child: Text(
+            'Past weeks',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: _dark,
+            ),
+          ),
+        ),
+      );
+      children.add(
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: [
+            _ListChip(
+              label: 'All',
+              selected: _listFilter == _fAll,
+              onTap: () => setState(() => _listFilter = _fAll),
+            ),
+            _ListChip(
+              label: 'Needs reply',
+              count: replyIds.length,
+              selected: _listFilter == _fReply,
+              onTap: () => setState(() => _listFilter = _fReply),
+            ),
+            _ListChip(
+              label: 'Hard weeks',
+              count: hardIds.length,
+              selected: _listFilter == _fHard,
+              onTap: () => setState(() => _listFilter = _fHard),
+            ),
+          ],
+        ),
+      );
+    }
+
     final months = <String, List<String>>{};
-    for (final id in pastIds) {
+    for (final id in shownIds) {
       months.putIfAbsent(_monthTitle(id), () => []).add(id);
     }
-    // A chosen week older than the chart is still highlighted in the list.
-    final olderThanChart =
-        pastIds.contains(selected) && !chartIds.contains(selected);
-    final highlighted = olderThanChart ? selected : chartId;
     months.forEach((month, ids) {
       children.add(
         Padding(
-          padding: const EdgeInsets.fromLTRB(4, 18, 4, 8),
+          padding: const EdgeInsets.fromLTRB(4, 16, 4, 8),
           child: Text(
-            month,
+            month.toUpperCase(),
             style: const TextStyle(
-              fontSize: 14,
+              fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: Color(0xFF374151),
+              letterSpacing: 0.8,
+              color: _muted,
             ),
           ),
         ),
@@ -265,21 +505,39 @@ class _AllWeeksScreenState extends State<AllWeeksScreen> {
           borderRadius: BorderRadius.circular(20),
           child: Column(
             children: [
-              for (final id in ids)
+              for (var i = 0; i < ids.length; i++) ...[
+                if (i > 0)
+                  const Divider(height: 1, thickness: 1, color: _lightLine),
                 _WeekRow(
-                  weekId: id,
-                  totals: totalsOf(id),
+                  weekId: ids[i],
+                  totals: totalsOf(ids[i]),
                   total: total,
-                  highlighted: id == highlighted,
-                  onTap: () => Navigator.of(context).pop(id),
+                  highlighted: ids[i] == selected,
+                  needReply: needReplyOf(ids[i]),
+                  onTap: () => Navigator.of(context).pop(ids[i]),
                 ),
+              ],
             ],
           ),
         ),
       );
     });
 
-    // No past weeks yet: a short message instead of an empty screen.
+    if (pastIds.isNotEmpty && shownIds.isEmpty) {
+      children.add(
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 28, 16, 8),
+          child: Text(
+            _listFilter == _fReply
+                ? 'Every comment has a reply.'
+                : 'No hard weeks.',
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 14.5, color: _muted),
+          ),
+        ),
+      );
+    }
+
     if (pastIds.isEmpty) children.add(const _NoWeeksYet());
 
     return ListView(
@@ -908,8 +1166,9 @@ class _ChartPainter extends CustomPainter {
 // One week in the list
 // ---------------------------------------------------------------------
 
-///   [ 19 ]  Mostly good                 28/30
-///   [ OCT]  19 – 23 Oct                 ▬▬▬▬   >
+///   [ 16 ]  A great week                28/30
+///   [ NOV]  16 – 20 Nov              answered
+///           ▬▬▬▬▬▬ (mood)          ● 2 to reply   >
 class _WeekRow extends StatelessWidget {
   const _WeekRow({
     required this.weekId,
@@ -917,6 +1176,7 @@ class _WeekRow extends StatelessWidget {
     required this.total,
     required this.highlighted,
     required this.onTap,
+    this.needReply = 0,
   });
 
   final String weekId;
@@ -924,6 +1184,7 @@ class _WeekRow extends StatelessWidget {
   final int total;
   final bool highlighted;
   final VoidCallback onTap;
+  final int needReply;
 
   @override
   Widget build(BuildContext context) {
@@ -931,109 +1192,129 @@ class _WeekRow extends StatelessWidget {
     final submitted = totals.submitted;
     final title = _result(totals, total);
     final level = _moodLevel(title);
-    final share = total <= 0 ? 0.0 : (submitted / total).clamp(0.0, 1.0);
 
     return Material(
       color: highlighted ? _softBlue : Colors.white,
       child: InkWell(
         onTap: onTap,
-        child: SizedBox(
-          height: 72,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Row(
-              children: [
-                // The date tile: Monday's day and the month, coloured by mood.
-                Container(
-                  width: 48,
-                  height: 52,
-                  decoration: BoxDecoration(
-                    color: _tileColor(level),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        '${monday.day}',
-                        style: TextStyle(
-                          fontSize: 16,
-                          height: 1.2,
-                          fontWeight: FontWeight.w700,
-                          color: _tileTextColor(level),
-                        ),
-                      ),
-                      Text(
-                        _monthNames[monday.month - 1].toUpperCase(),
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: _tileTextColor(level),
-                        ),
-                      ),
-                    ],
-                  ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 14, 8, 14),
+          child: Row(
+            children: [
+              Container(
+                width: 46,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: _tileColor(level),
+                  borderRadius: BorderRadius.circular(14),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0,
-                          color: _dark,
-                        ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      '${monday.day}',
+                      style: TextStyle(
+                        fontSize: 16,
+                        height: 1.2,
+                        fontWeight: FontWeight.w700,
+                        color: _tileTextColor(level),
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        _shortWeek(weekId),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w500, color: _muted),
+                    ),
+                    Text(
+                      _monthNames[monday.month - 1].toUpperCase(),
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: _tileTextColor(level),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                SizedBox(
-                  width: 44,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        '$submitted/$total',
-                        maxLines: 1,
-                        style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: _dark),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 15.5,
+                        fontWeight: FontWeight.w600,
+                        color: _dark,
                       ),
-                      const SizedBox(height: 5),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(2),
-                        child: LinearProgressIndicator(
-                          value: share,
-                          minHeight: 4,
-                          backgroundColor: const Color(0xFFE3E8F1),
-                          color: AppColors.blue,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _shortWeek(weekId),
+                      style: const TextStyle(fontSize: 12.5, color: _muted),
+                    ),
+                    // Mood bar only once enough people answered (privacy).
+                    if (level != null) ...[
+                      const SizedBox(height: 8),
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 160),
+                        child: _Segments(
+                          counts: _countsOf(totals),
+                          height: 5,
                         ),
                       ),
                     ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    '$submitted/$total',
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: _dark,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                const Icon(
-                  Icons.chevron_right,
-                  size: 18,
-                  color: Color(0xCC0E1A3A),
-                ),
-              ],
-            ),
+                  const Text(
+                    'answered',
+                    style: TextStyle(fontSize: 11.5, color: _muted),
+                  ),
+                  if (needReply > 0) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 7,
+                          height: 7,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFB45309),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '$needReply to reply',
+                          style: const TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFFB45309),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(width: 2),
+              const Icon(
+                Icons.chevron_right,
+                size: 18,
+                color: Color(0xCC0E1A3A),
+              ),
+            ],
           ),
         ),
       ),
@@ -1267,3 +1548,880 @@ class _NoWeeksYet extends StatelessWidget {
     );
   }
 }
+
+// ---------------------------------------------------------------------
+// Helpful for admin: To do, This week vs last week, Last 8 weeks
+// ---------------------------------------------------------------------
+
+const String _fAll = 'all';
+const String _fReply = 'reply';
+const String _fHard = 'hard';
+
+const List<String> _moodOrder = [
+  PulseRating.great,
+  PulseRating.good,
+  PulseRating.okay,
+  PulseRating.difficult,
+];
+
+const List<String> _moodNames = ['Great', 'Good', 'Okay', 'Difficult'];
+
+const List<Color> _mixColors = [
+  AppColors.blue,
+  Color(0xFF7FA2F3),
+  Color(0xFFE2A93B),
+  Color(0xFFD9472C),
+];
+
+/// Great, Good, Okay, Difficult counts of one week.
+List<int> _countsOf(PulseTotals t) => [
+  for (final r in _moodOrder) t.countFor(r),
+];
+
+/// "16 Nov".
+String _dayMonth(String weekId) {
+  final m = _mondayOf(weekId);
+  return '${m.day} ${_monthNames[m.month - 1]}';
+}
+
+/// The four moods as coloured parts of one bar.
+/// [vertical]: Great on top (for the week bars).
+class _Segments extends StatelessWidget {
+  const _Segments({
+    required this.counts,
+    this.height = 9,
+    this.vertical = false,
+  });
+
+  final List<int> counts;
+  final double height;
+  final bool vertical;
+
+  @override
+  Widget build(BuildContext context) {
+    final parts = [
+      for (var i = 0; i < 4; i++)
+        if (counts[i] > 0)
+          Expanded(
+            flex: counts[i],
+            child: ColoredBox(color: _mixColors[i]),
+          ),
+    ];
+    if (vertical) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: parts,
+      );
+    }
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(height / 2),
+      child: SizedBox(
+        height: height,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: parts,
+        ),
+      ),
+    );
+  }
+}
+
+class _Todo {
+  const _Todo({
+    required this.icon,
+    required this.tint,
+    required this.iconColor,
+    required this.title,
+    required this.sub,
+    required this.action,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final Color tint;
+  final Color iconColor;
+  final String title;
+  final String sub;
+  final String action;
+  final VoidCallback? onTap;
+}
+
+/// "To do": up to three things that need the admin now.
+class _TodoCard extends StatelessWidget {
+  const _TodoCard({required this.items});
+
+  final List<_Todo> items;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text(
+                'To do',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: _dark,
+                ),
+              ),
+              const Spacer(),
+              if (items.isNotEmpty)
+                Text(
+                  items.length == 1 ? '1 thing' : '${items.length} things',
+                  style: const TextStyle(fontSize: 12, color: _muted),
+                ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          if (items.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 10),
+              child: Text(
+                '👍  All done. Nothing needs you right now.',
+                style: TextStyle(fontSize: 14, color: _muted),
+              ),
+            )
+          else
+            for (var i = 0; i < items.length; i++) ...[
+              if (i > 0)
+                const Divider(height: 1, thickness: 1, color: _lightLine),
+              _row(items[i]),
+            ],
+        ],
+      ),
+    );
+  }
+
+  Widget _row(_Todo t) {
+    return InkWell(
+      onTap: t.onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 11),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: t.tint,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(t.icon, size: 19, color: t.iconColor),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    t.title,
+                    style: const TextStyle(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w600,
+                      color: _dark,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    t.sub,
+                    style: const TextStyle(fontSize: 12.5, color: _muted),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              t.action,
+              style: TextStyle(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w600,
+                color: t.onTap == null ? _muted : AppColors.blue,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Great / Good / Okay / Difficult: this week and last week side by side.
+/// Bars are shares of each week's answers, so a week still open compares
+/// fairly with a full one.
+class _CompareCard extends StatelessWidget {
+  const _CompareCard({
+    required this.thisWeek,
+    required this.lastWeek,
+    required this.soFar,
+  });
+
+  final List<int> thisWeek;
+  final List<int> lastWeek;
+  final bool soFar;
+
+  @override
+  Widget build(BuildContext context) {
+    final a = thisWeek.fold<int>(0, (x, y) => x + y);
+    final b = lastWeek.fold<int>(0, (x, y) => x + y);
+    double share(int n, int sum) => sum == 0 ? 0 : n / sum;
+    final goodNow = a == 0 ? 0 : ((thisWeek[0] + thisWeek[1]) * 100 / a).round();
+    final goodLast = b == 0 ? 0 : ((lastWeek[0] + lastWeek[1]) * 100 / b).round();
+    final goodA = thisWeek[0] + thisWeek[1];
+    final goodB = lastWeek[0] + lastWeek[1];
+    const lastColor = Color(0xFFC9D6FB);
+
+    Widget bar(double v, Color c) => v <= 0
+        ? const SizedBox(height: 9)
+        : FractionallySizedBox(
+            widthFactor: v.clamp(0.03, 1.0),
+            alignment: Alignment.centerLeft,
+            child: Container(
+              height: 9,
+              decoration: BoxDecoration(
+                color: c,
+                borderRadius: BorderRadius.circular(5),
+              ),
+            ),
+          );
+
+    Widget key(Color c, String text) => Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(
+            color: c,
+            borderRadius: BorderRadius.circular(3),
+          ),
+        ),
+        const SizedBox(width: 5),
+        Text(text, style: const TextStyle(fontSize: 12, color: _muted)),
+      ],
+    );
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'This week vs last week',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: _dark,
+                  ),
+                ),
+              ),
+              if (soFar)
+                const Text(
+                  'so far',
+                  style: TextStyle(fontSize: 12, color: _muted),
+                ),
+            ],
+          ),
+          const SizedBox(height: 2),
+          const Text(
+            'How people feel compared with last week.',
+            style: TextStyle(fontSize: 12.5, color: _muted),
+          ),
+          const SizedBox(height: 14),
+          for (var i = 0; i < 4; i++)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 72,
+                    child: Text(
+                      _moodNames[i],
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: _dark,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        bar(share(thisWeek[i], a), AppColors.blue),
+                        const SizedBox(height: 3),
+                        bar(share(lastWeek[i], b), lastColor),
+                      ],
+                    ),
+                  ),
+                  SizedBox(
+                    width: 36,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          '${thisWeek[i]}',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: _dark,
+                          ),
+                        ),
+                        Text(
+                          '${lastWeek[i]}',
+                          style: const TextStyle(
+                            fontSize: 11.5,
+                            color: Color(0xFFA0A7B8),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          Wrap(
+            spacing: 14,
+            runSpacing: 4,
+            children: [
+              key(AppColors.blue, 'This week ($a)'),
+              key(lastColor, 'Last week ($b)'),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF6F8FB),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              '${goodNow >= goodLast ? '👍' : '👀'}  This week $goodA of $a '
+              'people said Great or Good. Last week it was $goodB of $b.',
+              style: const TextStyle(fontSize: 13, color: _dark),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Last 8 weeks: one bar per week, split by how people felt. Tap a bar
+/// to see its numbers; tap the box to open the week.
+class _WeeksCard extends StatelessWidget {
+  const _WeeksCard({
+    required this.weekIds,
+    required this.thisWeek,
+    required this.selectedId,
+    required this.totalsOf,
+    required this.levelOf,
+    required this.total,
+    required this.onPick,
+    required this.onOpen,
+  });
+
+  final List<String> weekIds;
+  final String thisWeek;
+  final String selectedId;
+  final PulseTotals Function(String) totalsOf;
+  final int? Function(String) levelOf;
+  final int total;
+  final ValueChanged<String> onPick;
+  final ValueChanged<String> onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final picked = totalsOf(selectedId);
+    final pickedLevel = levelOf(selectedId);
+    final c = _countsOf(picked);
+    final pickedName = selectedId == thisWeek
+        ? 'This week'
+        : 'Week of ${_dayMonth(selectedId)}';
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Last ${weekIds.length} weeks',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: _dark,
+                  ),
+                ),
+              ),
+              const Text(
+                'tap a week',
+                style: TextStyle(fontSize: 12, color: _muted),
+              ),
+            ],
+          ),
+          const SizedBox(height: 2),
+          const Text(
+            'Each bar is one week: how people felt.',
+            style: TextStyle(fontSize: 12.5, color: _muted),
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            height: 160,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (var i = 0; i < weekIds.length; i++)
+                  Expanded(child: _barColumn(weekIds[i], i == 0)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 12,
+            runSpacing: 4,
+            children: [
+              for (var i = 0; i < 4; i++)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: _mixColors[i],
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      _moodNames[i],
+                      style: const TextStyle(fontSize: 12, color: _muted),
+                    ),
+                  ],
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Material(
+            color: const Color(0xFFF6F8FB),
+            borderRadius: BorderRadius.circular(12),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: () => onOpen(selectedId),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '$pickedName · ${_result(picked, total)}',
+                            style: const TextStyle(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w600,
+                              color: _dark,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            pickedLevel == null
+                                ? '${picked.submitted} of $total answered'
+                                : '${c[0]} Great · ${c[1]} Good · ${c[2]} Okay · '
+                                      '${c[3]} Difficult\n${picked.submitted} of '
+                                      '$total answered',
+                            style: const TextStyle(
+                              fontSize: 12.5,
+                              color: _muted,
+                              height: 1.35,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Open',
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.blue,
+                      ),
+                    ),
+                    const Icon(
+                      Icons.chevron_right,
+                      size: 18,
+                      color: AppColors.blue,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _barColumn(String id, bool first) {
+    final level = levelOf(id);
+    final selected = id == selectedId;
+    final hard = level != null && level <= _mixedLevel;
+    final m = _mondayOf(id);
+    final label = id == thisWeek
+        ? 'Now'
+        : (first ? '${m.day} ${_monthNames[m.month - 1]}' : '${m.day}');
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: 'Week of ${_shortWeek(id)}',
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => onPick(id),
+        child: Column(
+          children: [
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: selected ? _dark : Colors.transparent,
+                      width: 1.5,
+                    ),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(5),
+                    // Not enough answers yet: an empty grey bar (privacy).
+                    child: level == null
+                        ? const ColoredBox(
+                            color: Color(0xFFF0F2F7),
+                            child: SizedBox.expand(),
+                          )
+                        : _Segments(
+                            counts: _countsOf(totalsOf(id)),
+                            vertical: true,
+                          ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.visible,
+              softWrap: false,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: selected || hard || id == thisWeek
+                    ? FontWeight.w700
+                    : FontWeight.w500,
+                color: selected
+                    ? AppColors.blue
+                    : (hard ? _lowText : _muted),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// All / Needs reply / Hard weeks.
+class _ListChip extends StatelessWidget {
+  const _ListChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    this.count,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  final int? count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected ? _dark : Colors.white,
+      shape: StadiumBorder(
+        side: BorderSide(
+          color: selected ? _dark : const Color(0xFFE3E8F1),
+          width: 1.2,
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
+          child: Text(
+            count == null ? label : '$label  $count',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+              color: selected ? Colors.white : AppColors.ink,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Weekly Pulse comments with no reply yet, oldest first. Tap one to
+/// read it and reply.
+class _NeedsReplyScreen extends StatelessWidget {
+  const _NeedsReplyScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return _withInter(
+      context,
+      Scaffold(
+        backgroundColor: _pageBg,
+        appBar: AppBar(
+          backgroundColor: _pageBg,
+          surfaceTintColor: _pageBg,
+          leadingWidth: 68,
+          leading: const AppBackButton(),
+          titleSpacing: 0,
+          title: const Text(
+            'Needs a reply',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: _dark,
+            ),
+          ),
+        ),
+        body: SafeArea(
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 560),
+              child: StreamBuilder<List<FeedbackItem>>(
+                stream: FeedbackService.instance.watchAll(),
+                builder: (context, snap) {
+                  if (snap.hasError) {
+                    return const _Message(
+                      'Could not load the comments. Please go back and try '
+                      'again.',
+                    );
+                  }
+                  if (!snap.hasData) {
+                    return const Center(
+                      child: SizedBox(
+                        width: 28,
+                        height: 28,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          color: AppColors.blue,
+                        ),
+                      ),
+                    );
+                  }
+                  final now = DateTime.now();
+                  final items = [
+                    for (final f in snap.data!)
+                      if (!f.isFromBox && !f.hasReply) f,
+                  ]..sort(
+                      (a, b) => (a.createdAt ?? now).compareTo(b.createdAt ?? now),
+                    );
+                  if (items.isEmpty) {
+                    return const _Message('Every comment has a reply. 👍');
+                  }
+                  return ListView(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 28),
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(4, 0, 4, 12),
+                        child: Text(
+                          '${items.length} Weekly Pulse '
+                          '${items.length == 1 ? 'comment' : 'comments'}, '
+                          'oldest first.',
+                          style: const TextStyle(fontSize: 13.5, color: _muted),
+                        ),
+                      ),
+                      for (final f in items) _CommentCard(item: f),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// One comment: who (or Anonymous), date, the text, its week, how long
+/// it has waited, and the mood.
+class _CommentCard extends StatelessWidget {
+  const _CommentCard({required this.item});
+
+  final FeedbackItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    final d = item.createdAt;
+    final date = d == null ? '' : '${d.day} ${_monthNames[d.month - 1]}';
+    final days = d == null ? 0 : DateTime.now().difference(d).inDays;
+    final waited = days <= 0
+        ? 'From today'
+        : (days == 1 ? 'Waiting 1 day' : 'Waiting $days days');
+    final rating = item.rating;
+    final difficult = rating == PulseRating.difficult;
+    final moodFg = difficult ? const Color(0xFFC2410C) : const Color(0xFFB7791F);
+    final moodBg = difficult ? const Color(0xFFFDE8E3) : const Color(0xFFFFF6E5);
+    final name = (item.authorName ?? '').trim();
+    final week = item.weekId;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Material(
+        color: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+          side: const BorderSide(color: Color(0xFFE3E8F1)),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => FeedbackDetailScreen(item: item),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(
+                color: const Color(0xFFF5F7FB),
+                padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
+                child: Row(
+                  children: [
+                    Icon(
+                      item.anonymous
+                          ? Icons.lock_outline_rounded
+                          : Icons.person_rounded,
+                      size: 16,
+                      color: _muted,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        item.anonymous
+                            ? 'Anonymous'
+                            : (name.isEmpty ? 'With name' : name),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w600,
+                          color: _dark,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      date,
+                      style: const TextStyle(fontSize: 13, color: _muted),
+                    ),
+                    const Icon(Icons.chevron_right, size: 18, color: _muted),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.text.trim(),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        height: 1.4,
+                        color: _dark,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            [
+                              if (week != null) 'Week of ${_dayMonth(week)}',
+                              waited,
+                            ].join(' · '),
+                            style: const TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w500,
+                              color: Color(0xFFB45309),
+                            ),
+                          ),
+                        ),
+                        if (rating != null)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 9,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: moodBg,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              PulseRating.label(rating).toUpperCase(),
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.6,
+                                color: moodFg,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+

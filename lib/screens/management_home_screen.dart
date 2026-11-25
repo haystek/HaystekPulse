@@ -512,22 +512,23 @@ class _ManagementHomeScreenState extends State<ManagementHomeScreen>
                         ),
                       ),
                       // Search Weekly Pulse comments only.
-                      KeyedSubtree(
-                        key: _AdminHomeTour.search,
-                        child: Material(
-                          color: const Color(0xFFF2F6FF),
-                          shape: const CircleBorder(),
-                          child: IconButton(
-                            tooltip: 'Search comments',
-                            onPressed: () =>
-                                _push(const WeekCommentsScreen(weekId: null)),
-                            icon: const Icon(
-                              Icons.search,
-                              color: AppColors.blue,
-                            ),
-                          ),
-                        ),
-                      ),
+                      // KeyedSubtree(
+                      //   key: _AdminHomeTour.search,
+                      //   child: Material(
+                      //     color: const Color(0xFFF2F6FF),
+                      //     shape: const CircleBorder(),
+                      //     child: IconButton(
+                      //       tooltip: 'Search comments',
+                      //       onPressed: () =>
+                      //           _push(const WeekCommentsScreen(weekId: null)),
+                      //       icon: const Icon(
+                      //         Icons.search,
+                      //         color: AppColors.blue,
+
+                      //       ),
+                      //     ),
+                      //   ),
+                      // ),
                       const SizedBox(width: 4),
                       KeyedSubtree(
                         key: _AdminHomeTour.allWeeks,
@@ -986,6 +987,10 @@ class _WeekHeroState extends State<_WeekHero> {
 
   @override
   Widget build(BuildContext context) {
+    // Past weeks: the new card. This week keeps its own card.
+    if (!widget.isThisWeek && !widget.open && !widget.notOpenYet) {
+      return _pastCard();
+    }
     final Widget body;
     if (widget.notOpenYet) {
       body = _soon();
@@ -1007,6 +1012,377 @@ class _WeekHeroState extends State<_WeekHero> {
         ),
       ),
       child: body,
+    );
+  }
+
+  static const List<String> _mon = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  ];
+
+  static DateTime _mondayOfId(String weekId) {
+    final p = weekId.split('-').map(int.parse).toList();
+    final d = DateTime(p[0], p[1], p[2]);
+    return DateTime(d.year, d.month, d.day - (d.weekday - DateTime.monday));
+  }
+
+  /// "26 – 30 OCT" or "28 SEP – 2 OCT".
+  static String _monFri(String weekId) {
+    final mon = _mondayOfId(weekId);
+    final fri = DateTime(mon.year, mon.month, mon.day + 4);
+    final a = mon.month == fri.month
+        ? '${mon.day}'
+        : '${mon.day} ${_mon[mon.month - 1]}';
+    return '$a – ${fri.day} ${_mon[fri.month - 1]}'.toUpperCase();
+  }
+
+  static Widget _glowCircle(double size, Color color) => Container(
+    width: size,
+    height: size,
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      gradient: RadialGradient(
+        colors: [color, color.withValues(alpha: 0)],
+        stops: const [0, 0.7],
+      ),
+    ),
+  );
+
+  /// Past week: ring with % answered, the headline, the mood bar with
+  /// four number tiles, and the week before.
+  Widget _pastCard() {
+    final (title, line) = _headline(
+      totals: widget.totals,
+      total: widget.total,
+      notOpenYet: false,
+      closed: true,
+    );
+    final t = widget.totals;
+    // Mood only once enough people answered (same rule as the headline).
+    final known = line.isEmpty;
+    final counts = [
+      t.countFor(PulseRating.great),
+      t.countFor(PulseRating.good),
+      t.countFor(PulseRating.okay),
+      t.countFor(PulseRating.difficult),
+    ];
+    const colors = [
+      Colors.white,
+      Color(0xFFB9CDFD),
+      Color(0xFFF5C26B),
+      Color(0xFFFF8A7A),
+    ];
+    const names = ['Great', 'Good', 'Okay', 'Difficult'];
+    final pct = (_answered * 100).round();
+    final good = (_goodShare(t) * 100).round();
+    final before = _weekBefore(known);
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x4714328F),
+            blurRadius: 30,
+            offset: Offset(0, 14),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF0B1B4D), Color(0xFF14328F), Color(0xFF2A5BE6)],
+              stops: [0, 0.55, 1],
+            ),
+          ),
+          child: Stack(
+            children: [
+              Positioned(
+                right: -60,
+                top: -60,
+                child: _glowCircle(200, const Color(0x597FA2FF)),
+              ),
+              Positioned(
+                left: -40,
+                bottom: -70,
+                child: _glowCircle(180, const Color(0x14FFFFFF)),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'WEEK OF ${_monFri(widget.weekId)}',
+                            style: _t(
+                              12,
+                              weight: FontWeight.w700,
+                              color: _soft,
+                              letterSpacing: 1,
+                            ),
+                          ),
+                        ),
+                        _HeroChip(
+                          'Closed',
+                          bg: Colors.white.withValues(alpha: 0.14),
+                          fg: const Color(0xFFE3EAFF),
+                          dot: _soft,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        SizedBox(
+                          width: 92,
+                          height: 92,
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              CircularProgressIndicator(
+                                value: _answered,
+                                strokeWidth: 8,
+                                strokeCap: StrokeCap.round,
+                                color: Colors.white,
+                                backgroundColor: Colors.white.withValues(
+                                  alpha: 0.16,
+                                ),
+                              ),
+                              Center(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(12),
+                                  child: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          '$pct%',
+                                          style: _t(
+                                            20,
+                                            weight: FontWeight.w700,
+                                            letterSpacing: -0.4,
+                                          ),
+                                        ),
+                                        Text(
+                                          '${t.submitted} of ${widget.total}',
+                                          style: _t(10.5, color: _light),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                title,
+                                style: _t(
+                                  24,
+                                  weight: FontWeight.w700,
+                                  letterSpacing: -0.5,
+                                  height: 1.1,
+                                ),
+                              ),
+                              const SizedBox(height: 5),
+                              if (known)
+                                Text.rich(
+                                  TextSpan(
+                                    children: [
+                                      TextSpan(
+                                        text: '$good%',
+                                        style: _t(13, weight: FontWeight.w700),
+                                      ),
+                                      TextSpan(
+                                        text: ' said Great or Good',
+                                        style: _t(13, color: _light),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              else
+                                Text(line, style: _t(13, color: _light)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (known) ...[
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        height: 8,
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            for (var i = 0; i < 4; i++)
+                              if (counts[i] > 0)
+                                Expanded(
+                                  flex: counts[i],
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(right: 2),
+                                    child: DecoratedBox(
+                                      decoration: BoxDecoration(
+                                        color: colors[i],
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          for (var i = 0; i < 4; i++) ...[
+                            if (i > 0) const SizedBox(width: 6),
+                            Expanded(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 4,
+                                  vertical: 7,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.10),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Column(
+                                  children: [
+                                    Text(
+                                      '${counts[i]}',
+                                      style: _t(15, weight: FontWeight.w700),
+                                    ),
+                                    const SizedBox(height: 1),
+                                    FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Container(
+                                            width: 7,
+                                            height: 7,
+                                            decoration: BoxDecoration(
+                                              color: colors[i],
+                                              shape: BoxShape.circle,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            names[i],
+                                            style: _t(10.5, color: _light),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ],
+                    if (before != null) ...[
+                      const SizedBox(height: 12),
+                      before,
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// "Week before · 19 Oct / A great week" with ▲ better, ▼ a bit lower
+  /// or About the same. Null when the week before has no answers.
+  Widget? _weekBefore(bool known) {
+    final b = widget.lastWeek;
+    if (b == null || b.submitted == 0) return null;
+    final (beforeTitle, beforeLine) = _headline(
+      totals: b,
+      total: widget.total,
+      notOpenYet: false,
+      closed: true,
+    );
+    final m = _mondayOfId(PulseService.shiftWeek(widget.weekId, -1));
+    String? tag;
+    Color bg = Colors.white.withValues(alpha: 0.12);
+    Color fg = _light;
+    if (known && beforeLine.isEmpty) {
+      final diff = _goodShare(widget.totals) - _goodShare(b);
+      if (diff > 0.10) {
+        tag = '▲ better';
+        bg = const Color(0x2E4ADE80);
+        fg = const Color(0xFFA7F3C4);
+      } else if (diff < -0.10) {
+        tag = '▼ a bit lower';
+        bg = const Color(0x2EFFAA78);
+        fg = const Color(0xFFFFC9A3);
+      } else {
+        tag = 'About the same';
+      }
+    }
+    return Container(
+      padding: const EdgeInsets.fromLTRB(10, 10, 12, 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(
+              Icons.history_rounded,
+              size: 16,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Week before · ${m.day} ${_mon[m.month - 1]}',
+                  style: _t(12, color: _light),
+                ),
+                Text(beforeTitle, style: _t(13.5, weight: FontWeight.w600)),
+              ],
+            ),
+          ),
+          if (tag != null)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+              decoration: BoxDecoration(
+                color: bg,
+                borderRadius: BorderRadius.circular(9),
+              ),
+              child: Text(tag, style: _t(12, weight: FontWeight.w600, color: fg)),
+            ),
+        ],
+      ),
     );
   }
 
@@ -2259,19 +2635,23 @@ class _WeekCardsState extends State<_WeekCards> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      _shortWeek(id),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 13,
-                        // Normal weight and grey until the week opens.
-                        fontWeight: isUpcoming
-                            ? FontWeight.w500
-                            : FontWeight.w600,
-                        color: isUpcoming
-                            ? const Color(0xCC0E1A3A)
-                            : AppColors.ink,
+                    // Full date, shrinks to fit.
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        _shortWeek(id),
+                        maxLines: 1,
+                        style: TextStyle(
+                          fontSize: 13,
+                          // Normal weight and grey until the week opens.
+                          fontWeight: isUpcoming
+                              ? FontWeight.w500
+                              : FontWeight.w600,
+                          color: isUpcoming
+                              ? const Color(0xCC0E1A3A)
+                              : AppColors.ink,
+                        ),
                       ),
                     ),
                     ClipRRect(
@@ -2620,6 +3000,15 @@ class _WeekCommentsScreenState extends State<WeekCommentsScreen> {
   _CommentChip _chip = _CommentChip.all;
   String _query = '';
 
+  /// Filters. Null means All.
+  bool _needsReply = false;
+  String? _mood;
+  String? _status;
+
+  /// 'named' or 'anon'.
+  String? _sent;
+  bool _oldestFirst = false;
+
   @override
   void initState() {
     super.initState();
@@ -2779,22 +3168,117 @@ class _WeekCommentsScreenState extends State<WeekCommentsScreen> {
     FocusManager.instance.primaryFocus?.unfocus();
   }
 
+  /// True if [f] passes every filter, except the ones skipped (for the
+  /// counts in each filter's sheet).
+  bool _match(
+    FeedbackItem f, {
+    bool skipWeek = false,
+    bool skipMood = false,
+    bool skipStatus = false,
+    bool skipSent = false,
+    bool skipReply = false,
+  }) =>
+      (skipWeek || _weekId == null || f.weekId == _weekId) &&
+      (skipMood || _mood == null || f.rating == _mood) &&
+      (skipStatus || _status == null || f.status == _status) &&
+      (skipSent || _sent == null || (_sent == 'anon') == f.anonymous) &&
+      (skipReply || !_needsReply || !f.hasReply) &&
+      _matchesQuery(f);
+
+  void _clearAll() {
+    setState(() {
+      _weekId = null;
+      _mood = null;
+      _status = null;
+      _sent = null;
+      _needsReply = false;
+    });
+  }
+
+  /// One filter's sheet: tap a choice and it applies at once.
+  Future<void> _openOptions({
+    required String title,
+    required String sub,
+    required List<(String?, String, Color?, IconData?)> options,
+    required String? current,
+    required int Function(String?) countOf,
+    required ValueChanged<String?> onPick,
+  }) async {
+    FocusScope.of(context).unfocus();
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.white,
+      showDragHandle: true,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+      ),
+      builder: (sheetContext) => _withInter(
+        sheetContext,
+        SafeArea(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(sheetContext).size.height * 0.8,
+            ),
+            child: ListView(
+              shrinkWrap: true,
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+              children: [
+                Text(title, style: _h(19, weight: FontWeight.w800)),
+                const SizedBox(height: 2),
+                Text(
+                  sub,
+                  style: const TextStyle(fontSize: 13, color: AppColors.muted),
+                ),
+                const SizedBox(height: 12),
+                for (final o in options)
+                  _COption(
+                    label: o.$2,
+                    dot: o.$3,
+                    icon: o.$4,
+                    count: countOf(o.$1),
+                    selected: current == o.$1,
+                    onTap: () {
+                      Navigator.of(sheetContext).pop();
+                      setState(() => onPick(o.$1));
+                    },
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    FocusManager.instance.primaryFocus?.unfocus();
+  }
+
+  void _open(FeedbackItem item) {
+    FocusScope.of(context).unfocus();
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => FeedbackDetailScreen(item: item)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return _withInter(
       context,
       Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: const Color(0xFFF5F7FB),
         appBar: AppBar(
           backgroundColor: Colors.white,
           surfaceTintColor: Colors.white,
           leadingWidth: 68,
           leading: const AppBackButton(),
-          // No title on the left: the name sits on the right in a pill.
-          title: const SizedBox.shrink(),
-          actions: const [
-            _TitlePill('Comments', icon: Icons.chat_bubble_outline_rounded),
-          ],
+          titleSpacing: 0,
+          title: const Text(
+            'Comments',
+            style: TextStyle(
+              fontSize: 19,
+              fontWeight: FontWeight.w700,
+              color: AppColors.ink,
+            ),
+          ),
         ),
         body: SafeArea(
           child: Align(
@@ -2832,253 +3316,742 @@ class _WeekCommentsScreenState extends State<WeekCommentsScreen> {
                     weeks.add(id);
                   }
 
-                  final inWeek = _weekId == null
-                      ? all
-                      : all.where((f) => f.weekId == _weekId).toList();
-                  final searched = inWeek.where(_matchesQuery).toList();
-                  final items = searched
-                      .where((f) => _chipMatches(f, _chip))
-                      .toList();
+                  final matched = all.where((f) => _match(f)).toList();
+                  final items = _oldestFirst
+                      ? matched.reversed.toList()
+                      : matched;
+                  final replyCount = all
+                      .where((f) => _match(f, skipReply: true) && !f.hasReply)
+                      .length;
+                  final filtersOn =
+                      _weekId != null ||
+                      _mood != null ||
+                      _status != null ||
+                      _sent != null ||
+                      _needsReply;
+                  final q = _query.trim();
 
-                  final canBack =
-                      _weekId != null && _weekId!.compareTo(first) > 0;
-                  final canNext =
-                      _weekId != null && _weekId!.compareTo(thisWeek) < 0;
-
-                  // Week headers, only in All weeks.
+                  // Week headings with what matters for that week.
                   final list = <Widget>[];
                   String? lastWeek;
                   for (final item in items) {
-                    if (_weekId == null && item.weekId != lastWeek) {
-                      lastWeek = item.weekId;
-                      final id = item.weekId;
+                    final id = item.weekId;
+                    if (id != lastWeek || list.isEmpty) {
+                      lastWeek = id;
+                      final inThis = items.where((f) => f.weekId == id);
                       list.add(
-                        _GroupHeader(
+                        _CWeekHeader(
                           label: id == null
                               ? 'Other'
-                              : PulseService.weekLabel(id),
-                          count: items.where((f) => f.weekId == id).length,
+                              : 'Week of ${PulseService.shortWeekLabel(id)}',
+                          hard: inThis
+                              .where((f) => f.rating == PulseRating.difficult)
+                              .length,
+                          toReply: inThis.where((f) => !f.hasReply).length,
                         ),
                       );
                     }
-                    list.add(
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-                        child: _Quote(
-                          item: item,
-                          onTap: () {
-                            FocusScope.of(context).unfocus();
-                            Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) =>
-                                    FeedbackDetailScreen(item: item),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    );
+                    list.add(_CCard(item: item, onTap: () => _open(item)));
                   }
 
-                  final q = _query.trim();
-                  return ListView(
-                    keyboardDismissBehavior:
-                        ScrollViewKeyboardDismissBehavior.onDrag,
-                    padding: const EdgeInsets.fromLTRB(0, 4, 0, 24),
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // The week bar.
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: Container(
-                          height: 64,
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF2F6FF),
-                            borderRadius: BorderRadius.circular(18),
-                          ),
-                          child: Row(
-                            children: [
-                              _WeekArrow(
-                                icon: Icons.chevron_left,
-                                tooltip: 'Week before',
-                                visible: _weekId != null,
-                                onTap: canBack
-                                    ? () => setState(
-                                        () => _weekId = PulseService.shiftWeek(
-                                          _weekId!,
-                                          -1,
-                                        ),
-                                      )
-                                    : null,
-                              ),
-                              Expanded(
-                                child: InkWell(
-                                  borderRadius: BorderRadius.circular(14),
-                                  onTap: () => _pickWeek(all, weeks),
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Text(
-                                        _weekId == null
-                                            ? 'All weeks'
-                                            : PulseService.weekLabel(_weekId!),
-                                        style: _h(17, weight: FontWeight.w800),
+                      // Search and filters.
+                      Container(
+                        color: Colors.white,
+                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            TextField(
+                              controller: _search,
+                              autofocus: widget.focusSearch,
+                              onChanged: (v) => setState(() => _query = v),
+                              textInputAction: TextInputAction.search,
+                              decoration: InputDecoration(
+                                hintText: 'Search words or name',
+                                prefixIcon: const Icon(Icons.search),
+                                suffixIcon: _query.isEmpty
+                                    ? null
+                                    : IconButton(
+                                        tooltip: 'Clear',
+                                        icon: const Icon(Icons.close),
+                                        onPressed: () {
+                                          _search.clear();
+                                          setState(() => _query = '');
+                                        },
                                       ),
-                                      const SizedBox(height: 2),
-                                      Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Text(
-                                            [
-                                              if (_weekId != null &&
-                                                  PulseService.weekName(
-                                                    _weekId!,
-                                                  ).isNotEmpty)
-                                                PulseService.weekName(_weekId!),
-                                              '${inWeek.length} '
-                                                  '${inWeek.length == 1 ? 'comment' : 'comments'}',
-                                            ].join(' · '),
-                                            style: const TextStyle(
-                                              color: AppColors.blue,
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                          ),
-                                          const Icon(
-                                            Icons.arrow_drop_down,
-                                            color: AppColors.blue,
-                                            size: 20,
-                                          ),
-                                        ],
-                                      ),
-                                    ],
+                                filled: true,
+                                fillColor: const Color(0xFFF2F4F8),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 13,
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: BorderSide.none,
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: BorderSide.none,
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: const BorderSide(
+                                    color: AppColors.blue,
+                                    width: 1.5,
                                   ),
                                 ),
                               ),
-                              _WeekArrow(
-                                icon: Icons.chevron_right,
-                                tooltip: 'Week after',
-                                visible: _weekId != null,
-                                onTap: canNext
-                                    ? () => setState(
-                                        () => _weekId = PulseService.shiftWeek(
-                                          _weekId!,
-                                          1,
-                                        ),
-                                      )
-                                    : null,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      // Search box.
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: TextField(
-                          controller: _search,
-                          autofocus: widget.focusSearch,
-                          onChanged: (v) => setState(() => _query = v),
-                          textInputAction: TextInputAction.search,
-                          decoration: InputDecoration(
-                            hintText: 'Search words or name',
-                            prefixIcon: const Icon(Icons.search),
-                            suffixIcon: _query.isEmpty
-                                ? null
-                                : IconButton(
-                                    tooltip: 'Clear',
-                                    icon: const Icon(Icons.close),
-                                    onPressed: () {
-                                      _search.clear();
-                                      setState(() => _query = '');
-                                    },
+                            ),
+                            const SizedBox(height: 10),
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 6,
+                              children: [
+                                _CPill(
+                                  label: 'Needs reply $replyCount',
+                                  dot: const Color(0xFFE2583E),
+                                  warm: true,
+                                  active: _needsReply,
+                                  dropdown: false,
+                                  onTap: () => setState(
+                                    () => _needsReply = !_needsReply,
                                   ),
-                            filled: true,
-                            fillColor: const Color(0xFFF5F7FB),
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 14,
+                                  onClear: () =>
+                                      setState(() => _needsReply = false),
+                                ),
+                                _CPill(
+                                  icon: Icons.calendar_today_outlined,
+                                  label: _weekId == null
+                                      ? 'All weeks'
+                                      : 'Week of ${PulseService.shortWeekLabel(_weekId!)}',
+                                  active: _weekId != null,
+                                  onTap: () => _pickWeek(all, weeks),
+                                  onClear: () => setState(() => _weekId = null),
+                                ),
+                                _CPill(
+                                  icon: Icons.mood_outlined,
+                                  label: _mood == null
+                                      ? 'Mood'
+                                      : PulseRating.label(_mood!),
+                                  active: _mood != null,
+                                  onTap: () => _openOptions(
+                                    title: 'Mood',
+                                    sub:
+                                        'Only Okay and Difficult answers have comments.',
+                                    options: [
+                                      (null, 'All moods', null, null),
+                                      (
+                                        PulseRating.okay,
+                                        PulseRating.label(PulseRating.okay),
+                                        _moodColor(PulseRating.okay),
+                                        null,
+                                      ),
+                                      (
+                                        PulseRating.difficult,
+                                        PulseRating.label(PulseRating.difficult),
+                                        _moodColor(PulseRating.difficult),
+                                        null,
+                                      ),
+                                    ],
+                                    current: _mood,
+                                    countOf: (v) => all
+                                        .where(
+                                          (f) =>
+                                              _match(f, skipMood: true) &&
+                                              (v == null || f.rating == v),
+                                        )
+                                        .length,
+                                    onPick: (v) => _mood = v,
+                                  ),
+                                  onClear: () => setState(() => _mood = null),
+                                ),
+                                _CPill(
+                                  icon: Icons.flag_outlined,
+                                  label: _status == null
+                                      ? 'Status'
+                                      : FeedbackStatus.label(_status!),
+                                  active: _status != null,
+                                  onTap: () => _openOptions(
+                                    title: 'Status',
+                                    sub: 'Where admin has moved the comment.',
+                                    options: [
+                                      (null, 'All', null, null),
+                                      for (final st in FeedbackStatus.all)
+                                        (
+                                          st,
+                                          FeedbackStatus.label(st),
+                                          FeedbackStatus.color(st),
+                                          null,
+                                        ),
+                                    ],
+                                    current: _status,
+                                    countOf: (v) => all
+                                        .where(
+                                          (f) =>
+                                              _match(f, skipStatus: true) &&
+                                              (v == null || f.status == v),
+                                        )
+                                        .length,
+                                    onPick: (v) => _status = v,
+                                  ),
+                                  onClear: () => setState(() => _status = null),
+                                ),
+                                _CPill(
+                                  icon: _sent == 'anon'
+                                      ? Icons.lock_outline_rounded
+                                      : Icons.person_outline_rounded,
+                                  label: _sent == null
+                                      ? 'Sent'
+                                      : (_sent == 'anon'
+                                            ? 'Anonymous'
+                                            : 'With name'),
+                                  active: _sent != null,
+                                  onTap: () => _openOptions(
+                                    title: 'Sent',
+                                    sub: 'With a name or anonymous.',
+                                    options: const [
+                                      (null, 'All', null, null),
+                                      (
+                                        'named',
+                                        'With name',
+                                        null,
+                                        Icons.person_outline_rounded,
+                                      ),
+                                      (
+                                        'anon',
+                                        'Anonymous',
+                                        null,
+                                        Icons.lock_outline_rounded,
+                                      ),
+                                    ],
+                                    current: _sent,
+                                    countOf: (v) => all
+                                        .where(
+                                          (f) =>
+                                              _match(f, skipSent: true) &&
+                                              (v == null ||
+                                                  (v == 'anon') == f.anonymous),
+                                        )
+                                        .length,
+                                    onPick: (v) => _sent = v,
+                                  ),
+                                  onClear: () => setState(() => _sent = null),
+                                ),
+                              ],
                             ),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(28),
-                              borderSide: BorderSide.none,
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(28),
-                              borderSide: BorderSide.none,
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(28),
-                              borderSide: const BorderSide(
-                                color: AppColors.blue,
-                                width: 1.5,
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        child: ListView(
+                          keyboardDismissBehavior:
+                              ScrollViewKeyboardDismissBehavior.onDrag,
+                          padding: const EdgeInsets.fromLTRB(0, 0, 0, 24),
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(20, 8, 8, 0),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Text.rich(
+                                      TextSpan(
+                                        children: [
+                                          TextSpan(
+                                            text: '${items.length}',
+                                            style: const TextStyle(
+                                              fontSize: 13.5,
+                                              fontWeight: FontWeight.w700,
+                                              color: AppColors.ink,
+                                            ),
+                                          ),
+                                          TextSpan(
+                                            text: filtersOn || q.isNotEmpty
+                                                ? ' of ${all.length} comments'
+                                                : (items.length == 1
+                                                      ? ' comment'
+                                                      : ' comments'),
+                                            style: const TextStyle(
+                                              fontSize: 13.5,
+                                              color: AppColors.muted,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  TextButton.icon(
+                                    onPressed: () => setState(
+                                      () => _oldestFirst = !_oldestFirst,
+                                    ),
+                                    icon: const Icon(Icons.swap_vert, size: 17),
+                                    label: Text(
+                                      _oldestFirst
+                                          ? 'Oldest first'
+                                          : 'Newest first',
+                                      style: const TextStyle(fontSize: 13),
+                                    ),
+                                  ),
+                                  if (filtersOn)
+                                    TextButton(
+                                      onPressed: _clearAll,
+                                      child: const Text(
+                                        'Clear all',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                ],
                               ),
                             ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      // One row of chips.
-                      SizedBox(
-                        height: 40,
-                        child: ListView.separated(
-                          scrollDirection: Axis.horizontal,
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          itemCount: _CommentChip.values.length,
-                          separatorBuilder: (context, index) =>
-                              const SizedBox(width: 8),
-                          itemBuilder: (context, i) {
-                            final c = _CommentChip.values[i];
-                            return _StatusChip(
-                              label: _chipLabel(c),
-                              dot: _chipDot(c),
-                              count: searched
-                                  .where((f) => _chipMatches(f, c))
-                                  .length,
-                              selected: c == _chip,
-                              onTap: () => setState(() => _chip = c),
-                            );
-                          },
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(24, 12, 24, 4),
-                        child: Text(
-                          '${items.length} '
-                          '${items.length == 1 ? 'comment' : 'comments'}'
-                          '${q.isEmpty ? ' · newest first' : ' for “$q”'}',
-                          style: const TextStyle(
-                            color: AppColors.muted,
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      if (items.isEmpty)
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          child: Container(
-                            padding: const EdgeInsets.all(18),
-                            decoration: _cardDecoration(),
-                            child: Text(
-                              inWeek.isEmpty
-                                  ? 'No written comments for this week.'
-                                  : 'Nothing matches. Try another word or '
-                                        'chip.',
-                              style: const TextStyle(
-                                color: AppColors.muted,
-                                fontSize: 15,
+                            if (items.isEmpty)
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  8,
+                                  16,
+                                  0,
+                                ),
+                                child: Container(
+                                  padding: const EdgeInsets.all(18),
+                                  decoration: _cardDecoration(),
+                                  child: Text(
+                                    all.isEmpty
+                                        ? 'No written comments yet.'
+                                        : 'Nothing matches. Try another '
+                                              'filter, or tap Clear all.',
+                                    style: const TextStyle(
+                                      color: AppColors.muted,
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                                ),
                               ),
-                            ),
-                          ),
+                            ...list,
+                          ],
                         ),
-                      ...list,
+                      ),
                     ],
                   );
                 },
               ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// "Week of 23–27 Nov" with how many are Difficult and how many still
+/// need a reply (or "all replied").
+class _CWeekHeader extends StatelessWidget {
+  const _CWeekHeader({
+    required this.label,
+    required this.hard,
+    required this.toReply,
+  });
+
+  final String label;
+  final int hard;
+  final int toReply;
+
+  Widget _tag(String text, Color fg, Color bg) => Container(
+    margin: const EdgeInsets.only(left: 6),
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+    decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
+    child: Text(
+      text,
+      style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: fg),
+    ),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 16, 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w700,
+                color: AppColors.ink,
+              ),
+            ),
+          ),
+          if (hard > 0)
+            _tag(
+              '$hard Difficult',
+              const Color(0xFFC2410C),
+              const Color(0xFFFDE8E3),
+            ),
+          toReply > 0
+              ? _tag(
+                  '$toReply to reply',
+                  const Color(0xFFB45309),
+                  const Color(0xFFFFF2E6),
+                )
+              : _tag(
+                  'all replied',
+                  const Color(0xFF15803D),
+                  const Color(0xFFE8F7EE),
+                ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One comment: mood bar on the left, who and when, the words, the
+/// status, "Needs reply" or "Replied", and the mood.
+class _CCard extends StatelessWidget {
+  const _CCard({required this.item, required this.onTap});
+
+  final FeedbackItem item;
+  final VoidCallback onTap;
+
+  static const List<String> _days = [
+    'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun',
+  ];
+  static const List<String> _months = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final d = item.createdAt;
+    final when = d == null
+        ? ''
+        : '${_days[d.weekday - 1]} ${d.day} ${_months[d.month - 1]}';
+    final rating = item.rating;
+    final mood = rating == null ? AppColors.muted : _moodColor(rating);
+    final moodInk = rating == null ? AppColors.muted : _moodInk(rating);
+    final name = (item.authorName ?? '').trim();
+    final statusColor = FeedbackStatus.color(item.status);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      child: Material(
+        color: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: Color(0xFFEDF0F6)),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Container(width: 4, color: mood),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 12, 14, 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              item.anonymous
+                                  ? Icons.lock_outline_rounded
+                                  : Icons.person_rounded,
+                              size: 15,
+                              color: AppColors.muted,
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                item.anonymous
+                                    ? 'Anonymous'
+                                    : (name.isEmpty ? 'With name' : name),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.ink,
+                                ),
+                              ),
+                            ),
+                            Text(
+                              when,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.muted,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          item.text.trim(),
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 14.5,
+                            height: 1.4,
+                            color: AppColors.ink,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Container(
+                              width: 7,
+                              height: 7,
+                              decoration: BoxDecoration(
+                                color: statusColor,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              FeedbackStatus.label(item.status),
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: statusColor,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            if (!item.hasReply)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 7,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFFF2E6),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Text(
+                                  'Needs reply',
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFFB45309),
+                                  ),
+                                ),
+                              )
+                            else
+                              const Text(
+                                '✓ Replied',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: Color(0xFF15803D),
+                                ),
+                              ),
+                            const Spacer(),
+                            if (rating != null)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: mood.withValues(alpha: 0.14),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  PulseRating.label(rating).toUpperCase(),
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.5,
+                                    color: moodInk,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A filter in the bar. Chosen: blue (or orange for Needs reply) with ✕.
+class _CPill extends StatelessWidget {
+  const _CPill({
+    required this.label,
+    required this.active,
+    required this.onTap,
+    required this.onClear,
+    this.icon,
+    this.dot,
+    this.warm = false,
+    this.dropdown = true,
+  });
+
+  final String label;
+  final bool active;
+  final VoidCallback onTap;
+  final VoidCallback onClear;
+  final IconData? icon;
+  final Color? dot;
+  final bool warm;
+  final bool dropdown;
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = !active
+        ? AppColors.ink
+        : (warm ? const Color(0xFFB45309) : AppColors.blue);
+    final bg = !active
+        ? (warm ? const Color(0xFFFFF7ED) : Colors.white)
+        : (warm ? const Color(0xFFFFEDD5) : const Color(0xFFEAF0FD));
+    final border = !active
+        ? (warm ? const Color(0xFFFBD7B0) : const Color(0xFFE3E8F1))
+        : (warm ? const Color(0xFFF59E0B) : AppColors.blue);
+    return Material(
+      color: bg,
+      shape: StadiumBorder(side: BorderSide(color: border, width: 1.2)),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: SizedBox(
+          height: 34,
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(11, 0, active ? 3 : 9, 0),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (dot != null) ...[
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: dot,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                ] else if (icon != null) ...[
+                  Icon(icon, size: 15, color: active ? fg : AppColors.muted),
+                  const SizedBox(width: 5),
+                ],
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: active || warm ? FontWeight.w600 : FontWeight.w500,
+                    color: warm && !active ? const Color(0xFFB45309) : fg,
+                  ),
+                ),
+                if (active)
+                  InkResponse(
+                    onTap: onClear,
+                    radius: 16,
+                    child: Padding(
+                      padding: const EdgeInsets.all(5),
+                      child: Icon(Icons.close_rounded, size: 15, color: fg),
+                    ),
+                  )
+                else if (dropdown)
+                  const Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    size: 17,
+                    color: AppColors.muted,
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A wide choice in a filter sheet, with its count on the right.
+class _COption extends StatelessWidget {
+  const _COption({
+    required this.label,
+    required this.count,
+    required this.selected,
+    required this.onTap,
+    this.icon,
+    this.dot,
+  });
+
+  final String label;
+  final int count;
+  final bool selected;
+  final VoidCallback onTap;
+  final IconData? icon;
+  final Color? dot;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = selected ? AppColors.blue : AppColors.ink;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Material(
+        color: selected ? const Color(0xFFEAF0FD) : Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: BorderSide(
+            color: selected ? AppColors.blue : const Color(0xFFE3E8F1),
+            width: 1.2,
+          ),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 13, 14, 13),
+            child: Row(
+              children: [
+                if (dot != null) ...[
+                  Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: dot,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                ] else if (icon != null) ...[
+                  Icon(icon, size: 18, color: c),
+                  const SizedBox(width: 10),
+                ],
+                Expanded(
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                      color: c,
+                    ),
+                  ),
+                ),
+                Text(
+                  '$count',
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w600,
+                    color: selected ? AppColors.blue : AppColors.muted,
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -3245,16 +4218,33 @@ class _SuggestionTab extends StatefulWidget {
 enum _Range { days30, months3, thisYear, all, month }
 
 class _SuggestionTabState extends State<_SuggestionTab> {
-  /// The chosen chip: null is All, otherwise one status.
+  /// The chosen status: null is All.
   String? _status;
 
   _Range _range = _Range.days30;
 
-  /// The month chosen with "Pick a month…" (first day of that month).
+  /// The month chosen in the Dates sheet (first day of that month).
   DateTime? _month;
 
   /// How many extra months "Show older" has added.
   int _older = 0;
+
+  /// Every suggestion with no reply yet, any date.
+  bool _needsReply = false;
+
+  /// 'named' or 'anon'. Null is All.
+  String? _sent;
+
+  bool _oldestFirst = false;
+
+  final TextEditingController _search = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
 
   static DateTime _dateOf(FeedbackItem f) => f.createdAt ?? DateTime.now();
 
@@ -3317,87 +4307,47 @@ class _SuggestionTabState extends State<_SuggestionTab> {
     });
   }
 
-  /// The sheet that opens from the "Last 30 days" button.
-  Future<void> _openRangeSheet() async {
-    Widget option(String label, _Range r) => ListTile(
-      contentPadding: EdgeInsets.zero,
-      title: Text(
-        label,
-        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w400),
-      ),
-      trailing: Icon(
-        _range == r ? Icons.radio_button_checked : Icons.radio_button_unchecked,
-        color: _range == r ? AppColors.blue : const Color(0xFFC9D0DC),
-      ),
-      onTap: () {
-        Navigator.of(context).pop();
-        _setRange(r);
-      },
-    );
-
-    await showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.white,
-      showDragHandle: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
-      ),
-      builder: (sheetContext) => _withInter(
-        sheetContext,
-        SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  'Show suggestions from',
-                  style: _h(18, weight: FontWeight.w500),
-                ),
-                const SizedBox(height: 6),
-                option('Last 30 days', _Range.days30),
-                option('Last 3 months', _Range.months3),
-                option('This year', _Range.thisYear),
-                option('All time', _Range.all),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(
-                    Icons.calendar_month_outlined,
-                    color: AppColors.blue,
-                  ),
-                  title: Text(
-                    _range == _Range.month ? _rangeLabel() : 'Pick a month…',
-                    style: const TextStyle(
-                      color: AppColors.blue,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w400,
-                    ),
-                  ),
-                  trailing: const Icon(
-                    Icons.chevron_right,
-                    color: AppColors.blue,
-                  ),
-                  onTap: () {
-                    Navigator.of(sheetContext).pop();
-                    _openMonthSheet();
-                  },
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
+  /// Words, or the name and employee ID when not anonymous.
+  bool _matchesQuery(FeedbackItem f) {
+    final q = _query.trim().toLowerCase();
+    if (q.isEmpty) return true;
+    if (f.text.toLowerCase().contains(q)) return true;
+    if (f.anonymous) return false;
+    return (f.authorName ?? '').toLowerCase().contains(q) ||
+        (f.authorEmployeeId ?? '').toLowerCase().contains(q);
   }
 
-  /// A list of the months that have suggestions, newest first.
-  Future<void> _openMonthSheet() async {
-    final months = <DateTime>{
-      for (final f in widget.suggestions)
-        DateTime(_dateOf(f).year, _dateOf(f).month, 1),
-    }.toList()..sort((a, b) => b.compareTo(a));
+  /// True if [f] passes every filter, except the ones skipped (for the
+  /// counts in each sheet). Needs reply shows every date.
+  bool _match(
+    FeedbackItem f,
+    DateTime now, {
+    bool skipDates = false,
+    bool skipStatus = false,
+    bool skipSent = false,
+    bool skipReply = false,
+  }) =>
+      (skipDates || (_needsReply && !skipReply) || _inRange(f, now)) &&
+      (skipStatus || _status == null || f.status == _status) &&
+      (skipSent || _sent == null || (_sent == 'anon') == f.anonymous) &&
+      (skipReply || !_needsReply || !f.hasReply) &&
+      _matchesQuery(f);
 
+  void _clearAll() {
+    _search.clear();
+    setState(() {
+      _query = '';
+      _status = null;
+      _sent = null;
+      _needsReply = false;
+      _range = _Range.days30;
+      _month = null;
+      _older = 0;
+    });
+  }
+
+  Future<void> _sheet(Widget Function(BuildContext) body) async {
+    FocusScope.of(context).unfocus();
     await showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.white,
@@ -3411,247 +4361,488 @@ class _SuggestionTabState extends State<_SuggestionTab> {
         SafeArea(
           child: ConstrainedBox(
             constraints: BoxConstraints(
-              maxHeight: MediaQuery.of(sheetContext).size.height * 0.6,
+              maxHeight: MediaQuery.of(sheetContext).size.height * 0.8,
             ),
-            child: ListView(
-              shrinkWrap: true,
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-              children: [
-                Text('Pick a month', style: _h(18, weight: FontWeight.w500)),
-                const SizedBox(height: 6),
-                if (months.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 16),
-                    child: Text(
-                      'No suggestions yet.',
-                      style: TextStyle(color: AppColors.muted, fontSize: 15),
-                    ),
-                  ),
-                for (final m in months)
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(
-                      '${_longMonths[m.month - 1]} ${m.year}',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
-                    trailing: Text(
-                      '${widget.suggestions.where((f) => _dateOf(f).year == m.year && _dateOf(f).month == m.month).length}',
-                      style: const TextStyle(
-                        color: AppColors.muted,
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
-                    onTap: () {
-                      Navigator.of(sheetContext).pop();
-                      _setRange(_Range.month, month: m);
-                    },
-                  ),
-              ],
-            ),
+            child: body(sheetContext),
           ),
         ),
       ),
     );
+    FocusManager.instance.primaryFocus?.unfocus();
   }
+
+  Widget _sheetTitle(String title, String sub) => Padding(
+    padding: const EdgeInsets.only(bottom: 12),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: _h(19, weight: FontWeight.w800)),
+        const SizedBox(height: 2),
+        Text(sub, style: const TextStyle(fontSize: 13, color: AppColors.muted)),
+      ],
+    ),
+  );
+
+  /// Dates: 4 tiles with counts, then a grid of months with counts.
+  Future<void> _openDates(DateTime now) async {
+    final others = widget.suggestions
+        .where((f) => _match(f, now, skipDates: true, skipReply: true))
+        .toList();
+    final months = <DateTime>{
+      for (final f in widget.suggestions)
+        DateTime(_dateOf(f).year, _dateOf(f).month, 1),
+    }.toList()..sort((a, b) => b.compareTo(a));
+
+    int countFor(_Range r) {
+      final today = DateTime(now.year, now.month, now.day);
+      final DateTime? from = switch (r) {
+        _Range.days30 => DateTime(today.year, today.month, today.day - 30),
+        _Range.months3 => DateTime(today.year, today.month - 3, today.day),
+        _Range.thisYear => DateTime(now.year, 1, 1),
+        _ => null,
+      };
+      return others
+          .where((f) => from == null || !_dateOf(f).isBefore(from))
+          .length;
+    }
+
+    Widget tile(BuildContext sc, _Range r, String label) {
+      final sel = !_needsReply && _range == r && _older == 0;
+      final c = sel ? AppColors.blue : AppColors.ink;
+      return Material(
+        color: sel ? const Color(0xFFEAF0FD) : Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: BorderSide(
+            color: sel ? AppColors.blue : const Color(0xFFE3E8F1),
+            width: 1.2,
+          ),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () {
+            Navigator.of(sc).pop();
+            _needsReply = false;
+            _setRange(r);
+          },
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${countFor(r)}',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: c,
+                  ),
+                ),
+                Text(
+                  sel ? '$label ✓' : label,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: sel ? AppColors.blue : AppColors.muted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    Widget monthBox(BuildContext sc, DateTime m) {
+      final n = others
+          .where(
+            (f) => _dateOf(f).year == m.year && _dateOf(f).month == m.month,
+          )
+          .length;
+      final sel = !_needsReply && _range == _Range.month && _month == m;
+      final name = m.year == now.year
+          ? _monthNames[m.month - 1]
+          : '${_monthNames[m.month - 1]} ’${m.year % 100}';
+      final c = sel
+          ? AppColors.blue
+          : (n == 0 ? const Color(0xFFB7C0D1) : AppColors.ink);
+      return Material(
+        color: sel ? const Color(0xFFEAF0FD) : Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(
+            color: sel ? AppColors.blue : const Color(0xFFE3E8F1),
+            width: 1.2,
+          ),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () {
+            Navigator.of(sc).pop();
+            _needsReply = false;
+            _setRange(_Range.month, month: m);
+          },
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(10, 9, 10, 9),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 13.5, color: c),
+                  ),
+                ),
+                Text(
+                  '$n',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: sel ? AppColors.blue : AppColors.muted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    Widget grid(List<Widget> cells, int cols, double gap) => Column(
+      children: [
+        for (var i = 0; i < cells.length; i += cols)
+          Padding(
+            padding: EdgeInsets.only(bottom: gap),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (var k = 0; k < cols; k++) ...[
+                  if (k > 0) SizedBox(width: gap),
+                  Expanded(
+                    child: i + k < cells.length
+                        ? cells[i + k]
+                        : const SizedBox.shrink(),
+                  ),
+                ],
+              ],
+            ),
+          ),
+      ],
+    );
+
+    await _sheet(
+      (sc) => ListView(
+        shrinkWrap: true,
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+        children: [
+          _sheetTitle('Dates', 'Show suggestions sent in…'),
+          grid([
+            tile(sc, _Range.days30, 'Last 30 days'),
+            tile(sc, _Range.months3, 'Last 3 months'),
+            tile(sc, _Range.thisYear, 'This year'),
+            tile(sc, _Range.all, 'All time'),
+          ], 2, 8),
+          if (months.isNotEmpty) ...[
+            const Padding(
+              padding: EdgeInsets.fromLTRB(0, 8, 0, 8),
+              child: Text(
+                'OR PICK A MONTH',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1,
+                  color: AppColors.muted,
+                ),
+              ),
+            ),
+            grid([for (final m in months) monthBox(sc, m)], 3, 8),
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// Status or Sent: a list of choices with counts.
+  Future<void> _openChoices({
+    required String title,
+    required String sub,
+    required List<(String?, String, Color?, IconData?)> options,
+    required String? current,
+    required int Function(String?) countOf,
+    required ValueChanged<String?> onPick,
+  }) => _sheet(
+    (sc) => ListView(
+      shrinkWrap: true,
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+      children: [
+        _sheetTitle(title, sub),
+        for (final o in options)
+          _COption(
+            label: o.$2,
+            dot: o.$3,
+            icon: o.$4,
+            count: countOf(o.$1),
+            selected: current == o.$1,
+            onTap: () {
+              Navigator.of(sc).pop();
+              setState(() => onPick(o.$1));
+            },
+          ),
+      ],
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
-    final inRange = widget.suggestions.where((f) => _inRange(f, now)).toList();
-
-    // New counts every waiting suggestion, even old ones, so nothing is
-    // forgotten. The other chips count the chosen dates only.
-    int countOf(String? s) {
-      if (s == FeedbackStatus.newItem) {
-        return widget.suggestions
-            .where((f) => f.status == FeedbackStatus.newItem)
-            .length;
-      }
-      return s == null
-          ? inRange.length
-          : inRange.where((f) => f.status == s).length;
-    }
-
-    final List<FeedbackItem> items;
-    if (_status == FeedbackStatus.newItem) {
-      items = widget.suggestions
-          .where((f) => f.status == FeedbackStatus.newItem)
-          .toList();
-    } else if (_status == null) {
-      items = inRange;
-    } else {
-      items = inRange.where((f) => f.status == _status).toList();
-    }
-    final filters = <String?>[null, ...FeedbackStatus.all];
+    final all = widget.suggestions;
+    final matched = all.where((f) => _match(f, now)).toList();
+    final items = _oldestFirst ? matched.reversed.toList() : matched;
+    final replyCount = all
+        .where((f) => _match(f, now, skipDates: true, skipReply: true) &&
+            !f.hasReply)
+        .length;
+    final changed =
+        _status != null ||
+        _sent != null ||
+        _needsReply ||
+        _query.trim().isNotEmpty ||
+        _range != _Range.days30 ||
+        _older > 0;
+    final datesNote = _needsReply ? 'any date' : _rangeLabel();
 
     // "Show older": only for the moving ranges, and only when there are
     // older suggestions to show.
     final from = _from(now);
     final canShowOlder =
         (_range == _Range.days30 || _range == _Range.months3) &&
-        _status != FeedbackStatus.newItem &&
+        !_needsReply &&
         from != null &&
-        widget.suggestions.any((f) => _dateOf(f).isBefore(from));
+        all.any((f) => _dateOf(f).isBefore(from));
     final olderMonth = from == null
         ? ''
         : _longMonths[DateTime(from.year, from.month - 1, 1).month - 1];
-
-    // Count per date group, for the headers.
-    final groupCounts = <String, int>{};
-    for (final f in items) {
-      final g = _groupLabel(_dateOf(f), now);
-      groupCounts[g] = (groupCounts[g] ?? 0) + 1;
-    }
 
     final list = <Widget>[];
     String? lastGroup;
     for (final item in items) {
       final g = _groupLabel(_dateOf(item), now);
       if (g != lastGroup) {
-        list.add(_GroupHeader(label: g, count: groupCounts[g]!));
         lastGroup = g;
+        final inGroup = items.where((f) => _groupLabel(_dateOf(f), now) == g);
+        list.add(
+          _CWeekHeader(
+            label: g,
+            hard: 0,
+            toReply: inGroup.where((f) => !f.hasReply).length,
+          ),
+        );
       }
-      list.add(
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
-          child: _FeedbackCard(item: item, onTap: () => widget.onOpen(item)),
-        ),
-      );
+      list.add(_SCard(item: item, onTap: () => widget.onOpen(item)));
     }
 
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       padding: const EdgeInsets.fromLTRB(0, 8, 0, 24),
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(
-                child: Text(
-                  'Suggestion Box',
-                  style: _h(24, weight: FontWeight.w800),
+              Text('Suggestion Box', style: _h(24, weight: FontWeight.w800)),
+              const SizedBox(height: 2),
+              Text(
+                all.length == 1
+                    ? '1 suggestion in all'
+                    : '${all.length} suggestions in all',
+                style: const TextStyle(fontSize: 13, color: AppColors.muted),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _search,
+                onChanged: (v) => setState(() => _query = v),
+                textInputAction: TextInputAction.search,
+                decoration: InputDecoration(
+                  hintText: 'Search words or name',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _query.isEmpty
+                      ? null
+                      : IconButton(
+                          tooltip: 'Clear',
+                          icon: const Icon(Icons.close),
+                          onPressed: () {
+                            _search.clear();
+                            setState(() => _query = '');
+                          },
+                        ),
+                  filled: true,
+                  fillColor: const Color(0xFFF2F4F8),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 13,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide.none,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide.none,
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(
+                      color: AppColors.blue,
+                      width: 1.5,
+                    ),
+                  ),
                 ),
               ),
-              Material(
-                color: const Color(0xFFF2F6FF),
-                shape: const CircleBorder(),
-                child: IconButton(
-                  tooltip: 'Search',
-                  onPressed: widget.onSearch,
-                  icon: const Icon(Icons.search, color: AppColors.blue),
-                ),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  _CPill(
+                    label: 'Needs reply $replyCount',
+                    dot: const Color(0xFFE2583E),
+                    warm: true,
+                    active: _needsReply,
+                    dropdown: false,
+                    onTap: () => setState(() => _needsReply = !_needsReply),
+                    onClear: () => setState(() => _needsReply = false),
+                  ),
+                  _CPill(
+                    icon: Icons.calendar_today_outlined,
+                    label: _needsReply ? 'Any date' : _rangeLabel(),
+                    active:
+                        !_needsReply &&
+                        (_range != _Range.days30 || _older > 0),
+                    onTap: () => _openDates(now),
+                    onClear: () => _setRange(_Range.days30),
+                  ),
+                  _CPill(
+                    icon: Icons.flag_outlined,
+                    label: _status == null
+                        ? 'Status'
+                        : FeedbackStatus.label(_status!),
+                    active: _status != null,
+                    onTap: () => _openChoices(
+                      title: 'Status',
+                      sub: 'Counts are for $datesNote.',
+                      options: [
+                        (null, 'All', null, null),
+                        for (final st in FeedbackStatus.all)
+                          (
+                            st,
+                            FeedbackStatus.label(st),
+                            FeedbackStatus.color(st),
+                            null,
+                          ),
+                      ],
+                      current: _status,
+                      countOf: (v) => all
+                          .where(
+                            (f) =>
+                                _match(f, now, skipStatus: true) &&
+                                (v == null || f.status == v),
+                          )
+                          .length,
+                      onPick: (v) => _status = v,
+                    ),
+                    onClear: () => setState(() => _status = null),
+                  ),
+                  _CPill(
+                    icon: _sent == 'anon'
+                        ? Icons.lock_outline_rounded
+                        : Icons.person_outline_rounded,
+                    label: _sent == null
+                        ? 'Sent'
+                        : (_sent == 'anon' ? 'Anonymous' : 'With name'),
+                    active: _sent != null,
+                    onTap: () => _openChoices(
+                      title: 'Sent',
+                      sub: 'With a name or anonymous.',
+                      options: const [
+                        (null, 'All', null, null),
+                        ('named', 'With name', null, Icons.person_outline_rounded),
+                        ('anon', 'Anonymous', null, Icons.lock_outline_rounded),
+                      ],
+                      current: _sent,
+                      countOf: (v) => all
+                          .where(
+                            (f) =>
+                                _match(f, now, skipSent: true) &&
+                                (v == null || (v == 'anon') == f.anonymous),
+                          )
+                          .length,
+                      onPick: (v) => _sent = v,
+                    ),
+                    onClear: () => setState(() => _sent = null),
+                  ),
+                ],
               ),
             ],
           ),
         ),
-        const SizedBox(height: 14),
-        // Chips: swipe sideways to see them all.
-        SizedBox(
-          height: 40,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            itemCount: filters.length,
-            separatorBuilder: (context, index) => const SizedBox(width: 8),
-            itemBuilder: (context, i) {
-              final s = filters[i];
-              return _StatusChip(
-                label: s == null ? 'All' : FeedbackStatus.label(s),
-                dot: s == null ? null : _statusDot(s),
-                count: countOf(s),
-                selected: s == _status,
-                onTap: () => setState(() => _status = s),
-              );
-            },
-          ),
-        ),
-        const SizedBox(height: 12),
-        // Date button and how many show.
+        // How many, order, Clear all.
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
+          padding: const EdgeInsets.fromLTRB(20, 8, 8, 0),
           child: Row(
             children: [
-              if (_status == FeedbackStatus.newItem)
-                const Expanded(
-                  child: Text(
-                    'Every suggestion still waiting for a reply, any date.',
-                    style: TextStyle(color: AppColors.muted, fontSize: 13.5),
-                  ),
-                )
-              else ...[
-                Material(
-                  color: const Color(0xFFF2F6FF),
-                  shape: const StadiumBorder(),
-                  clipBehavior: Clip.antiAlias,
-                  child: InkWell(
-                    onTap: _openRangeSheet,
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 9, 10, 9),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.calendar_month_outlined,
-                            size: 18,
-                            color: AppColors.blue,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            _rangeLabel(),
-                            style: const TextStyle(
-                              color: AppColors.blue,
-                              fontSize: 13.5,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          const Icon(
-                            Icons.arrow_drop_down,
-                            color: AppColors.blue,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                // Count and order on two lines, so nothing is cut off.
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
+              Expanded(
+                child: Text.rich(
+                  TextSpan(
                     children: [
-                      Text(
-                        '${items.length} '
-                        '${items.length == 1 ? 'suggestion' : 'suggestions'}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                      TextSpan(
+                        text: '${items.length}',
                         style: const TextStyle(
-                          color: AppColors.ink,
                           fontSize: 13.5,
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.ink,
                         ),
                       ),
-                      const Text(
-                        'newest first',
-                        style: TextStyle(color: AppColors.muted, fontSize: 12),
+                      TextSpan(
+                        text: items.length == all.length
+                            ? (items.length == 1
+                                  ? ' suggestion'
+                                  : ' suggestions')
+                            : ' of ${all.length} suggestions',
+                        style: const TextStyle(
+                          fontSize: 13.5,
+                          color: AppColors.muted,
+                        ),
                       ),
                     ],
                   ),
                 ),
-              ],
+              ),
+              TextButton.icon(
+                onPressed: () => setState(() => _oldestFirst = !_oldestFirst),
+                icon: const Icon(Icons.swap_vert, size: 17),
+                label: Text(
+                  _oldestFirst ? 'Oldest first' : 'Newest first',
+                  style: const TextStyle(fontSize: 13),
+                ),
+              ),
+              if (changed)
+                TextButton(
+                  onPressed: _clearAll,
+                  child: const Text(
+                    'Clear all',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                  ),
+                ),
             ],
           ),
         ),
-        const SizedBox(height: 6),
         if (widget.loading)
           const Padding(
             padding: EdgeInsets.only(top: 80),
             child: Center(
               child: SizedBox(
-
                 width: 28,
                 height: 28,
                 child: CircularProgressIndicator(
@@ -3663,7 +4854,7 @@ class _SuggestionTabState extends State<_SuggestionTab> {
           )
         else if (items.isEmpty)
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 48, 20, 0),
+            padding: const EdgeInsets.fromLTRB(20, 40, 20, 0),
             child: Column(
               children: [
                 Container(
@@ -3673,18 +4864,22 @@ class _SuggestionTabState extends State<_SuggestionTab> {
                     color: AppColors.blueTint,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
-                    Icons.lightbulb_outline_rounded,
+                  child: Icon(
+                    _needsReply
+                        ? Icons.check_rounded
+                        : Icons.lightbulb_outline_rounded,
                     color: AppColors.blue,
                     size: 24,
                   ),
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  _status == null
-                      ? 'No suggestions in these dates'
-                      : 'No ${FeedbackStatus.label(_status!)} suggestions '
-                            'in these dates',
+                  all.isEmpty
+                      ? 'No suggestions yet.'
+                      : (_needsReply
+                            ? 'Every suggestion has a reply.'
+                            : 'Nothing matches. Try another filter, or tap '
+                                  'Clear all.'),
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     color: AppColors.muted,
@@ -3695,7 +4890,7 @@ class _SuggestionTabState extends State<_SuggestionTab> {
             ),
           ),
         ...list,
-        if (canShowOlder)
+        if (canShowOlder && !widget.loading)
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
             child: OutlinedButton(
@@ -3713,6 +4908,185 @@ class _SuggestionTabState extends State<_SuggestionTab> {
             ),
           ),
       ],
+    );
+  }
+}
+
+/// One suggestion: status colour bar on the left, who and when, the
+/// words, the status and "Needs reply", "Waiting N days" or "Replied".
+class _SCard extends StatelessWidget {
+  const _SCard({required this.item, required this.onTap});
+
+  final FeedbackItem item;
+  final VoidCallback onTap;
+
+  static const List<String> _days = [
+    'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun',
+  ];
+
+  String _when(DateTime? d) {
+    if (d == null) return 'Just now';
+    final now = DateTime.now();
+    if (d.year == now.year && d.month == now.month && d.day == now.day) {
+      final h = d.hour % 12 == 0 ? 12 : d.hour % 12;
+      final m = d.minute.toString().padLeft(2, '0');
+      return '$h:$m ${d.hour < 12 ? 'AM' : 'PM'}';
+    }
+    final short = '${_days[d.weekday - 1]} ${d.day} ${_monthNames[d.month - 1]}';
+    return d.year == now.year ? short : '$short ${d.year}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = FeedbackStatus.color(item.status);
+    final name = (item.authorName ?? '').trim();
+    final hidden = item.anonymous || name.isEmpty;
+    final waiting = item.createdAt == null
+        ? 0
+        : DateTime.now().difference(item.createdAt!).inDays;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      child: Material(
+        color: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: Color(0xFFEDF0F6)),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Container(width: 4, color: color),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 12, 14, 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              hidden
+                                  ? Icons.lock_outline_rounded
+                                  : Icons.person_rounded,
+                              size: 15,
+                              color: AppColors.muted,
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                hidden ? 'Anonymous' : name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: hidden
+                                      ? const Color(0xFF5B6478)
+                                      : AppColors.ink,
+                                ),
+                              ),
+                            ),
+                            Text(
+                              _when(item.createdAt),
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.muted,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          item.text.trim(),
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 14.5,
+                            height: 1.4,
+                            color: AppColors.ink,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 4,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 7,
+                                  height: 7,
+                                  decoration: BoxDecoration(
+                                    color: color,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: 5),
+                                Text(
+                                  FeedbackStatus.label(item.status),
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: color,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (item.hasReply)
+                              const Text(
+                                '✓ Replied',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: Color(0xFF15803D),
+                                ),
+                              )
+                            else if (waiting >= 7)
+                              Text(
+                                '⏱ Waiting $waiting days',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFFC2410C),
+                                ),
+                              )
+                            else
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 7,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFFF2E6),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Text(
+                                  'Needs reply',
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFFB45309),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

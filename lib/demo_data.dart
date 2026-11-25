@@ -26,7 +26,6 @@ import 'services/pulse_service.dart';
 class DemoData {
   static const bool on = true;
   static const int people = 30;
-
   /// Great, Good, Okay, Difficult. Oldest week first, this week last
   /// The weeks are different on purpose: good, mixed, a hard one, and a
   /// great one, so the week cards and headlines show every case.
@@ -34,6 +33,7 @@ class DemoData {
     [9, 11, 5, 2], //  8 weeks ago: A good week
     [12, 10, 4, 1], // 7 weeks ago: A good week
     [7, 9, 8, 4], //   6 weeks ago: Mostly good
+
     [15, 9, 2, 0], //  5 weeks ago: A great week
     [10, 12, 4, 2], // 4 weeks ago: A good week
     [4, 7, 11, 7], //  3 weeks ago: A hard week
@@ -84,25 +84,84 @@ class DemoData {
   // -------------------------------------------------------------------
   // Weekly Pulse comment samples (management)
   // -------------------------------------------------------------------
-  /// (rating, text, anonymous, name, status, reply) for each sample
-  /// comment. The two "New" ones have no reply, to test "Needs reply".
-  static const List<(String, String, bool, String, String, String)>
-  _comments = [
-    (PulseRating.difficult, 'Too many late-night calls with the client this week. Hard to switch off.', true, '', FeedbackStatus.newItem, ''),
-    (PulseRating.okay, 'Work was fine, but too many meetings. I had little time to actually code.', false, 'Ravi Kumar', FeedbackStatus.planned, 'Thanks for sharing. We’re trying no-meeting Wednesday afternoons from next week.'),
-    (PulseRating.difficult, 'Very stressful week. The deadline was too tight and I worked late three days.', true, '', FeedbackStatus.underReview, 'Thank you for telling us. If you’re comfortable, please share your name here so we can help you with the workload. Sharing it is your choice.'),
-    (PulseRating.okay, 'The requirements changed twice this week, so I had to redo some work.', false, 'Priya S', FeedbackStatus.inProgress, 'Sorry about that. We’ve asked the product team to finalise requirements before the sprint starts.'),
-    (PulseRating.difficult, 'I’m stuck on a task and don’t know who to ask for help.', false, 'Karthik M', FeedbackStatus.inProgress, 'We’ve assigned a senior developer to pair with you. They’ll reach out today.'),
-    (PulseRating.okay, 'Not sure what my priorities are after the team change.', true, '', FeedbackStatus.newItem, ''),
-    (PulseRating.okay, 'My laptop is very slow. Builds take 20 minutes.', false, 'Rahul T', FeedbackStatus.inProgress, 'IT is adding more memory to your laptop this week. A spare laptop is ready at the help desk until then.'),
-    (PulseRating.okay, 'Okay week. The AC in our bay is too cold.', false, 'Arjun Reddy', FeedbackStatus.implemented, 'We’ve asked facilities to adjust the temperature.'),
-    (PulseRating.difficult, 'The production issue on Tuesday was hard. Nobody knew who was on call.', false, 'Sneha Rao', FeedbackStatus.implemented, 'We’ve now made an on-call list and shared it with everyone.'),
-    (PulseRating.difficult, 'Travelling to the client site every day this week was tiring.', true, '', FeedbackStatus.underReview, 'Thanks for sharing. If you’re comfortable, please share your name here so we can check which of your visits can be done online.'),
-    (PulseRating.okay, 'Helping the new joiners took most of my week.', false, 'Divya K', FeedbackStatus.implemented, 'Thank you for helping them. We’ve added a second buddy so the work is shared.'),
-    (PulseRating.difficult, 'Not feeling well this week, and it was hard to focus.', true, '', FeedbackStatus.noted, 'Please take care of yourself. You can take leave if you need it, and talk to HR anytime.'),
+  /// Comment texts for Okay answers (office life, short).
+  static const List<String> _okayTexts = [
+    'Work was fine, but too many meetings. I had little time to actually code.',
+    'The requirements changed twice this week, so I had to redo some work.',
+    'Not sure what my priorities are after the team change.',
+    'My laptop is very slow. Builds take 20 minutes.',
+    'Okay week. The AC in our bay is too cold.',
+    'Helping the new joiners took most of my week.',
+    'Code reviews are taking two or three days. It slows everything down.',
+    'The test server was down twice, so I lost half a day.',
+    'Too many small tasks. Hard to focus on one big piece of work.',
+    'Okay week, but the canteen queue at 1 PM is very long.',
+    'I waited a long time for access to the new project folder.',
+    'The daily stand-up runs for 40 minutes. Can we keep it short?',
+    'Fine week. The parking was full every morning after 9:30.',
+    'I am not clear who approves leave in the new team.',
+    'Some tickets have no details, so I spend time asking questions.',
+    'Network was slow in the afternoons. Video calls kept dropping.',
   ];
 
-  /// Sample comments for one week (none for weeks without sample totals).
+  /// Comment texts for Difficult answers.
+  static const List<String> _hardTexts = [
+    'Too many late-night calls with the client this week. Hard to switch off.',
+    'Very stressful week. The deadline was too tight and I worked late three days.',
+    'I’m stuck on a task and don’t know who to ask for help.',
+    'The production issue on Tuesday was hard. Nobody knew who was on call.',
+    'Travelling to the client site every day this week was tiring.',
+    'Not feeling well this week, and it was hard to focus.',
+    'I had to work on the weekend to finish the release.',
+    'Two people left the team, and their work came to me with no handover.',
+    'The client was unhappy and I felt blamed in the call.',
+    'I could not take my planned leave because of the deadline.',
+    'Too much pressure this week. I felt very tired by Friday.',
+    'The new process is confusing and nobody has explained it.',
+  ];
+
+  /// Names for comments sent with a name.
+  static const List<String> _names = [
+    'Ravi Kumar', 'Priya S', 'Karthik M', 'Rahul T', 'Arjun Reddy',
+    'Sneha Rao', 'Divya K', 'Meera J', 'Vikram N', 'Anitha P',
+  ];
+
+  /// A short admin reply for each status (New has none).
+  static String _replyFor(String status) {
+    switch (status) {
+      case FeedbackStatus.underReview:
+        return 'Thanks for telling us. We’re looking into this.';
+      case FeedbackStatus.planned:
+        return 'Thanks. We’ve planned a fix and will share the date soon.';
+      case FeedbackStatus.inProgress:
+        return 'We’re working on this now. Thanks for your patience.';
+      case FeedbackStatus.implemented:
+        return 'This is done now. Thank you for raising it.';
+      case FeedbackStatus.noted:
+        return 'Thank you for sharing. Please talk to HR anytime if you need support.';
+      default:
+        return '';
+    }
+  }
+
+  /// Sample status: this week everything is New; last week some are
+  /// New; older weeks are mostly answered.
+  static String _statusFor(int weeksAgo, int j) {
+    if (weeksAgo == 0) return FeedbackStatus.newItem;
+    if (weeksAgo == 1 && j % 3 == 0) return FeedbackStatus.newItem;
+    if (weeksAgo >= 2 && j % 9 == 4) return FeedbackStatus.newItem;
+    const cycle = [
+      FeedbackStatus.implemented,
+      FeedbackStatus.inProgress,
+      FeedbackStatus.planned,
+      FeedbackStatus.underReview,
+      FeedbackStatus.noted,
+    ];
+    return cycle[(j + weeksAgo) % cycle.length];
+  }
+
+  /// Sample comments for one week: exactly one for every Okay and every
+  /// Difficult answer of that week, so every count matches.
   static List<FeedbackItem> comments(String weekId, String thisWeek) {
     final back = _sample.length - 1;
     var index = -1;
@@ -110,25 +169,38 @@ class DemoData {
       if (PulseService.shiftWeek(thisWeek, i - back) == weekId) index = i;
     }
     if (index < 0) return const [];
-    final open = _sample[index][2] + _sample[index][3];
-    final count = open < 2 ? 1 : (open < 6 ? 2 : (index == back ? 3 : 4));
-    final week = DateTime.parse(weekId);
+    final weeksAgo = back - index;
+    final okay = _sample[index][2];
+    final hard = _sample[index][3];
+    final opened = DateTime.parse(weekId);
+    final now = DateTime.now();
     return [
-      for (var j = 0; j < count; j++)
+      for (var j = 0; j < okay + hard; j++)
         () {
-          final c = _comments[(index * 2 + j) % _comments.length];
+          final isHard = j >= okay;
+          final k = isHard ? j - okay : j;
+          final text = isHard
+              ? _hardTexts[(index * 3 + k) % _hardTexts.length]
+              : _okayTexts[(index * 5 + k) % _okayTexts.length];
+          final anonymous = (index + j) % 3 == 0;
+          final status = _statusFor(weeksAgo, j);
+          // Spread over the open days; never in the future.
+          var at = opened.add(Duration(hours: 17, minutes: j * 47 % 600));
+          if (at.isAfter(now)) at = now.subtract(Duration(minutes: 7 * (j + 1)));
           return _withChanges(
             FeedbackItem(
               id: '$idPrefix${weekId}_$j',
               source: 'pulse',
-              text: c.$2,
-              anonymous: c.$3,
-              authorName: c.$3 ? null : c.$4,
-              rating: c.$1,
+              text: text,
+              anonymous: anonymous,
+              authorName: anonymous
+                  ? null
+                  : _names[(index * 2 + j) % _names.length],
+              rating: isHard ? PulseRating.difficult : PulseRating.okay,
               weekId: weekId,
-              status: c.$5,
-              managementMessage: c.$6,
-              createdAt: week.add(Duration(hours: 18 + j * 5)),
+              status: status,
+              managementMessage: _replyFor(status),
+              createdAt: at,
             ),
           );
         }(),

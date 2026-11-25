@@ -14,10 +14,9 @@ import 'feedback_detail_screen.dart';
 /// Type words, a name or an employee ID. Matching words are highlighted.
 class FeedbackListScreen extends StatefulWidget {
   const FeedbackListScreen({super.key, this.source = 'box'});
-
   /// 'box' or 'pulse'.
+  ///
   final String source;
-
   bool get isPulse => source == 'pulse';
 
   @override

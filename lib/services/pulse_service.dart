@@ -368,9 +368,9 @@ class PulseService {
       );
     }
 
+
     // Only the employee can see what they chose (locked history).
     unawaited(VaultService.instance.setPulse(weekId, rating));
-
     // The author's phone joins the group for this comment, so only they
     // hear about replies. Admin never learns which phone.
     if (feedbackId != null) {
