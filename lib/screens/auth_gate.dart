@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 
 import '../models/employee.dart';
 import '../services/auth_service.dart';
-import '../debug_slow.dart';
 import '../services/startup_splash.dart';
 import '../services/notification_service.dart';
 import '../widgets/double_back.dart';
@@ -40,7 +39,7 @@ class AuthGate extends StatelessWidget {
     return StreamBuilder<User?>(
       // userChanges also fires after a reload, so the app moves on by
       // itself once the email is verified.
-      stream: slowFirst(auth.userChanges, 1500),
+      stream: auth.userChanges,
       builder: (context, userSnap) {
         if (userSnap.connectionState == ConnectionState.waiting &&
             !userSnap.hasData) {
@@ -74,7 +73,7 @@ class AuthGate extends StatelessWidget {
 
         final gate = StreamBuilder<Employee?>(
           key: ValueKey(user.uid),
-          stream: slowFirst(auth.employeeStream(user.uid), 1500),
+          stream: auth.employeeStream(user.uid),
           builder: (context, empSnap) {
             if (empSnap.hasError) {
               // The login is no longer valid (account deleted, or an old
@@ -205,7 +204,7 @@ class _Loading extends StatelessWidget {
   Widget build(BuildContext context) {
     return PulseLoadingScreen(
       key: PulseLoadingScreen.startupKey,
-      text: kSlowStart && label.isNotEmpty ? label : 'Your week, heard.',
+      text: 'Your week, heard.',
     );
   }
 }

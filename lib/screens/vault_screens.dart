@@ -6,7 +6,6 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../models/employee.dart';
 import '../services/auth_service.dart';
-import '../debug_slow.dart';
 import '../services/startup_splash.dart';
 import '../services/notification_service.dart';
 import '../services/personal_code.dart';
@@ -85,7 +84,6 @@ class _VaultGateState extends State<VaultGate> {
   }
 
   Future<void> _start() async {
-    await slowWait(1500);
     if (_vault.isReady || await _vault.openSaved(_uid)) {
       _afterOpen();
       return;
@@ -400,7 +398,7 @@ class _Busy extends StatelessWidget {
   @override
   Widget build(BuildContext context) => PulseLoadingScreen(
     key: PulseLoadingScreen.startupKey,
-    text: kSlowStart ? 'C  opening history' : 'Your week, heard.',
+    text: 'Your week, heard.',
   );
 }
 

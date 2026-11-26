@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 
-import '../debug_slow.dart';
 
 /// App start: keeps the phone splash on screen until the first real
 /// screen (Home, sign-in, …) is ready, so the start is one clean change
@@ -13,7 +12,6 @@ class StartupSplash {
 
   /// Called first thing in main().
   static void hold(WidgetsBinding binding) {
-    if (kSlowStart) return; // test mode: show every loader
     _held = true;
     FlutterNativeSplash.preserve(widgetsBinding: binding);
     // Safety: never keep the splash longer than 5 seconds.

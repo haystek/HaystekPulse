@@ -8,7 +8,6 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../config.dart';
-import '../debug_slow.dart';
 import '../demo_data.dart';
 import '../models/employee.dart';
 import '../models/feedback_item.dart';
@@ -294,7 +293,7 @@ class _PulseCardState extends State<_PulseCard> with WidgetsBindingObserver {
 
   void _watch() {
     _weekId = PulseService.currentWeekId();
-    _myRating = slowFirst(FirebaseFirestore.instance
+    _myRating = FirebaseFirestore.instance
         .collection('pulse_responses')
         .doc('${_weekId}_${widget.employee.uid}')
         .snapshots(includeMetadataChanges: true)
@@ -305,7 +304,7 @@ class _PulseCardState extends State<_PulseCard> with WidgetsBindingObserver {
             rating: doc.exists ? '' : null,
             cached: doc.metadata.isFromCache,
           ),
-        ), 2000);
+        );
     _stopWaiting = false;
     _waitTimer?.cancel();
     _waitTimer = Timer(const Duration(seconds: 4), () {
@@ -484,7 +483,6 @@ class _LoadingCard extends StatelessWidget {
             const ShimmerBox(width: double.infinity, height: 48, radius: 24),
             const SizedBox(height: 16),
             const ShimmerBox(width: double.infinity, height: 6, radius: 3),
-            if (kSlowStart) Text('D  Weekly Pulse card loading'),
           ],
         ),
       ),
@@ -1541,10 +1539,7 @@ class _BroadcastCard extends StatefulWidget {
 }
 
 class _BroadcastCardState extends State<_BroadcastCard> {
-  late final Stream<List<Broadcast>> _stream = slowFirst(
-    BroadcastService.instance.watchAll(),
-    3000,
-  );
+  late final Stream<List<Broadcast>> _stream = BroadcastService.instance.watchAll();
   late final Stream<DateTime?> _seen = BroadcastService.instance.watchSeenAt(
     widget.uid,
   );
@@ -1740,10 +1735,7 @@ class _RecentActivityState extends State<_RecentActivity> {
   @override
   void initState() {
     super.initState();
-    _stream = slowFirst(
-      FeedbackService.instance.watchMyFeedback(widget.employee.uid),
-      4000,
-    );
+    _stream = FeedbackService.instance.watchMyFeedback(widget.employee.uid);
     _thisWeek = PulseService.currentWeekId();
   }
 
