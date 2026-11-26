@@ -33,7 +33,6 @@ class DemoData {
     [9, 11, 5, 2], //  8 weeks ago: A good week
     [12, 10, 4, 1], // 7 weeks ago: A good week
     [7, 9, 8, 4], //   6 weeks ago: Mostly good
-
     [15, 9, 2, 0], //  5 weeks ago: A great week
     [10, 12, 4, 2], // 4 weeks ago: A good week
     [4, 7, 11, 7], //  3 weeks ago: A hard week

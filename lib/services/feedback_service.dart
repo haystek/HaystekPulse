@@ -195,10 +195,29 @@ class FeedbackService {
 
     controller = StreamController<List<FeedbackItem>>(
       onListen: () {
-        realSub = real.listen((items) {
-          last = items;
-          emit();
-        }, onError: controller.addError);
+        void listenReal(int tries) {
+          realSub?.cancel();
+          realSub = _feedback
+              .orderBy('createdAt', descending: true)
+              .snapshots()
+              .map((snap) => snap.docs.map(FeedbackItem.fromDoc).toList())
+              .listen((items) {
+                last = items;
+                emit();
+              }, onError: (Object e) {
+                // Demo: show the samples anyway, and try again a few times
+                // (right after sign-in Firebase may still say "not allowed").
+                last ??= const <FeedbackItem>[];
+                emit();
+                if (tries < 5 && !controller.isClosed) {
+                  Future<void>.delayed(const Duration(seconds: 3), () {
+                    if (!controller.isClosed) listenReal(tries + 1);
+                  });
+                }
+              });
+        }
+
+        listenReal(0);
         demoSub = DemoData.changes.listen((_) => emit());
       },
       onCancel: () async {
